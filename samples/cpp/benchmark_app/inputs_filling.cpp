@@ -603,7 +603,10 @@ std::string get_test_info_stream_header(benchmark_app::InputInfo& inputInfo) {
 
 std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::vector<std::string>> inputFiles,
                                                     std::vector<benchmark_app::InputsInfo>& app_inputs_info) {
+                                                    //InputsInfo 所在位置samples/cpp/benchmark_app/utils.hpp:41
+    //这个是不是可以输入多个网络，对应处理多个输入？                                                    
     std::ios::fmtflags fmt(std::cout.flags());
+    // 输入流格式标志流格式标志
     std::map<std::string, ov::TensorVector> tensors;
     if (app_inputs_info.empty()) {
         throw std::logic_error("Inputs Info for model is empty!");
@@ -614,6 +617,7 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
     }
 
     // count image type inputs of network
+    // 网络输入是图像的个数
     std::vector<std::pair<size_t, size_t>> net_input_im_sizes;
     for (auto& inputs_info : app_inputs_info) {
         for (auto& input : inputs_info) {
@@ -623,18 +627,24 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
         }
     }
 
+    //处理数据， 文件名和文件数量
     for (auto& files : inputFiles) {
         if (!files.first.empty() && app_inputs_info[0].find(files.first) == app_inputs_info[0].end()) {
+            //files不为空，且app_inputs_info中找不到这个信息的时候
+            //检查文件是否存在
             throw std::logic_error("Input name \"" + files.first +
                                    "\" used in -i parameter doesn't match any model's input");
         }
 
         std::string input_name = files.first.empty() ? app_inputs_info[0].begin()->first : files.first;
         auto input = app_inputs_info[0].at(input_name);
+        //对files.second不为空的时候进行处理，就是给files.second进行了赋值
         if (!files.second.empty() && files.second[0] != "random" && files.second[0] != "image_info") {
             auto filtered_numpy_files = filter_files_by_extensions(files.second, supported_numpy_extensions);
+            //samples/cpp/benchmark_app/utils.cpp:818   感觉像是在以 ‘.’分割文件名, 感觉第二部分就是VPUX这一类的内容。
+            //不对，跳转过去会发现是后缀名为npy的数据，也就是筛选后缀为.npy的文件
             auto filtered_image_files = filter_files_by_extensions(files.second, supported_image_extensions);
-
+            //筛选后缀为.bmp的文件，使用了opencv之后筛选的文件名更多
             if (!filtered_numpy_files.empty()) {
                 files.second = filtered_numpy_files;
             } else if (!filtered_image_files.empty() && input.is_image()) {
@@ -651,6 +661,7 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
             }
         }
 
+        //对files.second为空的时候进行处理， 就会使用random数据来进行处理。就是step[9/11]黄色[warning]中的内容
         if (files.second.empty()) {
             slog::warn << "No suitable files for input were found! Random data will be used for input " << input_name
                        << slog::endl;
@@ -659,6 +670,8 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
 
         size_t filesToBeUsed = 0;
         size_t shapesToBeUsed = 0;
+        //file 是一个map,<string, vectot<string>>, 所以可以使用size
+        //这边是files的数量关系问题
         if (files.second.size() > app_inputs_info.size()) {
             shapesToBeUsed = app_inputs_info.size();
             filesToBeUsed = files.second.size() - files.second.size() % app_inputs_info.size();
@@ -682,6 +695,7 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
                 app_inputs_info.pop_back();
                 net_input_im_sizes.pop_back();
             }
+            //一直到size相同的时候
         }
     }
 
@@ -697,6 +711,7 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
                                         return a.second.size() < b.second.size();
                                     })
                        ->second.size();
+                       //通过比较inputFiles中数量的大小来得到最终的文件数量？
     } else {
         std::vector<std::pair<size_t, size_t>> net_input_im_sizes;
         for (auto& input_info : app_inputs_info[0]) {
@@ -707,6 +722,7 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
     std::vector<size_t> batchSizes;
     for (const auto& info : app_inputs_info) {
         batchSizes.push_back(get_batch_size(info));
+        //samples/cpp/benchmark_app/utils.cpp:284
     }
 
     for (const auto& files : inputFiles) {
@@ -716,6 +732,7 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
             size_t batchSize = batchSizes[n_shape % app_inputs_info.size()];
             size_t inputId = m_file % files.second.size();
             auto input_info = app_inputs_info[n_shape % app_inputs_info.size()].at(input_name);
+            //vector.at()是传回vector对应的变量，也就是benchmark_app::InputsInfo
 
             std::string tensor_src_info;
             if (files.second[0] == "random") {
@@ -724,6 +741,7 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
                                   std::string((input_info.is_image() ? "image/numpy array" : "binary data")) +
                                   " is expected)";
                 tensors[input_name].push_back(get_random_tensor({input_name, input_info}));
+                //tensors定义在本函数最开始的位置， 用来保存输入数据
             } else if (files.second[0] == "image_info") {
                 // Most likely it is image info: fill with image information
                 auto image_size = net_input_im_sizes.at(n_shape % app_inputs_info.size());
@@ -731,6 +749,7 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
                     "Image size tensor " + std::to_string(image_size.first) + " x " + std::to_string(image_size.second);
                 tensors[input_name].push_back(get_im_info_tensor(image_size, batchSize, {input_name, input_info}));
             } else if (supported_numpy_extensions.count(get_extension(files.second[0]))) {
+                //unordered_set.count()是用来计算是不是又数据，有数据返回1，没有返回0
                 // Fill with Numpy arrrays
                 tensors[input_name].push_back(
                     get_numpy_tensor(files.second, inputId, batchSize, {input_name, input_info}, &tensor_src_info));
@@ -746,6 +765,7 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
 
             // Preparing info
             std::string strOut = get_test_info_stream_header(input_info) + tensor_src_info;
+            //samples/cpp/benchmark_app/inputs_filling.cpp:592
             if (n_shape >= logOutput.size()) {
                 logOutput.resize(n_shape + 1);
             }
@@ -756,6 +776,13 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
         }
     }
 
+    std::printf("====get_tensors  FUNC===(1), logOutput.szie()=%ld\n", logOutput.size());
+    for (size_t i = 0; i < logOutput.size(); i++) {
+        int j=0;
+        for(auto tmp: logOutput[i]){
+            std::printf("==  i=%ld, j=%d ==get_tensors  FUNC===(1), first=%s,,second=%s\n", i, j, tmp.first.c_str(), tmp.second.c_str());
+        }
+    }
     for (size_t i = 0; i < logOutput.size(); i++) {
         slog::info << "Test Config " << i << slog::endl;
         auto maxNameWidth = std::max_element(logOutput[i].begin(),
@@ -765,12 +792,15 @@ std::map<std::string, ov::TensorVector> get_tensors(std::map<std::string, std::v
                                                  return a.first.size() < b.first.size();
                                              })
                                 ->first.size();
+        std::printf("<OV>   ======1====\n");
         for (auto inputLog : logOutput[i]) {
+            std::printf("<OV>   ======2====\n");
             slog::info << std::left << std::setw(maxNameWidth + 2) << inputLog.first << inputLog.second << slog::endl;
         }
     }
     std::cout.flags(fmt);
-
+    //设置输出格式
+    std::printf("<OV>   ======3====\n");
     return tensors;
 }
 
@@ -943,9 +973,17 @@ std::map<std::string, ov::TensorVector> get_tensors_static_case(const std::vecto
             logOutput[i][input_name] += get_test_info_stream_header(input_info) + blob_src_info;
         }
     }
-
+    std::printf("====get_tensors_static_case===(2),logOutput.szie()=%ld\n", logOutput.size());
+    for (size_t i = 0; i < logOutput.size(); i++) {
+        int j=0;
+        for(auto tmp: logOutput[i]){
+            std::printf("==  i=%ld, j=%d ==get_tensors  FUNC===(1), first=%s,,second=%s\n", i, j, tmp.first.c_str(), tmp.second.c_str());
+        }
+    }
+    //logOutput来自哪里?
     for (size_t i = 0; i < logOutput.size(); i++) {
         slog::info << "Test Config " << i << slog::endl;
+        std::printf("<OV>   ======3====\n");
         auto maxNameWidth = std::max_element(logOutput[i].begin(),
                                              logOutput[i].end(),
                                              [](const std::pair<std::string, std::string>& a,
@@ -953,12 +991,13 @@ std::map<std::string, ov::TensorVector> get_tensors_static_case(const std::vecto
                                                  return a.first.size() < b.first.size();
                                              })
                                 ->first.size();
+        std::printf("<OV>   ======4====\n");
         for (auto inputLog : logOutput[i]) {
             slog::info << std::left << std::setw(maxNameWidth + 2) << inputLog.first << inputLog.second << slog::endl;
         }
     }
     std::cout.flags(fmt);
-
+    std::printf("<OV>   ======5====\n");
     return blobs;
 }
 

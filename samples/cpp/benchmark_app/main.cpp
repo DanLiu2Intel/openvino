@@ -230,6 +230,7 @@ int main(int argc, char* argv[]) {
     std::shared_ptr<StatisticsReport> statistics;
     try {
         ov::CompiledModel compiledModel;
+        //src/inference/include/openvino/runtime/compiled_model.hpp:36
 
         // ----------------- 1. Parsing and validating input arguments
         // -------------------------------------------------
@@ -261,6 +262,7 @@ int main(int argc, char* argv[]) {
             statistics->add_parameters(StatisticsReport::Category::COMMAND_LINE_PARAMETERS, command_line_arguments);
         }
         auto isFlagSetInCommandLine = [&command_line_arguments](const std::string& name) {
+            std::printf("<OV> isFlagSetInCommandLine ");
             return (std::find_if(command_line_arguments.begin(),
                                  command_line_arguments.end(),
                                  [name](const StatisticsVariant& p) {
@@ -930,22 +932,32 @@ int main(int argc, char* argv[]) {
 
         // ----------------- 9. Creating infer requests and filling input blobs
         // ----------------------------------------
+        std::printf("<OV>in benchmark-main.cpp - 9. Creating infer-0\n");
         next_step();
-
+        std::printf("<OV>in benchmark-main.cpp - 9. Creating infer-1\n");
         InferRequestsQueue inferRequestsQueue(compiledModel, nireq, app_inputs_info.size(), FLAGS_pcseq);
-
+        //samples/cpp/benchmark_app/infer_request_wrap.hpp:107
+        std::printf("<OV>in benchmark-main.cpp - 9. Creating infer-2\n");
         bool inputHasName = false;
         if (inputFiles.size() > 0) {
             inputHasName = inputFiles.begin()->first != "";
+            //不是空，就是有值？
+            std::printf("<OV>in benchmark-main.cpp - 9. Creating infer-2.1, inputHasName=%d, isDynamicNetwork=%d\n",
+             static_cast<int>(inputHasName),  static_cast<int>(isDynamicNetwork));
         }
+        
         bool newInputType = isDynamicNetwork || inputHasName;
         // create vector to store remote input blobs buffer
         std::vector<::gpu::BufferType> clInputsBuffer;
+        ///usr/include/CL/cl2.hpp:3779
         bool useGpuMem = false;
 
         std::map<std::string, ov::TensorVector> inputsData;
+        std::printf("<OV>in benchmark-main.cpp - 9. Creating infer-3\n");
         if (isFlagSetInCommandLine("use_device_mem")) {
+            std::printf("<OV>in benchmark-main.cpp - 9. Creating infer-4\n");
             if (device_name.find("GPU") == 0) {
+                //这个肯定不会进来
                 inputsData = ::gpu::get_remote_input_tensors(inputFiles,
                                                              app_inputs_info,
                                                              compiledModel,
@@ -954,8 +966,11 @@ int main(int argc, char* argv[]) {
                 useGpuMem = true;
             } else if (device_name.find("CPU") == 0) {
                 if (newInputType) {
+                    std::printf("<OV> in benchmark-main.cpp before get_tensors FUNC(1)\n");
                     inputsData = get_tensors(inputFiles, app_inputs_info);
                 } else {
+                    //应该走的是这边
+                    std::printf("<OV> in benchmark-main.cpp before get_tensors_static_case FUNC(1)\n");
                     inputsData = get_tensors_static_case(
                         inputFiles.empty() ? std::vector<std::string>{} : inputFiles.begin()->second,
                         batchSize,
@@ -966,9 +981,12 @@ int main(int argc, char* argv[]) {
                 OPENVINO_THROW("Requested device doesn't support `use_device_mem` option.");
             }
         } else {
+            std::printf("<OV>in benchmark-main.cpp - 9. Creating infer-5\n");
             if (newInputType) {
+                std::printf("<OV> in benchmark-main.cpp before get_tensors FUNC(2)\n");
                 inputsData = get_tensors(inputFiles, app_inputs_info);
             } else {
+                std::printf("<OV> in benchmark-main.cpp before get_tensors_static_case FUNC(2)\n");
                 inputsData = get_tensors_static_case(
                     inputFiles.empty() ? std::vector<std::string>{} : inputFiles.begin()->second,
                     batchSize,
@@ -976,6 +994,7 @@ int main(int argc, char* argv[]) {
                     nireq);
             }
         }
+         std::printf("<OV> in benchmark-main.cpp ========middle)\n");
         // ----------------- 10. Measuring performance
         // ------------------------------------------------------------------
         size_t iteration = 0;

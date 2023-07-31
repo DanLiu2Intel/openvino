@@ -108,7 +108,12 @@ class InferRequestsQueue final {
 public:
     InferRequestsQueue(ov::CompiledModel& model, size_t nireq, size_t lat_group_n, bool enable_lat_groups)
         : enable_lat_groups(enable_lat_groups) {
+        std::printf("<OV>   in InferRequestsQueue constructor, enable_lat_groups=%d\n", static_cast<int>(enable_lat_groups));
+        std::printf("       =<ov>====> nireq=%ld, lat_group_n=%ld\n",nireq, lat_group_n);
         for (size_t id = 0; id < nireq; id++) {
+            std::printf("      =<ov>===>run in request loop id=%ld\n",id);
+            //给request进行赋值
+            //std::vector<InferReqWrap::Ptr> requests;
             requests.push_back(std::make_shared<InferReqWrap>(model,
                                                               id,
                                                               std::bind(&InferRequestsQueue::put_idle_request,
@@ -117,10 +122,16 @@ public:
                                                                         std::placeholders::_2,
                                                                         std::placeholders::_3,
                                                                         std::placeholders::_4)));
+                                                            //后面4个是函数的输入变量， 但是这个函数子在后面定义了，延迟计算
+            std::printf("<OV>    in InferRequestsQueue constructor loop\n");
             _idleIds.push(id);
         }
+        std::printf("<OV>    in InferRequestsQueue constructor (1)\n");
         _latency_groups.resize(lat_group_n);
+        //_latency_groups是一个二维数组，std::vector<std::vector<double>> _latency_groups;
+        std::printf("<OV>    in InferRequestsQueue constructor (2)\n");
         reset_times();
+        std::printf("<OV>    in InferRequestsQueue constructor (3)\n");
     }
 
     ~InferRequestsQueue() {
@@ -134,11 +145,16 @@ public:
     }
 
     void reset_times() {
+        std::printf("<OV>  in InferReqWrap class's reset_times func (1)\n");
         _startTime = Time::time_point::max();
+        std::printf("<OV>  in InferReqWrap class's reset_times func (2)\n");
         _endTime = Time::time_point::min();
+        std::printf("<OV>  in InferReqWrap class's reset_times func (3)\n");
         _latencies.clear();
+        std::printf("<OV>  in InferReqWrap class's reset_times func (4)\n");
         for (auto& group : _latency_groups) {
             group.clear();
+            std::printf("<OV>  in InferReqWrap class's reset_times func (5)\n");
         }
     }
 
@@ -146,22 +162,33 @@ public:
         return std::chrono::duration_cast<ns>(_endTime - _startTime).count() * 0.000001;
     }
 
+    //idle adj/v 空闲的
     void put_idle_request(size_t id,
                           size_t lat_group_id,
                           const double latency,
                           const std::exception_ptr& ptr = nullptr) {
+        std::printf("<OV>  in InferReqWrap class's put_idle_request func (1)\n");
         std::unique_lock<std::mutex> lock(_mutex);
+        std::printf("<OV>  in InferReqWrap class's put_idle_request func (2)\n");
         if (ptr) {
             inferenceException = ptr;
+            std::printf("<OV>  in InferReqWrap class's put_idle_request func (3)\n");
         } else {
+            std::printf("<OV>  in InferReqWrap class's put_idle_request func (4)\n");
             _latencies.push_back(latency);
+            std::printf("<OV>  in InferReqWrap class's put_idle_request func (5)\n");
             if (enable_lat_groups) {
+                std::printf("<OV>  in InferReqWrap class's put_idle_request func (6)\n");
                 _latency_groups[lat_group_id].push_back(latency);
             }
+            std::printf("<OV>  in InferReqWrap class's put_idle_request func (7)\n");
             _idleIds.push(id);
+            std::printf("<OV>  in InferReqWrap class's put_idle_request func (8)\n");
             _endTime = std::max(Time::now(), _endTime);
+            std::printf("<OV>  in InferReqWrap class's put_idle_request func (8)\n");
         }
         _cv.notify_one();
+        std::printf("<OV>  in InferReqWrap class's put_idle_request func (9)\n");
     }
 
     InferReqWrap::Ptr get_idle_request() {
