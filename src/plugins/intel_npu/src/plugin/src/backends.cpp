@@ -109,7 +109,10 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
             }
 #endif
         } catch (const std::exception& ex) {
-            _logger.error("Got an error during backend '%s' loading : %s", backendName.c_str(), ex.what());
+            const auto compilerType = config.get<COMPILER_TYPE>();
+            if (compilerType == ov::intel_npu::CompilerType::DRIVER) {
+                _logger.error("Got an error during backend '%s' loading : %s", backendName.c_str(), ex.what());
+            }
         } catch (...) {
             _logger.error("Got an unknown error during backend '%s' loading", backendName.c_str());
         }
