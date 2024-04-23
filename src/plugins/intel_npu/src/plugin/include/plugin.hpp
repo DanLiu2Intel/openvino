@@ -29,6 +29,8 @@ public:
 
     virtual ~Plugin() = default;
 
+    void getBackendandMetrics(const Config& config) const;
+
     void set_property(const ov::AnyMap& properties) override;
 
     ov::Any get_property(const std::string& name, const ov::AnyMap& arguments) const override;
@@ -56,17 +58,17 @@ public:
 private:
     ov::SoPtr<ICompiler> getCompiler(const Config& config) const;
 
-    std::shared_ptr<NPUBackends> _backends;
+    mutable std::shared_ptr<NPUBackends> _backends;
 
     std::map<std::string, std::string> _config;
     std::shared_ptr<OptionsDesc> _options;
-    Config _globalConfig;
+    mutable Config _globalConfig;
     Logger _logger;
-    std::unique_ptr<Metrics> _metrics;
+    mutable std::unique_ptr<Metrics> _metrics;
 
     // properties map: {name -> [supported, mutable, eval function]}
-    std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> _properties;
-    std::vector<ov::PropertyName> _supportedProperties;
+    mutable std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> _properties;
+    mutable std::vector<ov::PropertyName> _supportedProperties;
 
     static std::atomic<int> _compiledModelLoadCounter;
 };
