@@ -206,13 +206,13 @@ Plugin::Plugin()
               return config.get<NUM_STREAMS>();
           }}},
         
-        
         {ov::hint::model_priority.name(),
          {true,
           ov::PropertyMutability::RW,
           [](const Config& config) {
               return config.get<MODEL_PRIORITY>();
           }}},
+
         // OV Internals
         // =========
         {ov::internal::exclusive_async_requests.name(),
@@ -398,6 +398,9 @@ void Plugin::getBackendandMetrics(const Config& config) const{
               const auto specifiedDeviceName = get_specified_device_name(config);
               return _metrics->GetFullDeviceName(specifiedDeviceName);
           }}},
+        
+        // OV Internals
+        // =========
         {ov::internal::caching_properties.name(),
          {false,
           ov::PropertyMutability::RO,
@@ -410,6 +413,9 @@ void Plugin::getBackendandMetrics(const Config& config) const{
           [&](const Config&) {
               return _metrics->GetInternalSupportedProperties();
           }}},
+        
+        // NPU Public
+        // =========
         {ov::intel_npu::device_alloc_mem_size.name(),
          {true,
           ov::PropertyMutability::RO,
@@ -428,6 +434,9 @@ void Plugin::getBackendandMetrics(const Config& config) const{
           [&](const Config& config) {
               return _metrics->GetDriverVersion();
           }}},
+        
+        // NPU Private
+        // =========
         {ov::intel_npu::backend_name.name(),
          {false,
           ov::PropertyMutability::RO,
