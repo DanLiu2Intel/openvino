@@ -281,8 +281,6 @@ Plugin::Plugin()
           [](const Config& config) {
               return config.get<PLATFORM>();
           }}},
-                                {ov::available_devices.name(),
-         
         {ov::intel_npu::use_elf_compiler_backend.name(),
          {false,
           ov::PropertyMutability::RW,
@@ -343,11 +341,12 @@ void Plugin::getBackendandMetrics(const Config& config) const{
 
     std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> updateProperties = 
     {
-        {true,
-          ov::PropertyMutability::RO,
-          [&](const Config&) {
-              return _metrics->GetAvailableDevicesNames();
-          }}},
+        {ov::available_devices.name(),
+         {true,
+            ov::PropertyMutability::RO,
+            [&](const Config&) {
+                return _metrics->GetAvailableDevicesNames();
+            }}},
         {ov::device::capabilities.name(),
          {true,
           ov::PropertyMutability::RO,
