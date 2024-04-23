@@ -9,6 +9,7 @@
 
 #include "device_helpers.hpp"
 #include "intel_npu/al/config/common.hpp"
+#include "intel_npu/al/config/compiler.hpp"
 
 #if defined(ENABLE_ZEROAPI_BACKEND)
 #    include "zero_backend.hpp"

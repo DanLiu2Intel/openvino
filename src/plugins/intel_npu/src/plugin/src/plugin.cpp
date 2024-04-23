@@ -134,7 +134,7 @@ Plugin::Plugin()
     _globalConfig.parseEnvVars();
     Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
 
-     // Map from name to function {Config -> ov::Any}
+    // Map from name to function {Config -> ov::Any}
     // Note that some properties are RW before network is loaded, and become RO after network is loaded
     _properties = {
         // OV Public
@@ -313,23 +313,23 @@ void Plugin::getBackendandMetrics(const Config& config) const{
     std::vector<AvailableBackends> backendRegistry;
 
 #if defined(OPENVINO_STATIC_LIBRARY)
-    backendRegistry.push_back(vpux::AvailableBackends::LEVEL_ZERO);
+    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
 #else
 #if defined(ENABLE_IMD_BACKEND)
     if (const auto* envVar = std::getenv("IE_NPU_USE_IMD_BACKEND")) {
         if (envVarStrToBool("IE_NPU_USE_IMD_BACKEND", envVar)) {
-            backendRegistry.push_back(vpux::AvailableBackends::IMD);
+            backendRegistry.push_back(AvailableBackends::IMD);
         }
     }
 #endif
 
 #if defined(_WIN32) || defined(_WIN64) || (defined(__linux__) && defined(__x86_64__))
-    backendRegistry.push_back(vpux::AvailableBackends::LEVEL_ZERO);
+    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
 #endif
 #endif
 
-    OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::VPUXPlugin, "Plugin::getBackendandMetrics", "NPUBackends");
-    _backends = std::make_shared<VPUXBackends>(backendRegistry, config);
+    OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::getBackendandMetrics", "NPUBackends");
+    _backends = std::make_shared<NPUBackends>(backendRegistry, config);
     OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
     _backends->registerOptions(*_options);
 
