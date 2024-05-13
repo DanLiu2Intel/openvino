@@ -299,6 +299,12 @@ Plugin::Plugin()
           [](const Config& config) {
               return config.get<PROFILING_TYPE>();
           }}},
+        {ov::available_devices.name(),
+         {true,
+            ov::PropertyMutability::RO,
+            [&](const Config&) {
+                return _metrics->GetAvailableDevicesNames();
+            }}},
     };
 
     for (auto& property : _properties) {
@@ -341,12 +347,6 @@ void Plugin::getBackendandMetrics(const Config& config) const{
 
     std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> updateProperties = 
     {
-        {ov::available_devices.name(),
-         {true,
-            ov::PropertyMutability::RO,
-            [&](const Config&) {
-                return _metrics->GetAvailableDevicesNames();
-            }}},
         {ov::device::capabilities.name(),
          {true,
           ov::PropertyMutability::RO,
@@ -454,8 +454,11 @@ void Plugin::getBackendandMetrics(const Config& config) const{
 }
 
 void Plugin::set_property(const ov::AnyMap& properties) {
+    std::printf("<set_property_1>\n");
     const std::map<std::string, std::string> config = any_copy(properties);
+    std::printf("<set_property_2>\n");
     for (const auto& configEntry : config) {
+        std::printf("<set_property_3>\n");
         if (_properties.find(configEntry.first) == _properties.end()) {
             OPENVINO_THROW("Unsupported configuration key: ", configEntry.first);
         } else {
@@ -464,25 +467,36 @@ void Plugin::set_property(const ov::AnyMap& properties) {
             }
         }
     }
+    std::printf("<set_property_4>\n");
 
     _globalConfig.update(config);
+    std::printf("<set_property_5>\n");
     Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
+    std::printf("<set_property_6>\n");
     if (_backends != nullptr) {
+        std::printf("<set_property_7>\n");
         _backends->setup(_globalConfig);
     }
-
+    std::printf("<set_property_8>\n");
     for (const auto& entry : config) {
         _config[entry.first] = entry.second;
     }
+    std::printf("<set_property_9>\n");
 }
 
 ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& arguments) const {
+    std::printf("<get_property_1>\n");
     const std::map<std::string, std::string>& amends = any_copy(arguments);
+    std::printf("<get_property_2>\n");
     const Config amendedConfig = merge_configs(_globalConfig, amends);
 
     auto&& configIterator = _properties.find(name);
+    std::printf("<get_property_3>\n");
     if (configIterator != _properties.cend()) {
-        return std::get<2>(configIterator->second)(amendedConfig);
+        std::printf("<get_property_4>\n");
+        auto temp = std::get<2>(configIterator->second)(amendedConfig);
+        std::printf("<get_property_5>\n");
+        return temp;
     }
 
     OPENVINO_THROW("Unsupported configuration key: ", name);
@@ -490,10 +504,11 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    std::printf("<compile_model_1>\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
     auto localConfig = merge_configs(_globalConfig, any_copy(properties));
-
+    std::printf("<compile_model_2>\n");
     getBackendandMetrics(localConfig);
     std::printf("   <npu-plugin> <Plugin::compile_model()>  _globalConfig is %s )\n", _globalConfig.toString().c_str());
     const auto compilerType3 = _globalConfig.get<COMPILER_TYPE>();
