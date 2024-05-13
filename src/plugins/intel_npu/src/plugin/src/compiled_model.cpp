@@ -3,6 +3,7 @@
 //
 
 #include "compiled_model.hpp"
+#include "plugin.hpp"
 
 #include <fstream>
 #include <string_view>
@@ -103,6 +104,14 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
+
+    // check backend in plugin
+    if (std::dynamic_pointer_cast<const Plugin>(get_plugin())->is_backend_empty()) {
+        _logger.error("Cannot find backend in inference. Make sure the device is available!");
+        throw "ERROR Cannot find backend before inference";
+    } else {
+        _logger.info("backend is ready for inference.");
+    }
 
     if (_executorPtr == nullptr && _device != nullptr) {
         _executorPtr = _device->createExecutor(_networkPtr, _config);

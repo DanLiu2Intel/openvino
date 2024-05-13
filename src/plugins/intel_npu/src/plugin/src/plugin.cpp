@@ -535,7 +535,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             _logger.error("Option 'CACHE_DIR' is not supported with MLIR compiler type");
         }
     }
-
+    std::printf("  <1>localConfig.get<PLATFORM>() =%s,  <2>localConfig.get<DEVICE_ID>()=%s \n",
+                localConfig.get<PLATFORM>().data(),
+                localConfig.get<DEVICE_ID>().c_str());
     const auto platform = _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
     auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
     localConfig.update({{ov::intel_npu::platform.name(), platform}});
