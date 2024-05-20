@@ -9,6 +9,7 @@
 
 #include "device_helpers.hpp"
 #include "intel_npu/al/config/common.hpp"
+#include "intel_npu/al/config/compiler.hpp"
 
 #if defined(ENABLE_ZEROAPI_BACKEND)
 #    include "zero_backend.hpp"
@@ -109,8 +110,10 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
             }
 #endif
         } catch (const std::exception& ex) {
-            _logger.error("Got an error during backend '%s' loading : %s", backendName.c_str(), ex.what());
-        } catch (...) {
+             const auto compilerType = config.get<COMPILER_TYPE>();
+            if (compilerType == ov::intel_npu::CompilerType::DRIVER) {
+                _logger.error("Got an error during backend '%s' loading : %s", backendName.c_str(), ex.what());
+            }        } catch (...) {
             _logger.error("Got an unknown error during backend '%s' loading", backendName.c_str());
         }
     }
