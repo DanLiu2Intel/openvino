@@ -14,6 +14,11 @@ namespace intel_npu {
 namespace driverCompilerAdapter {
 
 LevelZeroCompilerAdapter::LevelZeroCompilerAdapter() : _logger("LevelZeroCompilerAdapter", Logger::global().level()) {
+    _logger.info("LevelZeroCompilerAdapter constructor1 info");
+    _logger.warning("LevelZeroCompilerAdapter constructor1 warning");
+    _logger.debug("LevelZeroCompilerAdapter constructor1 debug");
+    _logger.trace("LevelZeroCompilerAdapter constructor1 trace");
+
     _logger.debug("initialize zeAPI");
     auto result = zeInit(ZE_INIT_FLAG_VPU_ONLY);
     if (ZE_RESULT_SUCCESS != result) {

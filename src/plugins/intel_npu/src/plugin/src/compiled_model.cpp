@@ -87,6 +87,10 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _logger("CompiledModel", config.get<LOG_LEVEL>()),
       _device(device),
       _compiler(compiler) {
+    _logger.info("CompiledModel constructor info");
+    _logger.warning("CompiledModel constructor warning");
+    _logger.debug("CompiledModel constructor debug");
+    _logger.trace("CompiledModel constructor trace");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
     OPENVINO_ASSERT(_networkPtr != nullptr,
                     "NPU CompiledModel: the pointer towards the NetworkDescription object is null");
@@ -102,6 +106,10 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
 }
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
+    _logger.info("CompiledModel create_infer_request info");
+    _logger.warning("CompiledModel create_infer_request warning");
+    _logger.debug("CompiledModel create_infer_request debug");
+    _logger.trace("CompiledModel create_infer_request trace");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
 
     if (_executorPtr == nullptr && _device != nullptr) {

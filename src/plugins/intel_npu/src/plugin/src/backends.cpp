@@ -70,6 +70,10 @@ namespace intel_npu {
 // TODO Config will be useless here, since only default values will be used
 NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, [[maybe_unused]] const Config& config)
     : _logger("NPUBackends", Logger::global().level()) {
+    _logger.info("NPUBackends constructor1 info");
+    _logger.warning("NPUBackends constructor1 warning");
+    _logger.debug("NPUBackends constructor1 debug");
+    _logger.trace("NPUBackends constructor1 trace");
     std::vector<ov::SoPtr<IEngineBackend>> registeredBackends;
     [[maybe_unused]] const auto registerBackend = [&](ov::SoPtr<IEngineBackend> backend, const std::string& name) {
         const auto backendDevices = backend->getDeviceNames();
@@ -164,6 +168,10 @@ bool NPUBackends::isBatchingSupported() const {
 }
 
 std::shared_ptr<IDevice> NPUBackends::getDevice(const std::string& specificName) const {
+    _logger.info("NPUBackends getDevice info");
+    _logger.warning("NPUBackends getDevice warning");
+    _logger.debug("NPUBackends getDevice debug");
+    _logger.trace("NPUBackends getDevice trace");
     _logger.debug("Searching for device %s to use started...", specificName.c_str());
     // TODO iterate over all available backends
     std::shared_ptr<IDevice> deviceToUse;

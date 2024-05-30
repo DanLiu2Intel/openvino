@@ -166,6 +166,10 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
+    _logger.info("Plugin constructor1 info");
+    _logger.warning("Plugin constructor1 warning");
+    _logger.debug("Plugin constructor1 debug");
+    _logger.trace("Plugin constructor1 trace");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -491,6 +495,10 @@ Plugin::Plugin()
             _supportedProperties.emplace_back(ov::PropertyName(property.first, std::get<1>(property.second)));
         }
     }
+    _logger.info("Plugin constructor2 info");
+    _logger.warning("Plugin constructor2 warning");
+    _logger.debug("Plugin constructor2 debug");
+    _logger.trace("Plugin constructor2 trace");
 }
 
 void Plugin::set_property(const ov::AnyMap& properties) {
@@ -530,6 +538,10 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    _logger.info("Plugin compile_model info");
+    _logger.warning("Plugin compile_model warning");
+    _logger.debug("Plugin compile_model debug");
+    _logger.trace("Plugin compile_model trace");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
     auto localConfig = merge_configs(_globalConfig, any_copy(properties));

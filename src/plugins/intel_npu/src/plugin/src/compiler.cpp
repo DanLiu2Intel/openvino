@@ -81,6 +81,10 @@ ov::SoPtr<ICompiler> createCompilerImpl(ov::intel_npu::CompilerType compilerType
 }  // namespace
 
 ov::SoPtr<ICompiler> intel_npu::createCompiler(ov::intel_npu::CompilerType compilerType, const Logger& log) {
+    log.info("createCompiler constructor1 info");
+    log.warning("createCompiler constructor1 warning");
+    log.debug("createCompiler constructor1 debug");
+    log.trace("createCompiler constructor1 trace");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "intel_npu::createCompiler");
     auto logger = log.clone("createCompiler");
     try {

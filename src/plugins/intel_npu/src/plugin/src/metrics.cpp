@@ -12,6 +12,7 @@
 namespace intel_npu {
 
 Metrics::Metrics(const std::shared_ptr<const NPUBackends>& backends) : _backends(backends) {
+    //Metrics not need use log
     _supportedMetrics = {ov::supported_properties.name(),
                          ov::available_devices.name(),
                          ov::device::full_name.name(),
