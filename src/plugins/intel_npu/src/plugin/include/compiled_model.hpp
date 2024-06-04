@@ -79,7 +79,7 @@ private:
 
     void configure_stream_executors();
 
-    void create_executor();
+    void create_executor() const;
 
     std::shared_ptr<const NetworkDescription> _networkPtr;
     const std::shared_ptr<const ov::Model> _model;

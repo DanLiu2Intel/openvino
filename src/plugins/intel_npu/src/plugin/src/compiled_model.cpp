@@ -69,7 +69,7 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
     configure_stream_executors();
 
     OV_ITT_TASK_NEXT(COMPILED_MODEL, "create_executor");
-    create_executor();
+    // create_executor();
 
     OV_ITT_TASK_SKIP(COMPILED_MODEL);
 }
@@ -96,13 +96,15 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
     configure_stream_executors();
 
     OV_ITT_TASK_NEXT(COMPILED_MODEL, "create_executor");
-    create_executor();
+    // create_executor();
 
     OV_ITT_TASK_SKIP(COMPILED_MODEL);
 }
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
+    //create executor，test add
+    create_executor();
 
     if (_executorPtr == nullptr && _device != nullptr) {
         _executorPtr = _device->createExecutor(_networkPtr, _config);
@@ -334,7 +336,7 @@ void CompiledModel::initialize_properties() {
     }
 }
 
-void CompiledModel::create_executor() {
+void CompiledModel::create_executor() const{
     if (_config.get<CREATE_EXECUTOR>()) {
         _logger.info("Creating the executor inside the \"CompiledModel\" constructor");
 
