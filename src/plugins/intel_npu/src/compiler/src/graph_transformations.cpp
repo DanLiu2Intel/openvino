@@ -21,6 +21,7 @@ IR::IR(const std::shared_ptr<const ov::Model>& origModel, uint32_t supportedOpse
 
 #ifdef _WIN32
     // Only use fstream for Windows
+    // std::streambuf holds counter in 32 bit int, std::stringsream can not hold content larger than ~2GB
     if (_model->get_graph_size() > 1024U * 1024 * 1024 * 2) {
         // Force model larger than 2G to use FILE mode
         _logger.warning("Force large model %s to use FILE mode to do serialize", _model->get_friendly_name());
