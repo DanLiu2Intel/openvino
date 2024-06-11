@@ -172,6 +172,7 @@ Plugin::Plugin()
     registerCommonOptions(*_options);
     registerCompilerOptions(*_options);
     registerRunTimeOptions(*_options);
+    //_globalConfig(_options),
 
     // parse env_variables to get LOG_LEVEL if needed
     _globalConfig.parseEnvVars();
@@ -575,7 +576,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     localConfig.update({{ov::intel_npu::platform.name(), platform}});
 
     set_batch_config(_backends->isBatchingSupported(), localConfig);
-
+    
     if (!model->get_variables().empty()) {
         if (localConfig.get<BATCH_MODE>() == ov::intel_npu::BatchMode::PLUGIN) {
             OPENVINO_THROW("This model contains states, thus it is not supported when handling batching on the plugin");
@@ -612,6 +613,13 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     }
 
     OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
+    //need update log and pass the 'properties' in input arguments to global config, then in `getCompiler()` will show log.
+    //Q&A, why trace log can show log in `getCompiler()`?
+    //todo: maybe to use a functin to warp the two line.
+    _globalConfig.update(localConfig);
+    if (_backends != nullptr) {
+        _backends->setup(_globalConfig);
+    }
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
 
@@ -662,6 +670,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::import_model(std::istream& stream, c
     set_batch_config(_backends->isBatchingSupported(), localConfig);
 
     Logger logger("NPUPlugin", localConfig.get<LOG_LEVEL>());
+    //why need a new logger instance?
 
     const auto loadedFromCache = localConfig.get<LOADED_FROM_CACHE>();
     if (!loadedFromCache) {
