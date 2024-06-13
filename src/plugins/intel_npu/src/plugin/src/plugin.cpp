@@ -749,6 +749,16 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
 }
 
 ov::SoPtr<ICompiler> Plugin::getCompiler(const Config& config) const {
+    //compiled_model, import_model and query model all need call this `getCompiler`
+
+    //need update log and pass the 'properties' in input arguments to global config, then in `getCompiler()` will show log.
+    //Q&A, why trace log can show log in `getCompiler()`?
+    //todo: maybe to use a functin to warp the two line.
+
+    _globalConfig.update(localConfig);
+    if (_backends != nullptr) {
+        _backends->setup(_globalConfig);
+    }
     auto compilerType = config.get<COMPILER_TYPE>();
     return createCompiler(compilerType, _logger);
 }
