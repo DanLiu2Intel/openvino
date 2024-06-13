@@ -64,7 +64,7 @@ Logger& Logger::global() {
     }
     static Logger log("global", logLvl);
 #else
-    static Logger log("global", ov::log::Level::NO);
+    static Logger log("global", ov::log::Level::ERROR);
 #endif
     return log;
 }
@@ -78,7 +78,8 @@ Logger Logger::clone(std::string_view name) const {
 
 bool Logger::isActive(ov::log::Level msgLevel) const {
     return static_cast<int32_t>(msgLevel) <= static_cast<int32_t>(_logLevel);
-}
+}// info (2) <= defualt?
+//default is trace:  2<=4
 
 std::ostream& Logger::getBaseStream() {
     return std::cout;
