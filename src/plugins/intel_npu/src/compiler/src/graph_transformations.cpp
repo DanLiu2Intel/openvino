@@ -26,7 +26,38 @@ IR::IR(const std::shared_ptr<const ov::Model>& origModel, uint32_t supportedOpse
         // Force model larger than 2G to use FILE mode
         _logger.warning("Force large model %s to use FILE mode to do serialize", _model->get_friendly_name());
         _isLargeModel = true;
+        //need to deal with the large big model file
+        // step
+        //(1)Proposed method
+        //  1.create inter-process pipe 
+        //  2.wrap it into your own std::streambuf impl
+        //  3.use std::ostream(*your_streambuf) as a parameter for ov::serialization call.
+        //  4.implement smth like ov::serialize(std::string, ov::Tensor)
+
+        //(2) why not just contain the model into streambuf steam? just like redirect?
+        //  for example:
+        //    manager.register_pass<ov::pass::Serialize>(xmlStream, weightsStream);
+        //    redirect  xmlStream and weightsStream(string stream ) to streambuf
+        // because:     Serialize(std::ostream& xmlFile, std::ostream& binFile, Version version = Version::UNSPECIFIED); (**this one is what we used in this case)
+        //              Serialize(const std::string& xmlPath, const std::string& binPath, Version version = Version::UNSPECIFIED);
+
+
+
+        //need reference this?
+        // std::string modelName = _model->get_friendly_name();
+        // std::string xmlName = modelName + "_serialized.xml";
+        // std::string weightsName = modelName + "_serialized.bin";
+        // if (_isLargeModel) {
+        //     manager.register_pass<ov::pass::Serialize>(xmlName, weightsName);
+        //     _logger.info("Serialize to files with xml: %s and weights: %s", xmlName.c_str(), weightsName.c_str());
+        // } else {
+        //     manager.register_pass<ov::pass::Serialize>(_xml, _weights);
+        //     _logger.info("Serialize to stream");
+        // }
+
     }
+
+    
 #endif
 
     serializeToIR(supportedOpset);
