@@ -70,6 +70,12 @@ namespace intel_npu {
 // TODO Config will be useless here, since only default values will be used
 NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, [[maybe_unused]] const Config& config)
     : _logger("NPUBackends", Logger::global().level()) {
+    _logger.error(" <OV repo><backend file>::constructor log_INFO");
+    _logger.warning(" <OV repo><backend file>::constructor log_warning");
+    _logger.info(" <OV repo><backend file>::constructor log_INFO");
+    _logger.debug(" <OV repo><backend file>::constructor log_debug");
+    _logger.trace(" <OV repo><backend file>::constructor log_TRACE");
+    std::printf(" <print backend::constructor> (1)_logger addr=%p\n", &_logger);
     std::vector<ov::SoPtr<IEngineBackend>> registeredBackends;
     [[maybe_unused]] const auto registerBackend = [&](ov::SoPtr<IEngineBackend> backend, const std::string& name) {
         const auto backendDevices = backend->getDeviceNames();

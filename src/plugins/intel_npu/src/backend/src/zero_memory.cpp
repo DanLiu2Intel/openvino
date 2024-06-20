@@ -12,6 +12,12 @@ DeviceMem::DeviceMem(const ze_device_handle_t device_handle, ze_context_handle_t
     : _size(size),
       _context(context),
       _log("DeviceMem", Logger::global().level()) {
+    _log.error(" <OV repo>< DeviceMem file>::constructor log_INFO");
+    _log.warning(" <OV repo>< DeviceMem file>::constructor log_warning");
+    _log.info(" <OV repo>< DeviceMem file>::constructor log_INFO");
+    _log.debug(" <OV repo>< DeviceMem file>::constructor log_debug");
+    _log.trace(" <OV repo>< DeviceMem file>::constructor log_TRACE");
+    std::printf(" <print  DeviceMem::constructor> (1)_log addr=%p\n", &_log);
     ze_device_mem_alloc_desc_t desc = {ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC, nullptr, 0, 0};
 
     zeroUtils::throwOnFail("zeMemAllocDevice",

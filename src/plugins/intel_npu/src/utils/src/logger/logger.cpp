@@ -63,8 +63,10 @@ Logger& Logger::global() {
         }
     }
     static Logger log("global", logLvl);
+    std::printf(" <print address_config::global> (1)addr=%p\n", &log);
 #else
     static Logger log("global", ov::log::Level::NO);
+    std::printf(" <print address_config::global> (2)addr=%p\n", &log);
 #endif
     return log;
 }

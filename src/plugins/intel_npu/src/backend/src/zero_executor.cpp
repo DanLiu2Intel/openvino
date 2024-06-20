@@ -44,6 +44,12 @@ ZeroExecutor::ZeroExecutor(const std::shared_ptr<const ZeroInitStructsHolder>& i
                                                       zeroUtils::toZeQueuePriority(_config.get<MODEL_PRIORITY>()),
                                                       _config,
                                                       group_ordinal)}} {
+    _logger.error(" <OV repo><ZeroExecutor file>::constructor log_INFO");
+    _logger.warning(" <OV repo><ZeroExecutor file>::constructor log_warning");
+    _logger.info(" <OV repo><ZeroExecutor file>::constructor log_INFO");
+    _logger.debug(" <OV repo><ZeroExecutor file>::constructor log_debug");
+    _logger.trace(" <OV repo><ZeroExecutor file>::constructor log_TRACE");
+    std::printf(" <print ZeroExecutor::constructor> (1)_logger addr=%p\n", &_logger);
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "Executor::ZeroExecutor");
     CommandList graph_command_list(_initStructs->getDevice(),
                                    _initStructs->getContext(),

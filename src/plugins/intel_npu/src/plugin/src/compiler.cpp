@@ -51,6 +51,12 @@ ov::SoPtr<ICompiler> loadCompiler(const std::string& libpath) {
 }
 
 ov::SoPtr<ICompiler> createCompilerAdapter(const Logger& log) {
+    log.error(" <OV repo>< intel_npu::createCompilerAdapter> log_INFO");
+    log.warning(" <OV repo>< intel_npu::createCompilerAdapter> log_warning");
+    log.info(" <OV repo>< intel_npu::createCompilerAdapter> log_INFO");
+    log.debug(" <OV repo>< intel_npu::createCompilerAdapter> log_debug");
+    log.trace(" <OV repo>< intel_npu::createCompilerAdapter> log_TRACE");
+    std::printf(" <print v intel_npu::createCompilerAdapter(1)log addr=%p\n", &log);
     log.info("Driver compiler will be used.");
 #ifdef ENABLE_DRIVER_COMPILER_ADAPTER
     const auto compilerInterface = std::make_shared<driverCompilerAdapter::LevelZeroCompilerAdapter>();
@@ -61,6 +67,12 @@ ov::SoPtr<ICompiler> createCompilerAdapter(const Logger& log) {
 }
 
 ov::SoPtr<ICompiler> createNPUCompiler(const Logger& log) {
+    log.error(" <OV repo>< intel_npu::createNPUCompiler> log_INFO");
+    log.warning(" <OV repo>< intel_npu::createNPUCompiler> log_warning");
+    log.info(" <OV repo>< intel_npu::createNPUCompiler> log_INFO");
+    log.debug(" <OV repo>< intel_npu::createNPUCompiler> log_debug");
+    log.trace(" <OV repo>< intel_npu::createNPUCompiler> log_TRACE");
+    std::printf(" <print v intel_npu::createNPUCompiler(1)_logger addr=%p\n", &log);
     log.info("MLIR compiler will be used.");
     std::string baseName = "npu_mlir_compiler";
     auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
@@ -81,6 +93,12 @@ ov::SoPtr<ICompiler> createCompilerImpl(ov::intel_npu::CompilerType compilerType
 }  // namespace
 
 ov::SoPtr<ICompiler> intel_npu::createCompiler(ov::intel_npu::CompilerType compilerType, const Logger& log) {
+    log.error(" <OV repo>< intel_npu::createCompilerlog_INFO");
+    log.warning(" <OV repo>< intel_npu::createCompilerlog_warning");
+    log.info(" <OV repo>< intel_npu::createCompilerlog_INFO");
+    log.debug(" <OV repo>< intel_npu::createCompilerlog_debug");
+    log.trace(" <OV repo>< intel_npu::createCompilerlog_TRACE");
+    std::printf(" <print v intel_npu::createCompiler(1)_logger addr=%p\n", &log);
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "intel_npu::createCompiler");
     auto logger = log.clone("createCompiler");
     try {

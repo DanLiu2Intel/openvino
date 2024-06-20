@@ -155,6 +155,12 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
       _profilingQuery(0,
                       _executor->getInitStructs()->getDevice(),
                       _executor->getInitStructs()->getProfilingDdiTable()) {
+    _logger.error(" <OV repo><ZeroInferRequest file>::constructor log_INFO");
+    _logger.warning(" <OV repo><ZeroInferRequest file>::constructor log_warning");
+    _logger.info(" <OV repo><ZeroInferRequest file>::constructor log_INFO");
+    _logger.debug(" <OV repo><ZeroInferRequest file>::constructor log_debug");
+    _logger.trace(" <OV repo><ZeroInferRequest file>::constructor log_TRACE");
+    std::printf(" <print ZeroInferRequest::constructor> (1)_logger addr=%p\n", &_logger);
     const std::unordered_map<std::string, ZeroExecutor::ArgumentDescriptor>& executorInputDescriptors =
         _executor->inputs_desc_map();
     const std::unordered_map<std::string, ZeroExecutor::ArgumentDescriptor>& executorOutputDescriptors =

@@ -325,6 +325,11 @@ public:
 
     details::OptionConcept get(std::string_view key, OptionMode mode) const;
     void walk(std::function<void(const details::OptionConcept&)> cb) const;
+    
+    void printSize(){
+        std::printf("<OptionsDesc> std::unordered_map<std::string, details::OptionConcept> _impl size is %d\n", _impl.size());
+        std::printf("<OptionsDesc> std::unordered_map<std::string, std::string > _deprecated size is %d\n", _deprecated.size());
+    }
 
 private:
     std::unordered_map<std::string, details::OptionConcept> _impl;
@@ -371,8 +376,14 @@ public:
 
     std::string toString() const;
 
+    void printSize(){
+        std::printf("==== config : printSize ");
+        _desc->printSize();
+        std::printf("==== config : _impl.size()=%d\n", _impl.size());
+    }
+
 private:
-    std::shared_ptr<const OptionsDesc> _desc;
+    mutable std::shared_ptr<const OptionsDesc> _desc;
     ImplMap _impl;
 };
 
@@ -383,10 +394,13 @@ bool Config::has() const {
 
 template <class Opt>
 typename Opt::ValueType Config::get() const {
+    std::printf(" <print config::get> (1)log addr=%p\n", &log);
+    std::printf("  <Config::get()> option: %s\n", Opt::key().data());
     using ValueType = typename Opt::ValueType;
 
     auto log = Logger::global().clone("Config");
     log.trace("Get value for the option '%s'", Opt::key().data());
+    //this is to print  strview class.  in fact is strview.data()
 
     const auto it = _impl.find(Opt::key().data());
 

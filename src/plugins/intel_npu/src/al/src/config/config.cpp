@@ -125,15 +125,15 @@ details::OptionValue::~OptionValue() = default;
 
 details::OptionConcept OptionsDesc::get(std::string_view key, OptionMode mode) const {
     auto log = Logger::global().clone("OptionsDesc");
-
-    std::string searchKey{key};
+    std::printf(" <print ZOptionsDesc::get> log addr=%p\n", &log);
+    std::string searchKey{key};//传入的是key
     const auto itDeprecated = _deprecated.find(std::string(key));
     if (itDeprecated != _deprecated.end()) {
         searchKey = itDeprecated->second;
         log.warning("Deprecated option '%s' was used, '%s' should be used instead", key.data(), searchKey.c_str());
     }
 
-    const auto itMain = _impl.find(searchKey);
+    const auto itMain = _impl.find(searchKey);//对应的迭代器
     OPENVINO_ASSERT(itMain != _impl.end(),
                     "[ NOT_FOUND ] Option '",
                     key.data(),
@@ -141,7 +141,9 @@ details::OptionConcept OptionsDesc::get(std::string_view key, OptionMode mode) c
 
     const auto& desc = itMain->second;
 
+    std::printf(" before (mode == OptionMode::RunTime)?\n");
     if (mode == OptionMode::RunTime) {
+        std::printf(" (mode == OptionMode::RunTime) come here?\n");//只有import会显示
         if (desc.mode() == OptionMode::CompileTime) {
             log.warning("%s option '%s' was used in %s mode",
                         stringifyEnum(desc.mode()).data(),
@@ -149,7 +151,7 @@ details::OptionConcept OptionsDesc::get(std::string_view key, OptionMode mode) c
                         stringifyEnum(mode).data());
         }
     }
-
+    //怎么着 compile_model部分不会更新？
     return desc;
 }
 
@@ -177,11 +179,13 @@ void OptionsDesc::walk(std::function<void(const details::OptionConcept&)> cb) co
 //
 
 Config::Config(const std::shared_ptr<const OptionsDesc>& desc) : _desc(desc) {
+    std::printf(" <Config::Config> desc addr=%p, _desc addr=%p ,(*_desc) addr=%p\n", &desc, _desc, &(*_desc));
     OPENVINO_ASSERT(_desc != nullptr, "Got NULL OptionsDesc");
 }
 
 void Config::parseEnvVars() {
     auto log = Logger::global().clone("Config");
+    std::printf(" <print Config::parseEnvVars> log addr=%p\n", &log);
 
     _desc->walk([&](const details::OptionConcept& opt) {
         if (!opt.envVar().empty()) {
@@ -199,12 +203,15 @@ void Config::parseEnvVars() {
 
 void Config::update(const ConfigMap& options, OptionMode mode) {
     auto log = Logger::global().clone("Config");
+    std::printf(" <print Config::update> log addr=%p\n", &log);
 
     for (const auto& p : options) {
         log.trace("Update option '%s' to value '%s'", p.first.c_str(), p.second.c_str());
+        std::printf("Update option '%s' to value '%s'", p.first.c_str(), p.second.c_str());
 
         const auto opt = _desc->get(p.first, mode);
-        _impl[opt.key().data()] = opt.validateAndParse(p.second);
+        _impl[opt.key().data()] =  opt.validateAndParse(p.second);//这句话是更新的config内容
+        std::printf(" <print Config::update> origin config is: %s", _impl[opt.key().data()]->toString());
     }
 }
 

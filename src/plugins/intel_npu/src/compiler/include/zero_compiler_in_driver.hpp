@@ -181,6 +181,13 @@ LevelZeroCompilerInDriver<TableExtension>::LevelZeroCompilerInDriver(const char*
                                                                      ze_driver_handle_t driverHandle)
     : _driverHandle(driverHandle),
       _logger("LevelZeroCompilerInDriver", Logger::global().level()) {
+    _logger.error(" <OV repo><LevelZeroCompilerInDriver>::constructor log_INFO");
+    _logger.warning(" <OV repo><LevelZeroCompilerInDriver>::constructor log_warning");
+    _logger.info(" <OV repo><LevelZeroCompilerInDriver>::constructor log_INFO");
+    _logger.debug(" <OV repo><LevelZeroCompilerInDriver>::constructor log_debug");
+    _logger.trace(" <OV repo><LevelZeroCompilerInDriver>::constructor log_TRACE");
+    std::printf(" <print ZeroExecutor::constructor> (1)_logger addr=%p\n", &_logger);
+
     // Load our graph extension
     auto result =
         zeDriverGetExtensionFunctionAddress(_driverHandle, extName, reinterpret_cast<void**>(&_graphDdiTableExt));

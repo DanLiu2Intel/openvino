@@ -52,6 +52,12 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _logger("CompiledModel", config.get<LOG_LEVEL>()),
       _device(device),
       _compiler(profiling ? std::optional(compiler) : std::nullopt) {
+    _logger.error(" <OV repo>< CompiledModel>:: constructor  log_INFO");
+    _logger.warning(" <OV repo>< CompiledModel>:: constructor  log_warning");
+    _logger.info(" <OV repo>< CompiledModel>:: constructor  log_INFO");
+    _logger.debug(" <OV repo>< CompiledModel>:: constructor  log_debug");
+    _logger.trace(" <OV repo>< CompiledModel>:: constructor  log_TRACE");
+std::printf(" <print v CompiledModel>:: constructor (1)_logger addr=%p\n", &log);
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
     OPENVINO_ASSERT(compiler != nullptr, "NPU CompiledModel: the pointer towards the compiler object is null");
 
@@ -87,6 +93,12 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _logger("CompiledModel", config.get<LOG_LEVEL>()),
       _device(device),
       _compiler(compiler) {
+        _logger.error(" <OV repo>< CompiledModel>:: constructor2  log_INFO");
+    _logger.warning(" <OV repo>< CompiledModel>:: constructor2  log_warning");
+    _logger.info(" <OV repo>< CompiledModel>:: constructor2  log_INFO");
+    _logger.debug(" <OV repo>< CompiledModel>:: constructor2  log_debug");
+    _logger.trace(" <OV repo>< CompiledModel>:: constructor2  log_TRACE");
+    std::printf(" <print v CompiledModel>:: constructor (2)_logger addr=%p\n", &log);
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
     OPENVINO_ASSERT(_networkPtr != nullptr,
                     "NPU CompiledModel: the pointer towards the NetworkDescription object is null");

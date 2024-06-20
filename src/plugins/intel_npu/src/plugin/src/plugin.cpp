@@ -145,7 +145,12 @@ namespace intel_npu {
 static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
+    std::printf(" <print merge_configs> (1)globalConfig addr=%p\n", &globalConfig);
     Config localConfig = globalConfig;
+    std::printf(" <print merge_configs> (2)globalConfig addr=%p\n", &localConfig);
+    for(auto it: rawConfig){
+        std::printf("<key>: %s, <value>:%s\n", it.first.c_str(), it.second.c_str());
+    }
     localConfig.update(rawConfig, mode);
     return localConfig;
 }
@@ -166,6 +171,15 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
+    _logger.error(" <OV repo><plugin file>::constructor log_INFO");
+    _logger.warning(" <OV repo><plugin file>::constructor log_warning");
+    _logger.info(" <OV repo><plugin file>::constructor log_INFO");
+    _logger.debug(" <OV repo><plugin file>::constructor log_debug");
+    _logger.trace(" <OV repo><plugin file>::constructor log_TRACEs");
+    std::printf(" ==================printf size============1======\n");
+    _options->printSize();
+    _globalConfig.printSize();
+    std::printf(" ==================printf size============1======\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -173,9 +187,20 @@ Plugin::Plugin()
     registerCompilerOptions(*_options);
     registerRunTimeOptions(*_options);
 
+    //_globalConfig(_options),
+    std::printf(" ==================printf size============2======\n");
+    _options->printSize();
+    _globalConfig.printSize();
+    std::printf(" ==================printf size============2======\n");
+
     // parse env_variables to get LOG_LEVEL if needed
     _globalConfig.parseEnvVars();
-    Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
+    std::printf(" <print plugin::constructor> class member (0)_logger addr=%p\n", &_logger);
+    auto log1 = Logger::global();
+    std::printf(" <print plugin::constructor> (1)log1 addr=%p\n", &log1);
+    auto log2 = log1.setLevel(_globalConfig.get<LOG_LEVEL>());
+    //应该会为
+    std::printf(" <print plugin::constructor> (2)log2 addr=%p\n", &log2);
 
     // TODO: generation of available backends list can be done during execution of CMake scripts
     std::vector<AvailableBackends> backendRegistry;
@@ -530,9 +555,17 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    _logger.error(" <OV repo><plugin file>::compile_model log_INFO");
+    _logger.warning(" <OV repo><plugin file>::compile_model log_warning");
+    _logger.info(" <OV repo><plugin file>::compile_model log_INFO");
+    _logger.debug(" <OV repo><plugin file>::compile_model log_debug");
+    _logger.trace(" <OV repo><plugin file>::compile_model log_TRACEs");
+    std::printf(" <print v getCompiler> (1)_logger addr=%p\n", &_logger);
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
     auto localConfig = merge_configs(_globalConfig, any_copy(properties));
+    //在这里面就已经更新了全局的config
+    std::printf(" <print v compile_model> (2)localConfig addr=%p\n", &localConfig);
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
@@ -710,7 +743,15 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
 }
 
 ov::SoPtr<ICompiler> Plugin::getCompiler(const Config& config) const {
+    _logger.error(" <OV repo>< getCompiler> log_INFO");
+    _logger.warning(" <OV repo>< getCompiler> log_warning");
+    _logger.info(" <OV repo>< getCompiler> log_INFO");
+    _logger.debug(" <OV repo>< getCompiler> log_debug");
+    _logger.trace(" <OV repo>< getCompiler> log_TRACE");
+    std::printf(" <print v getCompiler> (1)_logger addr=%p\n", &_logger);
     auto compilerType = config.get<COMPILER_TYPE>();
+
+    Logger::global().setLevel(config.get<LOG_LEVEL>());
     return createCompiler(compilerType, _logger);
 }
 
