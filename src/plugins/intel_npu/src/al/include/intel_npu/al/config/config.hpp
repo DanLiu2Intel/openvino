@@ -326,9 +326,9 @@ public:
     details::OptionConcept get(std::string_view key, OptionMode mode) const;
     void walk(std::function<void(const details::OptionConcept&)> cb) const;
     
-    void printSize(){
-        std::printf("<OptionsDesc> std::unordered_map<std::string, details::OptionConcept> _impl size is %d\n", _impl.size());
-        std::printf("<OptionsDesc> std::unordered_map<std::string, std::string > _deprecated size is %d\n", _deprecated.size());
+    void printSize() const {
+        std::printf("<OptionsDesc> std::unordered_map<std::string, details::OptionConcept> _impl size is %ld\n", _impl.size());
+        std::printf("<OptionsDesc> std::unordered_map<std::string, std::string > _deprecated size is %ld\n", _deprecated.size());
     }
 
 private:
@@ -376,10 +376,10 @@ public:
 
     std::string toString() const;
 
-    void printSize(){
+    void printSize() const {
         std::printf("==== config : printSize ");
         _desc->printSize();
-        std::printf("==== config : _impl.size()=%d\n", _impl.size());
+        std::printf("==== config : _impl.size()=%ld\n", _impl.size());
     }
 
 private:
