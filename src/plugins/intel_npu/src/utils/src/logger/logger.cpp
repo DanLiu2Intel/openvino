@@ -52,6 +52,10 @@ std::string printFormattedCStr(const char* fmt, ...) {
 static const char* logLevelPrintout[] = {"NONE", "ERROR", "WARNING", "INFO", "DEBUG", "TRACE"};
 
 Logger& Logger::global() {
+    // Check if instance has been initialized
+    static bool isInitialized = false;
+    static Logger log("global", ov::log::Level::NO);
+    if (!isInitialized) {
 #if defined(NPU_PLUGIN_DEVELOPER_BUILD) || !defined(NDEBUG)
     ov::log::Level logLvl = ov::log::Level::WARNING;
     if (const auto env = std::getenv("OV_NPU_LOG_LEVEL")) {
@@ -62,10 +66,12 @@ Logger& Logger::global() {
             // Use deault log level
         }
     }
-    static Logger log("global", logLvl);
+    log.setLevel(logLvl);
 #else
-    static Logger log("global", ov::log::Level::NO);
+    log.setLevel(ov::log::Level::NO);
 #endif
+        isInitialized = true;
+    }
     return log;
 }
 
