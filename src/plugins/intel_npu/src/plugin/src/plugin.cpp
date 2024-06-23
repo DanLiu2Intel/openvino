@@ -145,9 +145,9 @@ namespace intel_npu {
 static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
-    std::printf(" <print merge_configs> (1)globalConfig addr=%p\n", &globalConfig);
+    std::printf(" <print merge_configs> (1)globalConfig addr=%p\n", &globalConfig);//0x55ecfb0e7bd8
     Config localConfig = globalConfig;
-    std::printf(" <print merge_configs> (2)globalConfig addr=%p\n", &localConfig);
+    std::printf(" <print merge_configs> (2)globalConfig addr=%p\n", &localConfig);//0x7ffc8a1d3830
     for(auto it: rawConfig){
         std::printf("<key>: %s, <value>:%s\n", it.first.c_str(), it.second.c_str());
     }
@@ -207,6 +207,10 @@ Plugin::Plugin()
     auto log1 = Logger::global();//  这边引用传递，返回的难道不是同一个地址吗？
     std::printf(" <print plugin::constructor> (1)log1 addr=%p\n", &log1);//0x7ffff15015e0
     auto log2 = log1.setLevel(_globalConfig.get<LOG_LEVEL>());//这边是把global的log level改成config的版本？  也就是拿环境变量的结果
+    //相看的内容是，.setLevel(_globalConfig.get<LOG_LEVEL>());能否改变global的类型？
+    // global().level();  //一定是warning
+
+    
     //应该会为default的内容
     std::printf(" <print plugin::constructor> (2)log2 addr=%p\n", &log2);//0x7ffff1501610
     std::printf(" <ov>  Logger::global(3).level()=%d \n", static_cast<int>(Logger::global().level()));////6.23 need to see
@@ -575,9 +579,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     std::printf(" <print v getCompiler> (1)_logger addr=%p\n", &_logger);
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
-    auto localConfig = merge_configs(_globalConfig, any_copy(properties));
+    auto localConfig = merge_configs(_globalConfig, any_copy(properties));//只会更新local的内容， global中的内容不会更新，但是这样似乎也不会影响什么是、
     //在这里面就已经更新了全局的config
-    std::printf(" <print v compile_model> (2)localConfig addr=%p\n", &localConfig);
+    std::printf(" <print v compile_model> (2)localConfig addr=%p\n", &localConfig);//0x7ffc8a1d3830
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
@@ -636,7 +640,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         compiledModel = std::make_shared<CompiledModel>(model,
                                                         shared_from_this(),
                                                         device,
-                                                        getCompiler(localConfig),
+                                                        getCompiler(localConfig),//用于对compilerType的设置
                                                         profiling,
                                                         localConfig);
     } catch (const std::exception& ex) {

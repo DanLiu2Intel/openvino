@@ -394,7 +394,7 @@ bool Config::has() const {
 
 template <class Opt>
 typename Opt::ValueType Config::get() const {
-    std::printf(" <print config::get> (1)log addr=%p\n", &log);//0x7c4365efbdf0
+    // std::printf(" <print config::get> (1)log addr=%p\n", &log);//0x7c4365efbdf0
     std::printf("  <Config::get()> option: %s\n", Opt::key().data());
     using ValueType = typename Opt::ValueType;//对应的是ov::log::Level
 
