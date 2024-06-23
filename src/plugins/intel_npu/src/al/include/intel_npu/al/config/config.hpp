@@ -394,9 +394,9 @@ bool Config::has() const {
 
 template <class Opt>
 typename Opt::ValueType Config::get() const {
-    std::printf(" <print config::get> (1)log addr=%p\n", &log);
+    std::printf(" <print config::get> (1)log addr=%p\n", &log);//0x7c4365efbdf0
     std::printf("  <Config::get()> option: %s\n", Opt::key().data());
-    using ValueType = typename Opt::ValueType;
+    using ValueType = typename Opt::ValueType;//对应的是ov::log::Level
 
     auto log = Logger::global().clone("Config");
     log.trace("Get value for the option '%s'", Opt::key().data());
@@ -404,7 +404,7 @@ typename Opt::ValueType Config::get() const {
 
     const auto it = _impl.find(Opt::key().data());
 
-    if (it == _impl.end()) {
+    if (it == _impl.end()) {//没找到就返回默认值
         const std::optional<ValueType> optional = Opt::defaultValue();
         log.trace("The option '%s' was not set by user, try default value", Opt::key().data());
 

@@ -14,6 +14,7 @@ namespace intel_npu {
 namespace driverCompilerAdapter {
 
 LevelZeroCompilerAdapter::LevelZeroCompilerAdapter() : _logger("LevelZeroCompilerAdapter", Logger::global().level()) {
+    std::printf("==========6.23====LevelZeroCompilerAdapter====,  Logger::global().level()=%d\n", static_cast<int>( Logger::global().level()));
     _logger.error(" <OV repo><LevelZeroCompilerAdapterfile>::constructor log_INFO");
     _logger.warning(" <OV repo><LevelZeroCompilerAdapterfile>::constructor log_warning");
     _logger.info(" <OV repo><LevelZeroCompilerAdapterfile>::constructor log_INFO");

@@ -75,7 +75,7 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
     _logger.info(" <OV repo><backend file>::constructor log_INFO");
     _logger.debug(" <OV repo><backend file>::constructor log_debug");
     _logger.trace(" <OV repo><backend file>::constructor log_TRACE");
-    std::printf(" <print backend::constructor> (1)_logger addr=%p\n", &_logger);
+    std::printf(" <print backend::constructor> (1)_logger addr=%p\n", &_logger);//0x5bef3683aa50
     std::vector<ov::SoPtr<IEngineBackend>> registeredBackends;
     [[maybe_unused]] const auto registerBackend = [&](ov::SoPtr<IEngineBackend> backend, const std::string& name) {
         const auto backendDevices = backend->getDeviceNames();

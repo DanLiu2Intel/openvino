@@ -171,36 +171,48 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
+    std::printf("====6.23====Plugin constructor=====1====Logger::global().getlevel()=%d\n", static_cast<int>(Logger::global().level()));//1, 因为relese 和capss
+    std::printf("====6.23====Plugin constructor=====1====_globalConfig.get<LOG_LEVEL>()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
+
     _logger.error(" <OV repo><plugin file>::constructor log_INFO");
     _logger.warning(" <OV repo><plugin file>::constructor log_warning");
-    _logger.info(" <OV repo><plugin file>::constructor log_INFO");
+    _logger.info(" <OV repo><plugin file>::constructor log_INFO");//为啥这个能打印印出来？
     _logger.debug(" <OV repo><plugin file>::constructor log_debug");
     _logger.trace(" <OV repo><plugin file>::constructor log_TRACEs");
     std::printf(" ==================printf size============1======\n");
-    _options->printSize();
-    _globalConfig.printSize();
+    _options->printSize();//0
+    _globalConfig.printSize();//0
     std::printf(" ==================printf size============1======\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
-
+     std::printf("<OV><6.23>(0) printf config: %s\n", _globalConfig.toString().c_str());
     registerCommonOptions(*_options);
     registerCompilerOptions(*_options);
     registerRunTimeOptions(*_options);
+    std::printf(" <ov>  Logger::global(2).level()=%d \n", static_cast<int>(Logger::global().level()));////6.23 need to see // value 1
+     std::printf("<OV><6.23>(1) printf config: %s\n", _globalConfig.toString().c_str());
 
     //_globalConfig(_options),
     std::printf(" ==================printf size============2======\n");
-    _options->printSize();
-    _globalConfig.printSize();
+    _options->printSize();//_impl 28
+    _globalConfig.printSize();//_impl 28
     std::printf(" ==================printf size============2======\n");
 
     // parse env_variables to get LOG_LEVEL if needed
-    _globalConfig.parseEnvVars();
-    std::printf(" <print plugin::constructor> class member (0)_logger addr=%p\n", &_logger);
-    auto log1 = Logger::global();
-    std::printf(" <print plugin::constructor> (1)log1 addr=%p\n", &log1);
-    auto log2 = log1.setLevel(_globalConfig.get<LOG_LEVEL>());
-    //应该会为
-    std::printf(" <print plugin::constructor> (2)log2 addr=%p\n", &log2);
+    _globalConfig.parseEnvVars();//回来读取环境变量的内容，来设置
+    std::printf(" <print plugin::constructor> class member (0)_logger addr=%p\n", &_logger);//0x5bef3682de90
+    std::printf("====6.23====Plugin constructor=====2====Logger::global().getlevel()=%d\n", static_cast<int>(Logger::global().level()));//1
+    std::printf("====6.23====Plugin constructor=====2====_globalConfig.get<LOG_LEVEL>()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
+
+    auto log1 = Logger::global();//  这边引用传递，返回的难道不是同一个地址吗？
+    std::printf(" <print plugin::constructor> (1)log1 addr=%p\n", &log1);//0x7ffff15015e0
+    auto log2 = log1.setLevel(_globalConfig.get<LOG_LEVEL>());//这边是把global的log level改成config的版本？  也就是拿环境变量的结果
+    //应该会为default的内容
+    std::printf(" <print plugin::constructor> (2)log2 addr=%p\n", &log2);//0x7ffff1501610
+    std::printf(" <ov>  Logger::global(3).level()=%d \n", static_cast<int>(Logger::global().level()));////6.23 need to see
+    std::printf("====6.23====Plugin constructor=====3====Logger::global().getlevel()=%d\n", static_cast<int>(Logger::global().level()));//1
+    std::printf("====6.23====Plugin constructor=====3====_globalConfig.get<LOG_LEVEL>()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
+
 
     // TODO: generation of available backends list can be done during execution of CMake scripts
     std::vector<AvailableBackends> backendRegistry;
@@ -751,7 +763,6 @@ ov::SoPtr<ICompiler> Plugin::getCompiler(const Config& config) const {
     std::printf(" <print v getCompiler> (1)_logger addr=%p\n", &_logger);
     auto compilerType = config.get<COMPILER_TYPE>();
 
-    Logger::global().setLevel(config.get<LOG_LEVEL>());
     return createCompiler(compilerType, _logger);
 }
 

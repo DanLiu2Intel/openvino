@@ -155,6 +155,8 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
       _profilingQuery(0,
                       _executor->getInitStructs()->getDevice(),
                       _executor->getInitStructs()->getProfilingDdiTable()) {
+    std::printf("===========6.23=====ZeroInferRequest====config.get<LOG_LEVEL>()=%d\n",  static_cast<int>(config.get<LOG_LEVEL>()));
+
     _logger.error(" <OV repo><ZeroInferRequest file>::constructor log_INFO");
     _logger.warning(" <OV repo><ZeroInferRequest file>::constructor log_warning");
     _logger.info(" <OV repo><ZeroInferRequest file>::constructor log_INFO");

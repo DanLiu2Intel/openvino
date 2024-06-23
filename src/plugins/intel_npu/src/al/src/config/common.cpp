@@ -16,7 +16,7 @@ void intel_npu::registerCommonOptions(OptionsDesc& desc) {
     desc.add<PERFORMANCE_HINT_NUM_REQUESTS>();
     desc.add<INFERENCE_PRECISION_HINT>();
     desc.add<PERF_COUNT>();
-    desc.add<LOG_LEVEL>();
+    desc.add<LOG_LEVEL>();//
     desc.add<PLATFORM>();
     desc.add<DEVICE_ID>();
     desc.add<CACHE_DIR>();

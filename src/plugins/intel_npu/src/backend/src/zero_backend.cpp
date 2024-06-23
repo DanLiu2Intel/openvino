@@ -13,6 +13,12 @@ namespace intel_npu {
 
 ZeroEngineBackend::ZeroEngineBackend(const Config& config) {
     Logger::global().setLevel(config.get<LOG_LEVEL>());
+    std::printf("====6.23====ZeroEngineBackend constructor=========config.get<LOG_LEVEL>()=%d\n", static_cast<int>(config.get<LOG_LEVEL>()));
+    Logger::global().setLevel(config.get<LOG_LEVEL>());//因为在plugin constructor 统一过了，就似乎不会影响这个的内容
+    //拿到的log_level, 如果config.get<LOG_LEVEL>()没有设置环境变量，默认值返回的是什么？
+    //问题在于会将global()的值修改吗?
+
+    //config的默认值不是NO吗？
 
     _instance = std::make_shared<ZeroInitStructsHolder>();
 

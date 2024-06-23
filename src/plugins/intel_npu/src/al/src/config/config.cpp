@@ -178,14 +178,14 @@ void OptionsDesc::walk(std::function<void(const details::OptionConcept&)> cb) co
 // Config
 //
 
-Config::Config(const std::shared_ptr<const OptionsDesc>& desc) : _desc(desc) {
+Config::Config(const std::shared_ptr<const OptionsDesc>& desc) : _desc(desc) {// &desc, _desc这两个指针地址相同，
     std::printf(" <Config::Config> desc addr=%p, _desc addr=%p ,(*_desc) addr=%p\n", &desc, _desc, &(*_desc));
     OPENVINO_ASSERT(_desc != nullptr, "Got NULL OptionsDesc");
 }
 
 void Config::parseEnvVars() {
     auto log = Logger::global().clone("Config");
-    std::printf(" <print Config::parseEnvVars> log addr=%p\n", &log);
+    std::printf(" <print Config::parseEnvVars> log addr=%p\n", &log);//0x7ffff1501240, 和log global()不是一个地址
 
     _desc->walk([&](const details::OptionConcept& opt) {
         if (!opt.envVar().empty()) {

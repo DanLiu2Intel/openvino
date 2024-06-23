@@ -52,7 +52,7 @@ std::string printFormattedCStr(const char* fmt, ...) {
 static const char* logLevelPrintout[] = {"NONE", "ERROR", "WARNING", "INFO", "DEBUG", "TRACE"};
 
 Logger& Logger::global() {
-#if defined(NPU_PLUGIN_DEVELOPER_BUILD) || !defined(NDEBUG)
+#if defined(NPU_PLUGIN_DEVELOPER_BUILD) || !defined(NDEBUG)//打开enable CAP的时候，build是release的时候
     ov::log::Level logLvl = ov::log::Level::WARNING;
     if (const auto env = std::getenv("OV_NPU_LOG_LEVEL")) {
         try {
@@ -63,7 +63,7 @@ Logger& Logger::global() {
         }
     }
     static Logger log("global", logLvl);
-    std::printf(" <print address_config::global> (1)addr=%p\n", &log);
+    std::printf(" <print address_config::global> (1)addr=%p\n", &log);//0x7c4364fffa40
 #else
     static Logger log("global", ov::log::Level::NO);
     std::printf(" <print address_config::global> (2)addr=%p\n", &log);
