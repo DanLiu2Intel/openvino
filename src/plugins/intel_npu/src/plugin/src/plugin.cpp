@@ -147,6 +147,10 @@ static Config merge_configs(const Config& globalConfig,
                             OptionMode mode = OptionMode::Both) {
     Config localConfig = globalConfig;
     localConfig.update(rawConfig, mode);
+    if(rawConfig.find(std::string(LOG_LEVEL::key())) != rawConfig.end()) {
+        Logger::global().setLevel(localConfig.get<LOG_LEVEL>());
+    }
+
     return localConfig;
 }
 
