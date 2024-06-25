@@ -207,11 +207,11 @@ void Config::update(const ConfigMap& options, OptionMode mode) {
 
     for (const auto& p : options) {
         log.trace("Update option '%s' to value '%s'", p.first.c_str(), p.second.c_str());
-        std::printf("Update option '%s' to value '%s'", p.first.c_str(), p.second.c_str());
+        std::printf("Update option '%s' to value '%s'\n", p.first.c_str(), p.second.c_str());
 
         const auto opt = _desc->get(p.first, mode);
         _impl[opt.key().data()] =  opt.validateAndParse(p.second);//这句话是更新的config内容
-        std::printf(" <print Config::update> origin config is: %s", _impl[opt.key().data()]->toString());
+        std::printf(" <print Config::update> origin config is: %s\n", _impl[opt.key().data()]->toString().c_str());
     }
 }
 

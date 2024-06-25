@@ -146,10 +146,12 @@ static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
     std::printf(" <print merge_configs> (1)globalConfig addr=%p\n", &globalConfig);//0x55ecfb0e7bd8
+    std::printf(" <print merge_configs> (1)globalConfig=%s\n", globalConfig.toString().c_str());//0x55ecfb0e7bd8
     Config localConfig = globalConfig;
-    std::printf(" <print merge_configs> (2)globalConfig addr=%p\n", &localConfig);//0x7ffc8a1d3830
+    std::printf(" <print merge_configs> (2)localConfig addr=%p\n", &localConfig);//0x7ffc8a1d3830
+    std::printf(" <print merge_configs> (2)localConfig=%s\n", localConfig.toString().c_str());//0x7ffc8a1d3830
     for(auto it: rawConfig){
-        std::printf("<key>: %s, <value>:%s\n", it.first.c_str(), it.second.c_str());
+        std::printf("=====>>><key>: %s, <value>:%s\n", it.first.c_str(), it.second.c_str());
     }
     localConfig.update(rawConfig, mode);
     return localConfig;
@@ -171,9 +173,9 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
-    std::printf("====6.23====Plugin constructor=====1====Logger::global().getlevel()=%d\n", static_cast<int>(Logger::global().level()));//1, 因为relese 和capss
-    std::printf("====6.23====Plugin constructor=====1====_globalConfig.get<LOG_LEVEL>()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
-
+    std::printf("====6.23====Plugin constructor=====1====Logger::global().getlevel()=%d\n", static_cast<int>(Logger::global().level()));//1 warning, 因为relese 和capss
+    std::printf("====6.23====Plugin constructor=====1====_globalConfig.get<LOG_LEVEL>()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1 No
+    std::printf("##6.25####Plugin::Plugin(1) global()=%s\n", _globalConfig.toString().c_str());// empty
     _logger.error(" <OV repo><plugin file>::constructor log_INFO");
     _logger.warning(" <OV repo><plugin file>::constructor log_warning");
     _logger.info(" <OV repo><plugin file>::constructor log_INFO");//为啥这个能打印印出来？
@@ -185,12 +187,12 @@ Plugin::Plugin()
     std::printf(" ==================printf size============1======\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
-     std::printf("<OV><6.23>(0) printf config: %s\n", _globalConfig.toString().c_str());
+    std::printf("<OV><6.23>(0) printf config: %s\n", _globalConfig.toString().c_str());//empty
     registerCommonOptions(*_options);
     registerCompilerOptions(*_options);
     registerRunTimeOptions(*_options);
-    std::printf(" <ov>  Logger::global(2).level()=%d \n", static_cast<int>(Logger::global().level()));////6.23 need to see // value 1
-     std::printf("<OV><6.23>(1) printf config: %s\n", _globalConfig.toString().c_str());
+    std::printf(" <ov>  Logger::global(2).level()=%d \n", static_cast<int>(Logger::global().level()));////6.23 need to see // value 1, warning
+    std::printf("<OV><6.23>(1) printf config: %s\n", _globalConfig.toString().c_str());//empty
 
     //_globalConfig(_options),
     std::printf(" ==================printf size============2======\n");
@@ -200,10 +202,10 @@ Plugin::Plugin()
 
     // parse env_variables to get LOG_LEVEL if needed
     _globalConfig.parseEnvVars();//回来读取环境变量的内容，来设置
-    std::printf(" <print plugin::constructor> class member (0)_logger addr=%p\n", &_logger);//0x5bef3682de90
-    std::printf("====6.23====Plugin constructor=====2====Logger::global().getlevel()=%d\n", static_cast<int>(Logger::global().level()));//1
+    std::printf(" <print plugin::constructor> class member (0)_logger addr=%p\n", &_logger);//0x7fdf01501a40
+    std::printf("====6.23====Plugin constructor=====2====Logger::global().getlevel()=%d\n", static_cast<int>(Logger::global().level()));//1 warning
     std::printf("====6.23====Plugin constructor=====2====_globalConfig.get<LOG_LEVEL>()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
-
+    std::printf("##6.25####Plugin::Plugin(2) global()=%s\n", _globalConfig.toString().c_str());// empty
     auto log1 = Logger::global();//  这边引用传递，返回的难道不是同一个地址吗？
     std::printf(" <print plugin::constructor> (1)log1 addr=%p\n", &log1);//0x7ffff15015e0
     auto log2 = log1.setLevel(_globalConfig.get<LOG_LEVEL>());//这边是把global的log level改成config的版本？  也就是拿环境变量的结果
@@ -212,10 +214,12 @@ Plugin::Plugin()
 
     
     //应该会为default的内容
-    std::printf(" <print plugin::constructor> (2)log2 addr=%p\n", &log2);//0x7ffff1501610
-    std::printf(" <ov>  Logger::global(3).level()=%d \n", static_cast<int>(Logger::global().level()));////6.23 need to see
-    std::printf("====6.23====Plugin constructor=====3====Logger::global().getlevel()=%d\n", static_cast<int>(Logger::global().level()));//1
-    std::printf("====6.23====Plugin constructor=====3====_globalConfig.get<LOG_LEVEL>()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
+    std::printf(" <print plugin::constructor> (2)log2 addr=%p\n", &log2);//0x7ffff1501610ss
+    std::printf(" <ov>  Logger::global(3).level()=%d \n", static_cast<int>(Logger::global().level()));////6.23 need to see  //1 warning
+    std::printf("====6.23====Plugin constructor=====3====Logger::global().getlevel()=%d\n", static_cast<int>(Logger::global().level()));//1  warning
+    std::printf("====6.23====Plugin constructor=====3====_globalConfig.get<LOG_LEVEL>()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1   No
+
+    std::printf("##6.25####Plugin::Plugin(3) global()=%s\n", _globalConfig.toString().c_str());//empty
 
 
     // TODO: generation of available backends list can be done during execution of CMake scripts
@@ -532,6 +536,8 @@ Plugin::Plugin()
             _supportedProperties.emplace_back(ov::PropertyName(property.first, std::get<1>(property.second)));
         }
     }
+    std::printf("EEEEE##6.25####Plugin::plugin  global(0000).level()=%d\n", static_cast<int>(Logger::global().level()));//-1 None
+    std::printf("EEEEE##6.25####Plugin::plugin  _globalConfig(0000).level()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));// -1 None
 }
 
 void Plugin::set_property(const ov::AnyMap& properties) {
@@ -571,17 +577,28 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    std::printf("SSSSSS##6.25####Plugin::compile_model  global(0000).level()=%d\n", static_cast<int>(Logger::global().level()));//-1 ??? why??
+    std::printf("SSSSS##6.25####Plugin::compile_model  _globalConfig(0000).level()=%d\n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));
     _logger.error(" <OV repo><plugin file>::compile_model log_INFO");
     _logger.warning(" <OV repo><plugin file>::compile_model log_warning");
     _logger.info(" <OV repo><plugin file>::compile_model log_INFO");
     _logger.debug(" <OV repo><plugin file>::compile_model log_debug");
     _logger.trace(" <OV repo><plugin file>::compile_model log_TRACEs");
     std::printf(" <print v getCompiler> (1)_logger addr=%p\n", &_logger);
+    std::printf("######Plugin::compile_model  _logger.level()=%d\n", static_cast<int>(_logger.level()));//1 warning
+    std::printf("######Plugin::compile_model  global(1).level()=%d\n", static_cast<int>(Logger::global().level()));//-1  No 好像被更新了  为啥这里变了？
+    std::printf("##6.25####Plugin::compile_model _globalConfig()=%s\n", _globalConfig.toString().c_str());//empty
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
     auto localConfig = merge_configs(_globalConfig, any_copy(properties));//只会更新local的内容， global中的内容不会更新，但是这样似乎也不会影响什么是、
     //在这里面就已经更新了全局的config
     std::printf(" <print v compile_model> (2)localConfig addr=%p\n", &localConfig);//0x7ffc8a1d3830
+    std::printf("##6.25####Plugin::compile_model  localConfig(22222).level()=%d\n", static_cast<int>(localConfig.get<LOG_LEVEL>()));//-1 ??? why??
+    std::printf("##6.25####Plugin::compile_model  global(2).level()=%d\n", static_cast<int>(Logger::global().level()));//-1 ??? why??
+    std::printf("##6.25####Plugin::compile_model localConfig(2)=%s\n", localConfig.toString().c_str());
+    std::printf("##6.25####Plugin::compile_model global(3)=%s\n", _globalConfig.toString().c_str());//empty
+    std::printf("EEEEE##6.25####Plugin::compile_model  global(0000).level()=%d\n", static_cast<int>(Logger::global().level()));//-1 No
+    std::printf("EEEEE##6.25####Plugin::compile_model  localConfig(0000).level()=%d\n", static_cast<int>(localConfig.get<LOG_LEVEL>()));//2
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
