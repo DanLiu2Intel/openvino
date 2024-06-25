@@ -710,6 +710,7 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
 
 ov::SoPtr<ICompiler> Plugin::getCompiler(const Config& config) const {
     auto compilerType = config.get<COMPILER_TYPE>();
+    _logger.setLevel(_globalConfig.get<LOG_LEVEL>());
     return createCompiler(compilerType, _logger);
 }
 
