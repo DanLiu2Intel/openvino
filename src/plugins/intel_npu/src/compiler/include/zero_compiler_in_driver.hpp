@@ -173,7 +173,7 @@ private:
     ze_context_handle_t _context = nullptr;
 
     TableExtension* _graphDdiTableExt = nullptr;
-    //add config param to init logger?
+
     mutable Logger _logger;
 };
 
