@@ -52,6 +52,9 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _logger("CompiledModel", config.get<LOG_LEVEL>()),
       _device(device),
       _compiler(profiling ? std::optional(compiler) : std::nullopt) {
+    std::printf(" <ov> 7.CompiledModel(1) Logger::global(0).level()=%d \n", static_cast<int>(Logger::global().level()));//-1
+    std::printf(" <ov> 7.CompiledModel(1) _logger.level()=%d \n", static_cast<int>(_logger.level()));//-1
+    std::printf(" <ov> 7.CompiledModel(1) _config.get<LOG_LEVEL>()=%d \n", static_cast<int>(_config.get<LOG_LEVEL>()));//-1
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
     OPENVINO_ASSERT(compiler != nullptr, "NPU CompiledModel: the pointer towards the compiler object is null");
 

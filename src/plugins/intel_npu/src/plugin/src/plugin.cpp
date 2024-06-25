@@ -146,7 +146,15 @@ static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
     Config localConfig = globalConfig;
+    std::printf(" <print merge_configs> (1)globalConfig=%s\n", globalConfig.toString().c_str());
+    std::printf(" <print merge_configs> (2)localConfig=%s\n", localConfig.toString().c_str());
+    for(auto it: rawConfig){
+        std::printf("=====>>><key>: %s, <value>:%s\n", it.first.c_str(), it.second.c_str());
+    }
     localConfig.update(rawConfig, mode);
+    //没有更新到global()log中
+    std::printf(" <print merge_configs2> (3)globalConfig=%s\n", globalConfig.toString().c_str());
+    std::printf(" <print merge_configs2> (4)localConfig=%s\n", localConfig.toString().c_str());
     return localConfig;
 }
 
@@ -166,6 +174,9 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
+    std::printf(" <ov> 1.Plugin() Logger::global(0).level()=%d \n", static_cast<int>(Logger::global().level()));//1
+    std::printf(" <ov> 1.Plugin() _logger.level()=%d \n", static_cast<int>(_logger.level()));//1
+    std::printf(" <ov> 1.Plugin() _globalConfig.get<LOG_LEVEL>()=%d \n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -176,6 +187,10 @@ Plugin::Plugin()
     // parse env_variables to get LOG_LEVEL if needed
     _globalConfig.parseEnvVars();
     Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
+
+    std::printf(" <ov> 2.Plugin() Logger::global(0).level()=%d \n", static_cast<int>(Logger::global().level()));//-1, has chage global log
+    std::printf(" <ov> 2.Plugin() _logger.level()=%d \n", static_cast<int>(_logger.level()));//1
+    std::printf(" <ov> 2.Plugin() _globalConfig.get<LOG_LEVEL>()=%d \n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
 
     // TODO: generation of available backends list can be done during execution of CMake scripts
     std::vector<AvailableBackends> backendRegistry;
@@ -491,9 +506,17 @@ Plugin::Plugin()
             _supportedProperties.emplace_back(ov::PropertyName(property.first, std::get<1>(property.second)));
         }
     }
+    std::printf(" <ov> 3.Plugin() Logger::global(0).level()=%d \n", static_cast<int>(Logger::global().level()));//-1
+    std::printf(" <ov> 3.Plugin() _logger.level()=%d \n", static_cast<int>(_logger.level()));//1
+    std::printf(" <ov> 3.Plugin() _globalConfig.get<LOG_LEVEL>()=%d \n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
 }
 
 void Plugin::set_property(const ov::AnyMap& properties) {
+    std::printf("<ov>Plugin::set_property   properties.size()=%d  \n", properties.size());
+    for(auto it : properties){
+        std::printf("<ov>Plugin::set_property  %s  <value> %s\n", it.first.c_str(), it.second.as<std::string>().c_str());
+    }
+
     const std::map<std::string, std::string> config = any_copy(properties);
     for (const auto& configEntry : config) {
         if (_properties.find(configEntry.first) == _properties.end()) {
@@ -506,7 +529,13 @@ void Plugin::set_property(const ov::AnyMap& properties) {
     }
 
     _globalConfig.update(config);
+    std::printf(" <ov> 4.Plugin::set_property(1) Logger::global(0).level()=%d \n", static_cast<int>(Logger::global().level()));//-1
+    std::printf(" <ov> 4.Plugin::set_property(1) _logger.level()=%d \n", static_cast<int>(_logger.level()));//1
+    std::printf(" <ov> 4.Plugin::set_property(1) _globalConfig.get<LOG_LEVEL>()=%d \n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
     Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
+    std::printf(" <ov> 5.Plugin::set_property(2) Logger::global(0).level()=%d \n", static_cast<int>(Logger::global().level()));//-1
+    std::printf(" <ov> 5.Plugin::set_property(2) _logger.level()=%d \n", static_cast<int>(_logger.level()));//1
+    std::printf(" <ov> 5.Plugin::set_property(2) _globalConfig.get<LOG_LEVEL>()=%d \n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
     if (_backends != nullptr) {
         _backends->setup(_globalConfig);
     }
@@ -517,6 +546,10 @@ void Plugin::set_property(const ov::AnyMap& properties) {
 }
 
 ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& arguments) const {
+    std::printf("<ov>Plugin::get_property   arguments.size()=%d  \n", arguments.size());
+    for(auto it : arguments){
+        std::printf("<ov>Plugin::get_property <key> %s  <value> %s\n", it.first.c_str(), it.second.as<std::string>().c_str());
+    }
     const std::map<std::string, std::string>& amends = any_copy(arguments);
     const Config amendedConfig = merge_configs(_globalConfig, amends);
 
@@ -530,9 +563,16 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    std::printf(" <ov> 6.Plugin::compile_model(1) Logger::global(0).level()=%d \n", static_cast<int>(Logger::global().level()));//-1
+    std::printf(" <ov> 6.Plugin::compile_model(1) _logger.level()=%d \n", static_cast<int>(_logger.level()));//1
+    std::printf(" <ov> 6.Plugin::compile_model(1) _globalConfig.get<LOG_LEVEL>()=%d \n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
     auto localConfig = merge_configs(_globalConfig, any_copy(properties));
+    std::printf(" <ov> 6.Plugin::compile_model(2) Logger::global(0).level()=%d \n", static_cast<int>(Logger::global().level()));//-1
+    std::printf(" <ov> 6.Plugin::compile_model(2) _logger.level()=%d \n", static_cast<int>(_logger.level()));//1
+    std::printf(" <ov> 6.Plugin::compile_model(2) _globalConfig.get<LOG_LEVEL>()=%d \n", static_cast<int>(_globalConfig.get<LOG_LEVEL>()));//-1
+    std::printf(" <ov> 6.Plugin::compile_model(2) localConfig.get<LOG_LEVEL>()=%d \n", static_cast<int>(localConfig.get<LOG_LEVEL>()));//-1
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {

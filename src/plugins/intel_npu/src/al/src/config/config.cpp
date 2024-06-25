@@ -202,9 +202,10 @@ void Config::update(const ConfigMap& options, OptionMode mode) {
 
     for (const auto& p : options) {
         log.trace("Update option '%s' to value '%s'", p.first.c_str(), p.second.c_str());
-
+        
         const auto opt = _desc->get(p.first, mode);
         _impl[opt.key().data()] = opt.validateAndParse(p.second);
+        std::printf("Update option '%s' form '%s' to value '%s'\n", p.first.c_str(), _impl[opt.key().data()]->toString().c_str(), p.second.c_str());
     }
 }
 
