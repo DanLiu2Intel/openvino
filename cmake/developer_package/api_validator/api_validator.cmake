@@ -95,6 +95,7 @@ function(_ov_add_api_validator_post_build_step_recursive)
 endfunction()
 
 set(VALIDATED_TARGETS "" CACHE INTERNAL "")
+message("===============satrt -1===============, ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
 
 function(_ov_add_api_validator_post_build_step)
     if((NOT ONECORE_API_VALIDATOR) OR (WINDOWS_STORE OR WINDOWS_PHONE))
@@ -118,7 +119,7 @@ function(_ov_add_api_validator_post_build_step)
     else()
         message(FATAL_ERROR "Unknown configuration: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
     endif()
-
+    message("===============satrt===============, ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
     set(UniversalDDIs_Path1 "${PROGRAMFILES}/Windows Kits/10/build/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/universalDDIs/${wdk_platform}/UniversalDDIs.xml")
     file(EXISTS ${UniversalDDIs_Path1} FILE_EXISTS)
     if(FILE_EXISTS)
@@ -142,12 +143,16 @@ function(_ov_add_api_validator_post_build_step)
     else()
         message("====>File ${UniversalDDIs_Path4} not exists")    
     endif()
-
-
+    message("===============m1===============")
+    message(" file path1: ${PROGRAMFILES}/Windows Kits/10/build/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/universalDDIs/${wdk_platform}")
+    message(" file path2: ${PROGRAMFILES}/Windows Kits/10/build/universalDDIs/${wdk_platform}")
+    message(" file path3: ${WDK_PATHS}")
+    message("===============m2===============")
     find_file(ONECORE_API_VALIDATOR_APIS NAMES UniversalDDIs.xml
               PATHS "${PROGRAMFILES}/Windows Kits/10/build/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/universalDDIs/${wdk_platform}"
                     "${PROGRAMFILES}/Windows Kits/10/build/universalDDIs/${wdk_platform}"
               DOC "Path to UniversalDDIs.xml file")
+    message("===============m3===============")
     find_file(ONECORE_API_VALIDATOR_EXCLUSION NAMES BinaryExclusionlist.xml
               PATHS ${WDK_PATHS}
               DOC "Path to BinaryExclusionlist.xml file")
