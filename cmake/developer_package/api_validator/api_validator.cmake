@@ -10,18 +10,25 @@ function(ov_search_api_validator)
     # CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION is only set when
     # Visual Studio generators are used, but we need it
     # when we use Ninja as well
+    message("==1==> add log: not define CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION")
     if(NOT DEFINED CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION)
+        message("==2==> add log: not define CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION")
         if(DEFINED ENV{WindowsSDKVersion})
+            message("==3==> add log:  define ENV WindowsSDKVersion")
             string(REPLACE "\\" "" WINDOWS_SDK_VERSION $ENV{WindowsSDKVersion})
             set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION ${WINDOWS_SDK_VERSION})
             message(STATUS "Use ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION} Windows SDK version")
             # set to parent scope as well for later usage in '_ov_add_api_validator_post_build_step'
             set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION ${WINDOWS_SDK_VERSION} PARENT_SCOPE)
+            message("==4==> add log:  CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION is ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
         else()
+            message("==5==>")
             message(FATAL_ERROR "WindowsSDKVersion environment variable is not set,\
 can't find Windows SDK version. Try to use vcvarsall.bat script")
         endif()
+        message("==6==>")
     endif()
+    message("==7==>")
 
     set(PROGRAMFILES_ENV "ProgramFiles\(X86\)")
 
@@ -111,6 +118,31 @@ function(_ov_add_api_validator_post_build_step)
     else()
         message(FATAL_ERROR "Unknown configuration: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
     endif()
+
+    set(UniversalDDIs_Path1 "${PROGRAMFILES}/Windows Kits/10/build/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/universalDDIs/${wdk_platform}/UniversalDDIs.xml")
+    file(EXISTS ${UniversalDDIs_Path1} FILE_EXISTS)
+    if(FILE_EXISTS)
+        message("====> File ${UniversalDDIs_Path1} exists")
+    else()
+        message("====>File ${UniversalDDIs_Path1} not exists")    
+    endif()
+
+    set(UniversalDDIs_Path3 "${PROGRAMFILES}/Windows Kits/10/bin/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/x64/BinaryExclusionlist.xml")
+    file(EXISTS ${UniversalDDIs_Path3} FILE_EXISTS)
+    if(FILE_EXISTS)
+        message("====> File ${UniversalDDIs_Path3} exists")
+    else()
+        message("====>File ${UniversalDDIs_Path3} not exists")    
+    endif()
+    
+    set(UniversalDDIs_Path4 "${PROGRAMFILES}/Windows Kits/10/bin/x64/BinaryExclusionlist.xml")
+    file(EXISTS ${UniversalDDIs_Path4} FILE_EXISTS)
+    if(FILE_EXISTS)
+        message("====> File ${UniversalDDIs_Path4} exists")
+    else()
+        message("====>File ${UniversalDDIs_Path4} not exists")    
+    endif()
+
 
     find_file(ONECORE_API_VALIDATOR_APIS NAMES UniversalDDIs.xml
               PATHS "${PROGRAMFILES}/Windows Kits/10/build/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/universalDDIs/${wdk_platform}"
