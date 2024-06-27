@@ -131,8 +131,9 @@ function(_ov_add_api_validator_post_build_step)
     message("====> File3 ${UniversalDDIs_Path3} exists")
     
     set(UniversalDDIs_Path4 "${PROGRAMFILES}/Windows Kits/10/bin/x64/BinaryExclusionlist.xml")
-    file(EXISTS ${UniversalDDIs_Path4} FILE_EXISTS)
     message("====> File4 ${UniversalDDIs_Path4} exists")
+
+    
     message("===============m1===============")
     message(" file path1: ${PROGRAMFILES}/Windows Kits/10/build/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/universalDDIs/${wdk_platform}")
     message(" file path2: ${PROGRAMFILES}/Windows Kits/10/build/universalDDIs/${wdk_platform}")
