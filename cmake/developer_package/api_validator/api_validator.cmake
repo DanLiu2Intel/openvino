@@ -121,7 +121,7 @@ function(_ov_add_api_validator_post_build_step)
     endif()
     message("===============satrt===============, ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}")
     set(UniversalDDIs_Path1 "${PROGRAMFILES}/Windows Kits/10/build/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/universalDDIs/${wdk_platform}/UniversalDDIs.xml")
-    message("====> File1 ${UniversalDDIs_Path1} exists")
+    message("====> File1 ${UniversalDDIs_Path1} exists")#/Windows Kits/10/build/10.0.19041.0/universalDDIs/x64/UniversalDDIs.xml
 
     set(UniversalDDIs_Path2 "${PROGRAMFILES}/Windows Kits/10/build/$/universalDDIs/${wdk_platform}/UniversalDDIs.xml")
     message("====> File2 ${UniversalDDIs_Path2} exists")
@@ -133,17 +133,17 @@ function(_ov_add_api_validator_post_build_step)
     set(UniversalDDIs_Path4 "${PROGRAMFILES}/Windows Kits/10/bin/x64/BinaryExclusionlist.xml")
     message("====> File4 ${UniversalDDIs_Path4} exists")
 
-    
+
     message("===============m1===============")
     message(" file path1: ${PROGRAMFILES}/Windows Kits/10/build/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/universalDDIs/${wdk_platform}")
     message(" file path2: ${PROGRAMFILES}/Windows Kits/10/build/universalDDIs/${wdk_platform}")
-    message(" file path3: ${WDK_PATHS}")
+    message(" file path3: ${WDK_PATHS}")#empty
     message("===============m2===============")
     find_file(ONECORE_API_VALIDATOR_APIS NAMES UniversalDDIs.xml
               PATHS "${PROGRAMFILES}/Windows Kits/10/build/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/universalDDIs/${wdk_platform}"
                     "${PROGRAMFILES}/Windows Kits/10/build/universalDDIs/${wdk_platform}"
               DOC "Path to UniversalDDIs.xml file")
-    message("===============m3===============")
+    message("===============m3===============, ${ONECORE_API_VALIDATOR_APIS}")
     find_file(ONECORE_API_VALIDATOR_EXCLUSION NAMES BinaryExclusionlist.xml
               PATHS ${WDK_PATHS}
               DOC "Path to BinaryExclusionlist.xml file")
