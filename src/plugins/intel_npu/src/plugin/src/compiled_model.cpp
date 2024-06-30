@@ -3,6 +3,7 @@
 //
 
 #include "compiled_model.hpp"
+#include "plugin.hpp"
 
 #include <fstream>
 #include <string_view>
@@ -103,6 +104,18 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
+
+    if (std::dynamic_pointer_cast<const Plugin>(get_plugin())->is_backends_empty()) {
+        // need update backend.
+        std::dynamic_pointer_cast<const Plugin>(get_plugin())->update_BackendsAndMetrics();
+    }
+    if (std::dynamic_pointer_cast<const Plugin>(get_plugin())->is_backends_empty()) {
+        _logger.error("Cannot find backend in inference, will lead to failure. Make sure the device is available!");
+        OPENVINO_THROW(
+            "Can't create NPU backend!\nPlease make sure that the device is available. Only exports can be made.");
+    } else {
+        _logger.info("Backend is ready for inference.");
+    }
 
     if (_executorPtr == nullptr && _device != nullptr) {
         _executorPtr = _device->createExecutor(_networkPtr, _config);
