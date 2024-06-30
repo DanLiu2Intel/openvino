@@ -53,20 +53,32 @@ public:
     ov::SupportedOpsMap query_model(const std::shared_ptr<const ov::Model>& model,
                                     const ov::AnyMap& properties) const override;
 
+    bool is_backends_empty() const {
+        if (_backends == nullptr)
+        return true;
+        //_backends has been init, but not sure _backend in _backends is inited.
+        return  _backends->is_empty() ? true : false;
+    }
+    void update_supplement_properties() const;
+    void update_BackendsAndMetrics() const;
+
 private:
     ov::SoPtr<ICompiler> getCompiler(const Config& config) const;
 
-    std::shared_ptr<NPUBackends> _backends;
+    mutable std::shared_ptr<NPUBackends> _backends;
 
     std::map<std::string, std::string> _config;
     std::shared_ptr<OptionsDesc> _options;
-    Config _globalConfig;
+    mutable Config _globalConfig;
     Logger _logger;
-    std::unique_ptr<Metrics> _metrics;
+    mutable std::unique_ptr<Metrics> _metrics;
 
     // properties map: {name -> [supported, mutable, eval function]}
-    std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> _properties;
-    std::vector<ov::PropertyName> _supportedProperties;
+    mutable std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> _properties;
+    mutable std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>>
+        supplement_properties;
+
+    mutable std::vector<ov::PropertyName> _supportedProperties;
 
     static std::atomic<int> _compiledModelLoadCounter;
 };
