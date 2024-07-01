@@ -142,10 +142,25 @@ size_t getFileSize(std::istream& stream) {
 
 namespace intel_npu {
 
+
 static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
     Config localConfig = globalConfig;
+    auto it = propertiesMap.find(std::string(LOG_LEVEL::key()));
+    
+    if (it != propertiesMap.end()) {
+        std::istringstream is(it->second);
+        ov::log::Level level;
+        is >> level;
+        if (localConfig.get<LOG_LEVEL> > level) {
+            it.remove();
+        } else {
+            Logger::global().setLevel(level);
+            //note: _globalConfig alse need to be update for any maybe call for _globalConfig.
+        }
+    }
+
     localConfig.update(rawConfig, mode);
     if(rawConfig.find(std::string(LOG_LEVEL::key())) != rawConfig.end()) {
         Logger::global().setLevel(localConfig.get<LOG_LEVEL>());
@@ -520,6 +535,8 @@ Plugin::Plugin()
 
 void Plugin::set_property(const ov::AnyMap& properties) {
     const std::map<std::string, std::string> config = any_copy(properties);
+    // update_log_level(config); is it better to use global log to update?
+    //Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
     for (const auto& configEntry : config) {
         if (_properties.find(configEntry.first) == _properties.end()) {
             OPENVINO_THROW("Unsupported configuration key: ", configEntry.first);
@@ -718,7 +735,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::import_model(std::istream& /*stream*
 ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& model,
                                         const ov::AnyMap& properties) const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::query_model");
-
+    
     auto localConfig = merge_configs(_globalConfig, any_copy(properties), OptionMode::CompileTime);
     const auto platform = _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
     localConfig.update({{ov::intel_npu::platform.name(), platform}});
