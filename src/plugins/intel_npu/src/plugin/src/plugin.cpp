@@ -142,10 +142,25 @@ size_t getFileSize(std::istream& stream) {
 
 namespace intel_npu {
 
+
 static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
     Config localConfig = globalConfig;
+    auto it = propertiesMap.find(std::string(LOG_LEVEL::key()));
+    
+    if (it != propertiesMap.end()) {
+        std::istringstream is(it->second);
+        ov::log::Level level;
+        is >> level;
+        if (localConfig.get<LOG_LEVEL> > level) {
+            it.remove();
+        } else {
+            Logger::global().setLevel(level);
+            //note: _globalConfig alse need to be update for any maybe call for _globalConfig.
+        }
+    }
+
     localConfig.update(rawConfig, mode);
     if(rawConfig.find(std::string(LOG_LEVEL::key())) != rawConfig.end()) {
         Logger::global().setLevel(localConfig.get<LOG_LEVEL>());
@@ -520,6 +535,7 @@ Plugin::Plugin()
 
 void Plugin::set_property(const ov::AnyMap& properties) {
     const std::map<std::string, std::string> config = any_copy(properties);
+
     for (const auto& configEntry : config) {
         if (_properties.find(configEntry.first) == _properties.end()) {
             OPENVINO_THROW("Unsupported configuration key: ", configEntry.first);
@@ -557,6 +573,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
                                                           const ov::AnyMap& properties) const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
+    
     auto localConfig = merge_configs(_globalConfig, any_copy(properties));
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
