@@ -144,11 +144,12 @@ size_t getFileSize(std::istream& stream) {
 
 namespace intel_npu {
 
-static Config merge_configs(const Config& globalConfig,
+static Config merge_configs(Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
     Config localConfig = globalConfig;
     localConfig.update(rawConfig, mode);
+    globalConfig.update(rawConfig, mode);
     return localConfig;
 }
 
@@ -169,6 +170,7 @@ void Plugin::update_supplement_properties() const {
     // Note that some properties are RW before network is loaded, and become RO after network is loaded
     if (supplement_properties.size() > 0)
         return;
+
     supplement_properties = {
         // OV Public
         // =========
@@ -301,7 +303,7 @@ void Plugin::update_supplement_properties() const {
     };
 }
 
-void Plugin::update_BackendsAndMetrics() const {
+void Plugin::update_BackendsAndMetrics(Config& config) const {
     // this update need be to used by compiledModel's create_infer_request()
     // TODO: generation of available backends list can be done during execution of CMake scripts
     std::vector<AvailableBackends> backendRegistry;
@@ -323,7 +325,7 @@ void Plugin::update_BackendsAndMetrics() const {
 #endif
 
     OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "NPUBackends");
-    _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
+    _backends = std::make_shared<NPUBackends>(backendRegistry, config);//config or global?
     OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
     _backends->registerOptions(*_options);
 
@@ -367,7 +369,7 @@ Plugin::Plugin()
 
     // Map from name to function {Config -> ov::Any}
     // Note that some properties are RW before network is loaded, and become RO after network is loaded
-    std::printf("=========check 2========== %s,\n", Metrics_internalSupportedProperties_inGlobal[0]);
+    std::printf("=========check 2========== %s\n", Metrics_internalSupportedProperties_inGlobal[0].c_str());
     _properties = {// OV Public
                    // =========
                    {ov::supported_properties.name(),
@@ -564,7 +566,7 @@ Plugin::Plugin()
 }
 
 void Plugin::set_property(const ov::AnyMap& properties) {
-    std::printf("=========check 3========== %s,\n", Metrics_internalSupportedProperties_inGlobal[0]);
+    std::printf("=========check 3========== %s\n", Metrics_internalSupportedProperties_inGlobal[0].c_str());
     const std::map<std::string, std::string> config = any_copy(properties);
     for (const auto& configEntry : config) {
         if (_properties.find(configEntry.first) == _properties.end()) {
@@ -606,7 +608,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     std::printf("=========check 5======compile_model(1),\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
+    std::printf("before merge_configs: %s \n", _globalConfig.toString().c_str());
     auto localConfig = merge_configs(_globalConfig, any_copy(properties));
+    std::printf("after merge_configs: %s \n", _globalConfig.toString().c_str());
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
@@ -664,8 +668,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         }
     } else {
         std::printf("=========check 8==========compile_model(4)\n");
-        _logger.warning("not init backend. it is ok for compilation only, so not apply set_batch_config()");
-        _logger.warning("not init backend. device for empty. incompildation inference, need to update device!!s");
+        _logger.warning("Note: have not initialized NPUBackends. Only compilation can be performed.\nIf you want to run inference, please double check the NPU backend and device before inference!");
     }
 
     OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");

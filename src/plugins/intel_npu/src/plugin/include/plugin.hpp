@@ -60,7 +60,7 @@ public:
         return _backends->is_empty() ? true : false;
     }
     void update_supplement_properties() const;
-    void update_BackendsAndMetrics() const;
+    void update_BackendsAndMetrics(Config& config) const;
     const std::shared_ptr<IDevice> update_device(Config config) const {
         if (is_backends_empty()) {
             _logger.error(" no bakend. can not init device!");

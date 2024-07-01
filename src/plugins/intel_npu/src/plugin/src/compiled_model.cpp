@@ -107,19 +107,22 @@ std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() co
     std::printf("=========check 9==========compiledmodel -- create_infer_request(6)\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
 
-    if (std::dynamic_pointer_cast<const Plugin>(get_plugin())->is_backends_empty()) {
+    auto uesed_plugin = std::dynamic_pointer_cast<const Plugin>(get_plugin());
+    if (_device == nullptr || uesed_plugin ->is_backends_empty()) {
+        if (_device == nullptr)
+            _logger.warning("device for inference is not found. Is updating device");
         // need update backend.
-        std::dynamic_pointer_cast<const Plugin>(get_plugin())->update_BackendsAndMetrics();
+        uesed_plugin->update_BackendsAndMetrics(_config);
         // update device
-        _device = std::dynamic_pointer_cast<const Plugin>(get_plugin())->update_device(_config);
+        _device = uesed_plugin->update_device(_config);
     }
 
-    if (std::dynamic_pointer_cast<const Plugin>(get_plugin())->is_backends_empty()) {
-        _logger.error("Cannot find backend in inference, will lead to failure. Make sure the device is available!");
+    if (uesed_plugin ->is_backends_empty() && _device == nullptr) {
+        _logger.error("Cannot initialize NPUbackend before inference, will lead to failure.");
         OPENVINO_THROW(
-            "Can't create NPU backend!\nPlease make sure that the device is available. Only exports can be made.");
+            "Can't create NPU backend!\nPlease make sure that the device is available. Only compilation and exports can be made.");
     } else {
-        _logger.info("Backend is ready for inference.");
+        _logger.info("Backend and device are ready for inference.");
     }
 
     if (_executorPtr == nullptr && _device != nullptr) {
