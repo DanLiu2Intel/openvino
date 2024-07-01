@@ -55,12 +55,19 @@ public:
 
     bool is_backends_empty() const {
         if (_backends == nullptr)
-        return true;
+            return true;
         //_backends has been init, but not sure _backend in _backends is inited.
-        return  _backends->is_empty() ? true : false;
+        return _backends->is_empty() ? true : false;
     }
     void update_supplement_properties() const;
     void update_BackendsAndMetrics() const;
+    std::shared_ptr<IDevice> update_device(Config config) const {
+        if (is_backends_empty()) {
+            _logger.error(" no bakend. can not init device!");
+        } else {
+            return _backends->getDevice(config.get<DEVICE_ID>());
+        }
+    }
 
 private:
     ov::SoPtr<ICompiler> getCompiler(const Config& config) const;
@@ -74,7 +81,8 @@ private:
     mutable std::unique_ptr<Metrics> _metrics;
 
     // properties map: {name -> [supported, mutable, eval function]}
-    mutable std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> _properties;
+    mutable std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>>
+        _properties;
     mutable std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>>
         supplement_properties;
 
