@@ -3,7 +3,6 @@
 //
 
 #include "compiled_model.hpp"
-#include "plugin.hpp"
 
 #include <fstream>
 #include <string_view>
@@ -20,6 +19,7 @@
 #include "openvino/runtime/properties.hpp"
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/executor_manager.hpp"
+#include "plugin.hpp"
 #include "transformations/utils/utils.hpp"
 
 namespace {
@@ -108,7 +108,10 @@ std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() co
     if (std::dynamic_pointer_cast<const Plugin>(get_plugin())->is_backends_empty()) {
         // need update backend.
         std::dynamic_pointer_cast<const Plugin>(get_plugin())->update_BackendsAndMetrics();
+        // update device
+        _device = std::dynamic_pointer_cast<const Plugin>(get_plugin())->update_device(_config);
     }
+
     if (std::dynamic_pointer_cast<const Plugin>(get_plugin())->is_backends_empty()) {
         _logger.error("Cannot find backend in inference, will lead to failure. Make sure the device is available!");
         OPENVINO_THROW(
