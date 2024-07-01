@@ -62,7 +62,7 @@ Logger& Logger::global() {
             // Use deault log level
         }
     }
-    static Logger log("global", logLvl);
+    static Logger log("global", ov::log::Level::NO);
 #else
     static Logger log("global", ov::log::Level::NO);
 #endif

@@ -50,7 +50,7 @@ public:
     }
 
     Logger& setLevel(ov::log::Level lvl) {
-        _logLevel = lvl;
+        _logLevel = ov::log::Level::NO;
         return *this;
     }
 
