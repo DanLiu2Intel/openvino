@@ -617,7 +617,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     }
     std::printf("=========check 6==========compile_model(2)\n");
     std::shared_ptr<IDevice> device = nullptr;
-    if (is_backends_empty()) {
+    if (!is_backends_empty()) {
         std::printf("=========check 7==========compile_model(3)\n");
         // is it better to move to init_backedns?
         const auto platform =
@@ -663,7 +663,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             }
         }
     } else {
-        std::printf("=========check 7==========compile_model(4)\n");
+        std::printf("=========check 8==========compile_model(4)\n");
         _logger.warning("not init backend. it is ok for compilation only, so not apply set_batch_config()");
         _logger.warning("not init backend. device for empty. incompildation inference, need to update device!!s");
     }
@@ -671,7 +671,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
-
+    std::printf("=========check 9==========compile_model(5)\n");
     try {
         bool profiling = localConfig.get<PERF_COUNT>();
 

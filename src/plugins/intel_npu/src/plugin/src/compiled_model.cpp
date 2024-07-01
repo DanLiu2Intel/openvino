@@ -53,6 +53,7 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _logger("CompiledModel", config.get<LOG_LEVEL>()),
       _device(device),
       _compiler(profiling ? std::optional(compiler) : std::nullopt) {
+    std::printf("=========check 9==========compiledmodel(5)\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
     OPENVINO_ASSERT(compiler != nullptr, "NPU CompiledModel: the pointer towards the compiler object is null");
 
@@ -103,6 +104,7 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
 }
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
+    std::printf("=========check 9==========compiledmodel -- create_infer_request(6)\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
 
     if (std::dynamic_pointer_cast<const Plugin>(get_plugin())->is_backends_empty()) {
@@ -123,6 +125,7 @@ std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() co
     if (_executorPtr == nullptr && _device != nullptr) {
         _executorPtr = _device->createExecutor(_networkPtr, _config);
     }
+
     if (_executorPtr == nullptr) {
         OPENVINO_THROW(NO_EXECUTOR_FOR_INFERENCE);
     }
