@@ -333,14 +333,16 @@ void Plugin::update_BackendsAndMetrics(Config& config) const {
     _metrics = std::make_unique<Metrics>(_backends);
 
     // parse again env_variables after backend is initialized to get backend proprieties
-    _globalConfig.parseEnvVars();
-
+    config.parseEnvVars();
+    std::printf("<in backend> before  config =%s\n", config.toString().c_str());
+    config.update({{ov::intel_npu::max_tiles.name(), std::to_string(123)}});
+    std::printf("<in backend> after  config =%s\n", config.toString().c_str());
     // // initialize properties which have device-tied default values in global config
     // // *only if there is a driver available
     // if (_metrics->GetAvailableDevicesNames().size() > 0) {
-    //     _globalConfig.update({{ov::intel_npu::stepping.name(),
+    //     config.update({{ov::intel_npu::stepping.name(),
     //                            std::to_string(_metrics->GetSteppingNumber(get_specified_device_name(_globalConfig)))}});
-    //     _globalConfig.update({{ov::intel_npu::max_tiles.name(),
+    //     config.update({{ov::intel_npu::max_tiles.name(),
     //                            std::to_string(_metrics->GetMaxTiles(get_specified_device_name(_globalConfig)))}});
     // }
 

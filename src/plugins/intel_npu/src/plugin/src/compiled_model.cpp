@@ -112,7 +112,9 @@ std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() co
         if (_device == nullptr)
             _logger.warning("device for inference is not found. Is updating device");
         // need update backend.
+        std::printf("<compiledmodel>before uodate backend, _config=%s\n", _config.toString().c_str());
         uesed_plugin->update_BackendsAndMetrics(_config);
+        std::printf("<compiledmodel>after uodate backend, _config=%s\n", _config.toString().c_str());
         // update device
         _device = uesed_plugin->update_device(_config);
     }
