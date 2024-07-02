@@ -53,7 +53,6 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _logger("CompiledModel", config.get<LOG_LEVEL>()),
       _device(device),
       _compiler(profiling ? std::optional(compiler) : std::nullopt) {
-    std::printf("=========check 9==========compiledmodel(5)\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
     OPENVINO_ASSERT(compiler != nullptr, "NPU CompiledModel: the pointer towards the compiler object is null");
 
@@ -104,7 +103,6 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
 }
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
-    std::printf("=========check 9==========compiledmodel -- create_infer_request(6)\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
 
     auto uesed_plugin = std::dynamic_pointer_cast<const Plugin>(get_plugin());
@@ -112,9 +110,7 @@ std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() co
         if (_device == nullptr)
             _logger.warning("device for inference is not found. Is updating device");
         // need update backend.
-        std::printf("<compiledmodel>before uodate backend, _config=%s\n", _config.toString().c_str());
         uesed_plugin->update_BackendsAndMetrics(_config);
-        std::printf("<compiledmodel>after uodate backend, _config=%s\n", _config.toString().c_str());
         // update device
         _device = uesed_plugin->update_device(_config);
     }

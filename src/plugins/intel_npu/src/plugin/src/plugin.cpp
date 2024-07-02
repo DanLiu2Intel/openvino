@@ -334,9 +334,7 @@ void Plugin::update_BackendsAndMetrics(Config& config) const {
 
     // parse again env_variables after backend is initialized to get backend proprieties
     config.parseEnvVars();
-    std::printf("<in backend> before  config =%s\n", config.toString().c_str());
     config.update({{ov::intel_npu::max_tiles.name(), std::to_string(123)}});
-    std::printf("<in backend> after  config =%s\n", config.toString().c_str());
     // // initialize properties which have device-tied default values in global config
     // // *only if there is a driver available
     // if (_metrics->GetAvailableDevicesNames().size() > 0) {
@@ -357,7 +355,6 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
-    std::printf("=========check 1==========\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -371,7 +368,6 @@ Plugin::Plugin()
 
     // Map from name to function {Config -> ov::Any}
     // Note that some properties are RW before network is loaded, and become RO after network is loaded
-    std::printf("=========check 2========== %s\n", Metrics_internalSupportedProperties_inGlobal[0].c_str());
     _properties = {// OV Public
                    // =========
                    {ov::supported_properties.name(),
@@ -568,7 +564,6 @@ Plugin::Plugin()
 }
 
 void Plugin::set_property(const ov::AnyMap& properties) {
-    std::printf("=========check 3========== %s\n", Metrics_internalSupportedProperties_inGlobal[0].c_str());
     const std::map<std::string, std::string> config = any_copy(properties);
     for (const auto& configEntry : config) {
         if (_properties.find(configEntry.first) == _properties.end()) {
@@ -593,7 +588,6 @@ void Plugin::set_property(const ov::AnyMap& properties) {
 }
 
 ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& arguments) const {
-    std::printf("=========check 4======get_property name=%s,\n", name.c_str());
     const std::map<std::string, std::string>& amends = any_copy(arguments);
     const Config amendedConfig = merge_configs(_globalConfig, amends);
 
@@ -607,12 +601,9 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
-    std::printf("=========check 5======compile_model(1),\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
-    std::printf("before merge_configs: %s \n", _globalConfig.toString().c_str());
     auto localConfig = merge_configs(_globalConfig, any_copy(properties));
-    std::printf("after merge_configs: %s \n", _globalConfig.toString().c_str());
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
@@ -620,11 +611,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         if (compilerType == ov::intel_npu::CompilerType::MLIR) {
             OPENVINO_THROW("Option 'CACHE_DIR' is not supported with MLIR compiler type");
         }
-    }
-    std::printf("=========check 6==========compile_model(2)\n");
+    };
     std::shared_ptr<IDevice> device = nullptr;
     if (!is_backends_empty()) {
-        std::printf("=========check 7==========compile_model(3)\n");
         // is it better to move to init_backedns?
         const auto platform =
             _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
@@ -669,14 +658,12 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             }
         }
     } else {
-        std::printf("=========check 8==========compile_model(4)\n");
         _logger.warning("Note: have not initialized NPUBackends. Only compilation can be performed.\nIf you want to run inference, please double check the NPU backend and device before inference!");
     }
 
     OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
-    std::printf("=========check 9==========compile_model(5)\n");
     try {
         bool profiling = localConfig.get<PERF_COUNT>();
 
