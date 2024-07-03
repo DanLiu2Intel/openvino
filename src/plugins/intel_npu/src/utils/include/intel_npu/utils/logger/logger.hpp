@@ -81,25 +81,25 @@ public:
 
     template <typename... Args>
     void trace(const char* format, Args&&... args) const {
-        addEntryPacked(ov::log::Level::TRACE, format, std::forward<Args>(args)...);
+        //addEntryPacked(ov::log::Level::TRACE, format, std::forward<Args>(args)...);
     }
 
 private:
-    void addEntryPackedActive(ov::log::Level msgLevel, const std::string_view msg) const;
+    //void addEntryPackedActive(ov::log::Level msgLevel, const std::string_view msg) const;
 
     template <typename... Args>
     void addEntryPacked(ov::log::Level msgLevel, const char* format, Args&&... args) const {
         if (!isActive(msgLevel)) {
             return;
         }
-        addEntryPackedActive(msgLevel, printFormattedCStr(format, std::forward<Args>(args)...));
+        //addEntryPackedActive(msgLevel, printFormattedCStr(format, std::forward<Args>(args)...));
     }
 
     void addEntryPacked(ov::log::Level msgLevel, const char* msg) const {
         if (!isActive(msgLevel)) {
             return;
         }
-        addEntryPackedActive(msgLevel, msg);
+        // addEntryPackedActive(msgLevel, msg);
     }
 
 private:
