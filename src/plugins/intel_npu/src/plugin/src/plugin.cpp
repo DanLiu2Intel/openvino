@@ -138,6 +138,36 @@ size_t getFileSize(std::istream& stream) {
     return streamEnd - streamStart;
 }
 
+
+inline ov::log::Level level convertStringToLog(std::string log_str) {
+    switch (log_str) {
+    case "LOG_NONE":
+        return ov::log::Level::NO;
+    case "LOG_ERROR":
+        return ov::log::Level::ERR;
+    case "LOG_WARNING":
+        return ov::log::Level::WARNING;
+   case "LOG_INFO":
+        return ov::log::Level::INFO;
+    case "LOG_DEBUG":
+        return ov::log::Level::DEBUG;
+    case "LOG_TRACE":
+        return ov::log::Level::TRACE;
+    default:
+        OPENVINO_THROW("Unsupported log level string");
+    }
+}
+
+void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
+    auto it = propertiesMap.find(std::string(LOG_LEVEL::key()));
+    if (it != propertiesMap.end()) {
+        std::istringstream is(it->second);
+        ov::log::Level level;
+        is >> level;
+        Logger::global().setLevel(level);
+    }
+}
+
 }  // namespace
 
 namespace intel_npu {
@@ -168,6 +198,7 @@ static Config merge_configs(const Config& globalConfig,
 
     return localConfig;
 }
+
 
 static auto get_specified_device_name(const Config config) {
     if (config.has<DEVICE_ID>()) {
@@ -536,6 +567,11 @@ Plugin::Plugin()
 void Plugin::set_property(const ov::AnyMap& properties) {
     const std::map<std::string, std::string> config = any_copy(properties);
 
+    auto it = config.find(std::string(LOG_LEVEL::key()));
+    if (it != config.end()) {
+        Logger::global().setLevel(convertStringToLog(it->second));
+    }
+
     for (const auto& configEntry : config) {
         if (_properties.find(configEntry.first) == _properties.end()) {
             OPENVINO_THROW("Unsupported configuration key: ", configEntry.first);
@@ -547,7 +583,7 @@ void Plugin::set_property(const ov::AnyMap& properties) {
     }
 
     _globalConfig.update(config);
-    Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
+    
     if (_backends != nullptr) {
         _backends->setup(_globalConfig);
     }
@@ -755,7 +791,7 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
 
 ov::SoPtr<ICompiler> Plugin::getCompiler(const Config& config) const {
     auto compilerType = config.get<COMPILER_TYPE>();
-    _logger.setLevel(_globalConfig.get<LOG_LEVEL>());
+    _logger.setLevel(config.get<LOG_LEVEL>());
     return createCompiler(compilerType, _logger);
 }
 
