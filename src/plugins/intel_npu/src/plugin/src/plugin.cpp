@@ -175,144 +175,6 @@ static Config add_platform_to_the_config(Config config, const std::string_view p
     return config;
 }
 
-void Plugin::update_supplement_properties() const {
-    // Map from name to function {Config -> ov::Any}
-    // Note that some properties are RW before network is loaded, and become RO after network is loaded
-    if (supplement_properties.size() > 0)
-        return;
-
-    supplement_properties = {
-        // OV Public
-        // =========
-        {ov::available_devices.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config&) {
-              return _metrics->GetAvailableDevicesNames();
-          }}},
-        {ov::device::capabilities.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config&) {
-              return _metrics->GetOptimizationCapabilities();
-          }}},
-        {ov::optimal_number_of_infer_requests.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              return static_cast<uint32_t>(getOptimalNumberOfInferRequestsInParallel(add_platform_to_the_config(
-                  config,
-                  _backends->getCompilationPlatform(config.get<PLATFORM>(), config.get<DEVICE_ID>()))));
-          }}},
-        {ov::range_for_async_infer_requests.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config&) {
-              return _metrics->GetRangeForAsyncInferRequest();
-          }}},
-        {ov::range_for_streams.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config&) {
-              return _metrics->GetRangeForStreams();
-          }}},
-        {ov::device::uuid.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              const auto specifiedDeviceName = get_specified_device_name(config);
-              auto devUuid = _metrics->GetDeviceUuid(specifiedDeviceName);
-              return decltype(ov::device::uuid)::value_type{devUuid};
-          }}},
-        // Add FULL_DEVICE_NAME and DEVICE_ARCHITECTURE in supported
-        // properties list only in case of non-empty device list (#1424144d)
-        {ov::device::architecture.name(),
-         {!_metrics->GetAvailableDevicesNames().empty(),
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              const auto specifiedDeviceName = get_specified_device_name(config);
-              return _metrics->GetDeviceArchitecture(specifiedDeviceName);
-          }}},
-        {ov::device::full_name.name(),
-         {!_metrics->GetAvailableDevicesNames().empty(),
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              const auto specifiedDeviceName = get_specified_device_name(config);
-              return _metrics->GetFullDeviceName(specifiedDeviceName);
-          }}},
-        {ov::device::pci_info.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              return _metrics->GetPciInfo(get_specified_device_name(config));
-          }}},
-        {ov::device::gops.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              return _metrics->GetGops(get_specified_device_name(config));
-          }}},
-        {ov::device::type.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              return _metrics->GetDeviceType(get_specified_device_name(config));
-          }}},
-        {ov::execution_devices.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              if (_metrics->GetAvailableDevicesNames().size() > 1) {
-                  return std::string("NPU." + config.get<DEVICE_ID>());
-              } else {
-                  return std::string("NPU");
-              }
-          }}},
-        // OV Internals
-        // =========
-        {ov::internal::caching_properties.name(),
-         {false,
-          ov::PropertyMutability::RO,
-          [&](const Config&) {
-              return _metrics->GetCachingProperties();
-          }}},
-        {ov::internal::supported_properties.name(),
-         {false,
-          ov::PropertyMutability::RO,
-          [&](const Config&) {
-              return _metrics->GetInternalSupportedProperties();
-          }}},
-        // NPU Public
-        // =========
-        {ov::intel_npu::device_alloc_mem_size.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              return _metrics->GetDeviceAllocMemSize(get_specified_device_name(config));
-          }}},
-        {ov::intel_npu::device_total_mem_size.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              return _metrics->GetDeviceTotalMemSize(get_specified_device_name(config));
-          }}},
-        {ov::intel_npu::driver_version.name(),
-         {true,
-          ov::PropertyMutability::RO,
-          [&](const Config& config) {
-              return _metrics->GetDriverVersion();
-          }}},
-        // NPU Private
-        // =========
-        {ov::intel_npu::backend_name.name(),
-         {false,
-          ov::PropertyMutability::RO,
-          [&](const Config&) {
-              return _metrics->GetBackendName();
-          }}},
-    };
-}
-
 void Plugin::update_BackendsAndMetrics(Config& config) const {
     // this update need be to used by compiledModel's create_infer_request()
     // TODO: generation of available backends list can be done during execution of CMake scripts
@@ -354,9 +216,7 @@ void Plugin::update_BackendsAndMetrics(Config& config) const {
                                std::to_string(_metrics->GetMaxTiles(get_specified_device_name(config)))}});
     }
 
-    update_supplement_properties();
-
-    for (const auto& properties_pair : supplement_properties) {
+    for (const auto& properties_pair : _post_initializd_properties) {
         _properties.insert(properties_pair);
     }
 }
@@ -570,6 +430,131 @@ Plugin::Plugin()
             _supportedProperties.emplace_back(ov::PropertyName(property.first, std::get<1>(property.second)));
         }
     }
+
+    _post_initializd_properties = {
+        // OV Public
+        // =========
+        {ov::available_devices.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config&) {
+              return _metrics->GetAvailableDevicesNames();
+          }}},
+        {ov::device::capabilities.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config&) {
+              return _metrics->GetOptimizationCapabilities();
+          }}},
+        {ov::optimal_number_of_infer_requests.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              return static_cast<uint32_t>(getOptimalNumberOfInferRequestsInParallel(add_platform_to_the_config(
+                  config,
+                  _backends->getCompilationPlatform(config.get<PLATFORM>(), config.get<DEVICE_ID>()))));
+          }}},
+        {ov::range_for_async_infer_requests.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config&) {
+              return _metrics->GetRangeForAsyncInferRequest();
+          }}},
+        {ov::range_for_streams.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config&) {
+              return _metrics->GetRangeForStreams();
+          }}},
+        {ov::device::uuid.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              const auto specifiedDeviceName = get_specified_device_name(config);
+              auto devUuid = _metrics->GetDeviceUuid(specifiedDeviceName);
+              return decltype(ov::device::uuid)::value_type{devUuid};
+          }}},
+        // Add FULL_DEVICE_NAME and DEVICE_ARCHITECTURE in supported
+        // properties list only in case of non-empty device list (#1424144d)
+        {ov::device::architecture.name(),
+         {!_metrics->GetAvailableDevicesNames().empty(),
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              const auto specifiedDeviceName = get_specified_device_name(config);
+              return _metrics->GetDeviceArchitecture(specifiedDeviceName);
+          }}},
+        {ov::device::full_name.name(),
+         {!_metrics->GetAvailableDevicesNames().empty(),
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              const auto specifiedDeviceName = get_specified_device_name(config);
+              return _metrics->GetFullDeviceName(specifiedDeviceName);
+          }}},
+        {ov::device::pci_info.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              return _metrics->GetPciInfo(get_specified_device_name(config));
+          }}},
+        {ov::device::gops.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              return _metrics->GetGops(get_specified_device_name(config));
+          }}},
+        {ov::device::type.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              return _metrics->GetDeviceType(get_specified_device_name(config));
+          }}},
+        {ov::execution_devices.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              if (_metrics->GetAvailableDevicesNames().size() > 1) {
+                  return std::string("NPU." + config.get<DEVICE_ID>());
+              } else {
+                  return std::string("NPU");
+              }
+          }}},
+        // OV Internals
+        // =========
+        {ov::internal::caching_properties.name(),
+         {false,
+          ov::PropertyMutability::RO,
+          [&](const Config&) {
+              return _metrics->GetCachingProperties();
+          }}},
+        // NPU Public
+        // =========
+        {ov::intel_npu::device_alloc_mem_size.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              return _metrics->GetDeviceAllocMemSize(get_specified_device_name(config));
+          }}},
+        {ov::intel_npu::device_total_mem_size.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              return _metrics->GetDeviceTotalMemSize(get_specified_device_name(config));
+          }}},
+        {ov::intel_npu::driver_version.name(),
+         {true,
+          ov::PropertyMutability::RO,
+          [&](const Config& config) {
+              return _metrics->GetDriverVersion();
+          }}},
+        // NPU Private
+        // =========
+        {ov::intel_npu::backend_name.name(),
+         {false,
+          ov::PropertyMutability::RO,
+          [&](const Config&) {
+              return _metrics->GetBackendName();
+          }}},
+    };
 }
 
 void Plugin::set_property(const ov::AnyMap& properties) {
@@ -598,6 +583,9 @@ void Plugin::set_property(const ov::AnyMap& properties) {
 }
 
 ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& arguments) const {
+    if (_post_initializd_properties.find(name);){
+        OPENVINO_THROW("Unsupported configuration key: ", name, ". Due to no backend init. Need plugin.compile_model() first.");
+    }
     const std::map<std::string, std::string>& amends = any_copy(arguments);
     const Config amendedConfig = merge_configs(_globalConfig, amends);
 

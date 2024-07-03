@@ -83,8 +83,9 @@ private:
     // properties map: {name -> [supported, mutable, eval function]}
     mutable std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>>
         _properties;
+
     mutable std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>>
-        supplement_properties;
+        _post_initializd_properties;
 
     mutable std::vector<ov::PropertyName> _supportedProperties;
 
