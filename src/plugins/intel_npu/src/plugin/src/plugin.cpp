@@ -139,7 +139,6 @@ size_t getFileSize(std::istream& stream) {
 }
 
 
-
 inline ov::log::Level convertStringToLog(std::string log_str) {
     if (log_str == "LOG_NONE")
         return ov::log::Level::NO;
@@ -199,7 +198,6 @@ inline int convertLogToNum(ov::log::Level level) {
 
 namespace intel_npu {
 
-
 static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
@@ -223,10 +221,8 @@ static Config merge_configs(const Config& globalConfig,
     const std::map<std::string, std::string>& pass_config = copy_config;
 
     localConfig.update(pass_config, mode);
-
     return localConfig;
 }
-
 
 static auto get_specified_device_name(const Config config) {
     if (config.has<DEVICE_ID>()) {
@@ -611,7 +607,6 @@ void Plugin::set_property(const ov::AnyMap& properties) {
     }
 
     _globalConfig.update(config);
-    
     if (_backends != nullptr) {
         _backends->setup(_globalConfig);
     }
