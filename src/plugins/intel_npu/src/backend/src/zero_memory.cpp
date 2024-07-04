@@ -12,6 +12,11 @@ DeviceMem::DeviceMem(const ze_device_handle_t device_handle, ze_context_handle_t
     : _size(size),
       _context(context),
       _log("DeviceMem", Logger::global().level()) {
+    _log.error("<Manual add> DeviceMem construtor error-");
+    _log.warning("<Manual add> DeviceMem construtor warning-");
+    _log.info("<Manual add> DeviceMem construtor info-");
+    _log.debug("<Manual add> DeviceMem construtor debug-");
+    _log.trace("<Manual add> DeviceMem construtor trace-");
     ze_device_mem_alloc_desc_t desc = {ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC, nullptr, 0, 0};
 
     zeroUtils::throwOnFail("zeMemAllocDevice",
@@ -36,6 +41,11 @@ void DeviceMem::free() {
     }
 }
 DeviceMem::~DeviceMem() {
+    _log.error("<Manual add> DeviceMem deconstrutor error");
+    _log.warning("<Manual add> DeviceMem deconstrutor warning");
+    _log.info("<Manual add> DeviceMem deconstrutor info");
+    _log.debug("<Manual add> DeviceMem deconstrutor debug");
+    _log.trace("<Manual add> DeviceMem deconstrutor trace");
     try {
         free();
     } catch (const std::exception& e) {
