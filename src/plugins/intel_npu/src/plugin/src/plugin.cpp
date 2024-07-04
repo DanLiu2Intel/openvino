@@ -139,23 +139,22 @@ size_t getFileSize(std::istream& stream) {
 }
 
 
-inline ov::log::Level level convertStringToLog(std::string log_str) {
-    switch (log_str) {
-    case "LOG_NONE":
+
+inline ov::log::Level convertStringToLog(std::string log_str) {
+    if (log_str == "LOG_NONE")
         return ov::log::Level::NO;
-    case "LOG_ERROR":
+    else if (log_str == "LOG_ERROR")
         return ov::log::Level::ERR;
-    case "LOG_WARNING":
+    else if (log_str == "LOG_WARNING")
         return ov::log::Level::WARNING;
-   case "LOG_INFO":
+    else if (log_str == "LOG_INFO")
         return ov::log::Level::INFO;
-    case "LOG_DEBUG":
+    else if (log_str == "LOG_DEBUG")
         return ov::log::Level::DEBUG;
-    case "LOG_TRACE":
+    else if (log_str == "LOG_TRACE")
         return ov::log::Level::TRACE;
-    default:
+    else
         OPENVINO_THROW("Unsupported log level string");
-    }
 }
 
 inline std::string convertLogToString(const ov::log::Level level) {
