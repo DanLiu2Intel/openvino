@@ -149,6 +149,15 @@ static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
     Config localConfig = globalConfig;
+    auto it = rawConfig.find(std::string(LOG_LEVEL::key()));
+    
+    if (it != rawConfig.end()) {
+        std::istringstream is(it->second);
+        ov::log::Level level;
+        is >> level;
+        Logger::global().setLevel(level);
+    }
+
     localConfig.update(rawConfig, mode);
     return localConfig;
 }
@@ -167,8 +176,7 @@ static Config add_platform_to_the_config(Config config, const std::string_view p
 
 Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
-      _globalConfig(_options),
-      _logger("NPUPlugin", Logger::global().level()) {
+      _globalConfig(_options) {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -178,7 +186,6 @@ Plugin::Plugin()
 
     // parse env_variables to get LOG_LEVEL if needed
     _globalConfig.parseEnvVars();
-    Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
 
     // TODO: generation of available backends list can be done during execution of CMake scripts
     std::vector<AvailableBackends> backendRegistry;
@@ -535,6 +542,15 @@ Plugin::Plugin()
 
 void Plugin::set_property(const ov::AnyMap& properties) {
     const std::map<std::string, std::string> config = any_copy(properties);
+
+    auto it = config.find(std::string(LOG_LEVEL::key()));
+    if (it != config.end()) {
+        std::istringstream is(it->second);
+        ov::log::Level level;
+        is >> level;
+        Logger::global().setLevel(level);
+    }
+
     for (const auto& configEntry : config) {
         if (_properties.find(configEntry.first) == _properties.end()) {
             OPENVINO_THROW("Unsupported configuration key: ", configEntry.first);
@@ -546,10 +562,6 @@ void Plugin::set_property(const ov::AnyMap& properties) {
     }
 
     _globalConfig.update(config);
-    Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
-    if (_backends != nullptr) {
-        _backends->setup(_globalConfig);
-    }
 
     for (const auto& entry : config) {
         _config[entry.first] = entry.second;
@@ -582,7 +594,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         return std::make_shared<ov::npuw::CompiledModel>(model->clone(), shared_from_this(), properties);
     }
 
-    auto localConfig = merge_configs(_globalConfig, any_copy(properties));
+    const std::map<std::string, std::string> propertiesMap = any_copy(properties);
+    auto localConfig = merge_configs(_globalConfig, propertiesMap);
+    Logger logger("NPUPlugin", Logger::global().level());
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
@@ -603,7 +617,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             OPENVINO_THROW("This model contains states, thus it is not supported when handling batching on the plugin");
         }
 
-        _logger.info("The batching will be handled by the compiler due to states found inside the IR");
+        logger.info("The batching will be handled by the compiler due to states found inside the IR");
 
         std::stringstream strStream;
         strStream << ov::intel_npu::BatchMode::COMPILER;
@@ -617,7 +631,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         try {
             localConfig.update({{ov::intel_npu::stepping.name(), std::to_string(device->getSubDevId())}});
         } catch (...) {
-            _logger.warning("Stepping information not implemented by selected backend. Skipping. Please provide "
+            logger.warning("Stepping information not implemented by selected backend. Skipping. Please provide "
                             "NPU_STEPPING if required.");
         }
     }
@@ -628,7 +642,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         try {
             localConfig.update({{ov::intel_npu::max_tiles.name(), std::to_string(device->getMaxNumSlices())}});
         } catch (...) {
-            _logger.warning("Max tiles information not implemented by selected backend. Skipping. Please provide "
+            logger.warning("Max tiles information not implemented by selected backend. Skipping. Please provide "
                             "NPU_MAX_TILES if required.");
         }
     }
@@ -676,14 +690,16 @@ std::shared_ptr<ov::ICompiledModel> Plugin::import_model(std::istream& stream, c
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::import_model");
 
     OV_ITT_TASK_CHAIN(PLUGIN_IMPORT_MODEL, itt::domains::NPUPlugin, "Plugin::import_model", "merge_configs");
-    auto localConfig = merge_configs(_globalConfig, any_copy(properties), OptionMode::RunTime);
+
+    const std::map<std::string, std::string> propertiesMap = any_copy(properties);
+    auto localConfig = merge_configs(_globalConfig, propertiesMap, OptionMode::RunTime);
     const auto platform = _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
     localConfig.update({{ov::intel_npu::platform.name(), platform}});
     auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
 
     set_batch_config(_backends->isBatchingSupported(), localConfig);
 
-    Logger logger("NPUPlugin", localConfig.get<LOG_LEVEL>());
+    Logger logger("NPUPlugin", Logger::global().level());
 
     const auto loadedFromCache = localConfig.get<LOADED_FROM_CACHE>();
     if (!loadedFromCache) {
@@ -744,7 +760,8 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
                                         const ov::AnyMap& properties) const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::query_model");
 
-    auto localConfig = merge_configs(_globalConfig, any_copy(properties), OptionMode::CompileTime);
+    const std::map<std::string, std::string> propertiesMap = any_copy(properties);
+    auto localConfig = merge_configs(_globalConfig, propertiesMap, OptionMode::CompileTime);
     const auto platform = _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
     localConfig.update({{ov::intel_npu::platform.name(), platform}});
 
@@ -763,7 +780,7 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
 
 ov::SoPtr<ICompiler> Plugin::getCompiler(const Config& config) const {
     auto compilerType = config.get<COMPILER_TYPE>();
-    return createCompiler(compilerType, _logger);
+    return createCompiler(compilerType);
 }
 
 std::atomic<int> Plugin::_compiledModelLoadCounter{1};

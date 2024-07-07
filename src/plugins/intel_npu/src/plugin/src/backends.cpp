@@ -43,21 +43,21 @@ std::shared_ptr<void> loadBackendLibrary(const std::string& libpath) {
 #    endif
 }
 
-std::shared_ptr<IEngineBackend> getBackend(std::shared_ptr<void> so, const Config& config) {
+std::shared_ptr<IEngineBackend> getBackend(std::shared_ptr<void> so) {
     static constexpr auto CreateFuncName = "CreateNPUEngineBackend";
     auto symbol = ov::util::get_symbol(so, CreateFuncName);
 
-    using CreateFuncT = void (*)(std::shared_ptr<IEngineBackend>&, const Config&);
+    using CreateFuncT = void (*)(std::shared_ptr<IEngineBackend>&);
     const auto createFunc = reinterpret_cast<CreateFuncT>(symbol);
 
     std::shared_ptr<IEngineBackend> backendPtr;
-    createFunc(backendPtr, config);
+    createFunc(backendPtr);
     return backendPtr;
 }
 
-ov::SoPtr<IEngineBackend> loadBackend(const std::string& libpath, const Config& config) {
+ov::SoPtr<IEngineBackend> loadBackend(const std::string& libpath) {
     auto backendSO = loadBackendLibrary(libpath);
-    auto backend = getBackend(backendSO, config);
+    auto backend = getBackend(backendSO);
 
     return ov::SoPtr<IEngineBackend>(backend, backendSO);
 }
@@ -97,19 +97,19 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
                     _logger.debug("Backend '%s' at '%s' doesn't exist", backendName.c_str(), path.c_str());
                     continue;
                 }
-                const auto backend = loadBackend(path, config);
+                const auto backend = loadBackend(path);
                 registerBackend(backend, backendName);
             }
 #endif
 
 #if defined(ENABLE_ZEROAPI_BACKEND)
             if (name == AvailableBackends::LEVEL_ZERO) {
-                const auto backend = ov::SoPtr<IEngineBackend>(std::make_shared<ZeroEngineBackend>(config));
+                const auto backend = ov::SoPtr<IEngineBackend>(std::make_shared<ZeroEngineBackend>());
                 registerBackend(backend, backendName);
             }
 #endif
         } catch (const std::exception& ex) {
-            _logger.error("Got an error during backend '%s' loading : %s", backendName.c_str(), ex.what());
+            _logger.warning("Got an error during backend '%s' loading : %s", backendName.c_str(), ex.what());
         } catch (...) {
             _logger.error("Got an unknown error during backend '%s' loading", backendName.c_str());
         }
@@ -127,7 +127,7 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
     if (_backend != nullptr) {
         _logger.info("Use '%s' backend for inference", _backend->getName().c_str());
     } else {
-        _logger.error("Cannot find backend for inference. Make sure the device is available.");
+        _logger.warning("Cannot find backend. Only compilation can be executed.");
     }
 }
 
@@ -198,10 +198,6 @@ void NPUBackends::registerOptions(OptionsDesc& options) const {
     }
 }
 
-// TODO config should be also specified to backends, to allow use logging in devices and all levels below
-void NPUBackends::setup(const Config& config) {
-    _logger.setLevel(config.get<LOG_LEVEL>());
-}
 
 std::string NPUBackends::getCompilationPlatform(const std::string_view platform, const std::string& deviceId) const {
     // Platform parameter has a higher priority than deviceID

@@ -40,7 +40,7 @@ private:
      */
     std::shared_ptr<IExternalCompiler> apiAdapter;
     ze_driver_handle_t _driverHandle = nullptr;
-    mutable Logger _logger;
+    Logger _logger;
 };
 
 }  // namespace driverCompilerAdapter

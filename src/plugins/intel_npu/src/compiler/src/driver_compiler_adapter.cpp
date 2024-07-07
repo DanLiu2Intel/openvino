@@ -182,8 +182,7 @@ uint32_t LevelZeroCompilerAdapter::getSupportedOpsetVersion() const {
 
 NetworkDescription LevelZeroCompilerAdapter::compile(const std::shared_ptr<const ov::Model>& model,
                                                      const Config& config) const {
-    _logger.setLevel(config.get<LOG_LEVEL>());
-    _logger.debug("compileIR");
+    _logger.trace("compileIR");
     uint32_t supportedOpset = apiAdapter->getSupportedOpset();
 
     auto IR = serializeToIR(model, supportedOpset);
@@ -193,8 +192,7 @@ NetworkDescription LevelZeroCompilerAdapter::compile(const std::shared_ptr<const
 
 ov::SupportedOpsMap LevelZeroCompilerAdapter::query(const std::shared_ptr<const ov::Model>& model,
                                                     const Config& config) const {
-    _logger.setLevel(config.get<LOG_LEVEL>());
-    _logger.debug("queryResult");
+    _logger.trace("queryResult");
     ov::SupportedOpsMap result;
     const std::string deviceName = "NPU";
 
@@ -213,8 +211,7 @@ ov::SupportedOpsMap LevelZeroCompilerAdapter::query(const std::shared_ptr<const 
 }
 
 NetworkMetadata LevelZeroCompilerAdapter::parse(const std::vector<uint8_t>& blob, const Config& config) const {
-    _logger.setLevel(config.get<LOG_LEVEL>());
-    _logger.debug("parseBlob");
+    _logger.trace("parseBlob");
     return apiAdapter->parseBlob(blob, config);
 }
 

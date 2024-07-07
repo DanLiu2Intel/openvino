@@ -64,7 +64,7 @@ ZeroDevice::ZeroDevice(const std::shared_ptr<ZeroInitStructsHolder>& initStructs
         "zeDeviceGetCommandQueueGroupProperties",
         zeDeviceGetCommandQueueGroupProperties(_initStructs->getDevice(), &command_queue_group_count, nullptr));
 
-    log.debug("ZeroDevice::ZeroDevice - resize command_queue_group_count");
+    log.trace("ZeroDevice::ZeroDevice - resize command_queue_group_count");
     command_group_properties.resize(command_queue_group_count);
 
     for (auto& prop : command_group_properties) {
@@ -78,7 +78,7 @@ ZeroDevice::ZeroDevice(const std::shared_ptr<ZeroInitStructsHolder>& initStructs
                                                                   command_group_properties.data()));
 
     // Find the corresponding command queue group.
-    log.debug("ZeroDevice::ZeroDevice - findGroupOrdinal");
+    log.trace("ZeroDevice::ZeroDevice - findGroupOrdinal");
     _group_ordinal = zeroUtils::findGroupOrdinal(command_group_properties, device_properties);
     log.debug("ZeroDevice::ZeroDevice - init completed");
 }

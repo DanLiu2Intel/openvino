@@ -73,7 +73,7 @@ ZeroInitStructsHolder::ZeroInitStructsHolder() : log("NPUZeroInitStructsHolder",
 
     // Get our target driver
     driver_properties.stype = ZE_STRUCTURE_TYPE_DRIVER_PROPERTIES;
-    log.debug("ZeroInitStructsHolder - setting driver properties to ZE_STRUCTURE_TYPE_DRIVER_PROPERTIES");
+    log.trace("ZeroInitStructsHolder - setting driver properties to ZE_STRUCTURE_TYPE_DRIVER_PROPERTIES");
     for (uint32_t i = 0; i < drivers; ++i) {
         zeDriverGetProperties(all_drivers[i], &driver_properties);
 
@@ -99,7 +99,7 @@ ZeroInitStructsHolder::ZeroInitStructsHolder() : log("NPUZeroInitStructsHolder",
                        ZE_MAJOR_VERSION(ze_drv_api_version));
     }
     if (ZE_MINOR_VERSION(ZE_API_VERSION_CURRENT) != ZE_MINOR_VERSION(ze_drv_api_version)) {
-        log.debug("Some features might not be available! "
+        log.warning("Some features might not be available! "
                   "Plugin L0 API minor version = %d, Driver L0 API minor version = %d",
                   ZE_MINOR_VERSION(ZE_API_VERSION_CURRENT),
                   ZE_MINOR_VERSION(ze_drv_api_version));
@@ -107,10 +107,10 @@ ZeroInitStructsHolder::ZeroInitStructsHolder() : log("NPUZeroInitStructsHolder",
 
     // Query our graph extension version
     std::string graph_ext_name;
-    log.debug("ZeroInitStructsHolder - tie output of queryDriverExtensionVersion");
+    log.trace("ZeroInitStructsHolder - tie output of queryDriverExtensionVersion");
     std::tie(driver_ext_version, graph_ext_name) = queryDriverExtensionVersion(driver_handle);
 
-    log.debug("Found Driver Version %d.%d, Driver Extension Version %d.%d (%s)",
+    log.info("Found Driver Version %d.%d, Driver Extension Version %d.%d (%s)",
               ZE_MAJOR_VERSION(ze_drv_api_version),
               ZE_MINOR_VERSION(ze_drv_api_version),
               ZE_MAJOR_VERSION(driver_ext_version),
@@ -144,7 +144,7 @@ ZeroInitStructsHolder::ZeroInitStructsHolder() : log("NPUZeroInitStructsHolder",
 
 ZeroInitStructsHolder::~ZeroInitStructsHolder() {
     if (context) {
-        log.debug("ZeroInitStructsHolder - performing zeContextDestroy");
+        log.trace("ZeroInitStructsHolder - performing zeContextDestroy");
         auto result = zeContextDestroy(context);
         if (ZE_RESULT_SUCCESS != result) {
             log.error("zeContextDestroy failed %#X", uint64_t(result));
