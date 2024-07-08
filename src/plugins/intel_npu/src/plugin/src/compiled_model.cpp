@@ -72,11 +72,11 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
     create_executor();
     /* test for Logger::global */
     auto testLog = Logger::global();
-    testLog.error("<testLog> error\n");
-    testLog.warning("<testLog> print warning\n");
-    testLog.info("<testLog> print info\n");
-    testLog.debug("<testLog> print debug\n");
-    testLog.trace("<testLog> print trace\n");
+    testLog.error("<testLog> error");
+    testLog.warning("<testLog> print warning");
+    testLog.info("<testLog> print info");
+    testLog.debug("<testLog> print debug");
+    testLog.trace("<testLog> print trace");
     OV_ITT_TASK_SKIP(COMPILED_MODEL);
 }
 
