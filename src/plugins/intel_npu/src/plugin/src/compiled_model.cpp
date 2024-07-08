@@ -70,7 +70,12 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
 
     OV_ITT_TASK_NEXT(COMPILED_MODEL, "create_executor");
     create_executor();
-
+    auto testLog = Logger::global();
+    testLog.error("<testLog> error");
+    testLog.warning("<testLog> warning");
+    testLog.info("<testLog> info");
+    testLog.debug("<testLog> debug");
+    testLog.trace("<testLog> trace");
     OV_ITT_TASK_SKIP(COMPILED_MODEL);
 }
 

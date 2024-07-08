@@ -50,14 +50,18 @@ std::string printFormattedCStr(const char* fmt, ...) {
 // Logger
 //
 static const char* logLevelPrintout[] = {"NONE", "ERROR", "WARNING", "INFO", "DEBUG", "TRACE"};
-
+int i = 0;
 Logger& Logger::global() {
 #if !defined(NDEBUG)
+if(i == 0) {
 std::printf(" 1-here is going into the !defined(NDEBUG)\n");
+}
 #endif
 
 #if defined(NPU_PLUGIN_DEVELOPER_BUILD) || !defined(NDEBUG)
-    std::printf(" 2-here is going into the NPU_PLUGIN_DEVELOPER_BUILD and !defined(NDEBUG)\n");
+    if(i == 0) {
+        std::printf(" 2-here is going into the NPU_PLUGIN_DEVELOPER_BUILD and !defined(NDEBUG)\n");
+    }
     ov::log::Level logLvl = ov::log::Level::WARNING;
     if (const auto env = std::getenv("OV_NPU_LOG_LEVEL")) {
         try {
@@ -69,7 +73,10 @@ std::printf(" 1-here is going into the !defined(NDEBUG)\n");
     }
     static Logger log("global", logLvl);
 #else
-    std::printf(" 3-here is going into the else of NPU_PLUGIN_DEVELOPER_BUILD and !defined(NDEBUG)\n");
+    if(i == 0) {
+        std::printf(" 3-here is going into the else of NPU_PLUGIN_DEVELOPER_BUILD and !defined(NDEBUG)\n");
+    }
+    i++;
     static Logger log("global", ov::log::Level::NO);
 #endif
     return log;
