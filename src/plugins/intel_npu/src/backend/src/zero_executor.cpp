@@ -44,7 +44,7 @@ ZeroExecutor::ZeroExecutor(const std::shared_ptr<const ZeroInitStructsHolder>& i
                                                       zeroUtils::toZeQueuePriority(_config.get<MODEL_PRIORITY>()),
                                                       _config,
                                                       group_ordinal)}} {
-    _logger.debug("ZeroExecutor::ZeroExecutor - create graph_command_list");
+    _logger.trace("ZeroExecutor::ZeroExecutor init start - create graph_command_list");
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "Executor::ZeroExecutor");
     CommandList graph_command_list(_initStructs->getDevice(),
                                    _initStructs->getContext(),
@@ -119,7 +119,7 @@ ZeroExecutor::ZeroExecutor(const std::shared_ptr<const ZeroInitStructsHolder>& i
     graph_command_queue.executeCommandList(graph_command_list, fence);
     _logger.trace("ZeroExecutor::ZeroExecutor - performing hostSynchronize");
     fence.hostSynchronize();
-    _logger.debug("ZeroExecutor::ZeroExecutor - hostSynchronize completed");
+    _logger.trace("ZeroExecutor::ZeroExecutor - hostSynchronize completed");
 }
 
 void ZeroExecutor::setArgumentValue(uint32_t argi_, const void* argv_) const {

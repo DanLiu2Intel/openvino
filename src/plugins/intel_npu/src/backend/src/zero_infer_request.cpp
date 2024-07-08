@@ -60,12 +60,12 @@ std::optional<size_t> getBatchSizeForNode(const IONodeDescriptor& nodeDescriptor
     Logger logger("GetBatchSizeForNode", Logger::global().level());
 
     if (nodeDescriptor.originalShape.rank().get_length() == 0) {
-        logger.info("Networks with empty shapes are not supported when batching is handled by the plugin");
+        logger.warning("Networks with empty shapes are not supported when batching is handled by the plugin");
         return std::nullopt;
     }
 
     if (nodeDescriptor.originalShape.is_dynamic()) {
-        logger.info("Dynamic networks are not supported when batching is handled by the plugin");
+        logger.warning("Dynamic networks are not supported when batching is handled by the plugin");
         return std::nullopt;
     }
 
@@ -155,7 +155,7 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
       _profilingQuery(0,
                       _executor->getInitStructs()->getDevice(),
                       _executor->getInitStructs()->getProfilingDdiTable()) {
-    _logger.debug("ZeroInferRequest::ZeroInferRequest - SyncInferRequest");
+    _logger.trace("ZeroInferRequest::ZeroInferRequest - SyncInferRequest");
     const std::unordered_map<std::string, ZeroExecutor::ArgumentDescriptor>& executorInputDescriptors =
         _executor->inputs_desc_map();
     const std::unordered_map<std::string, ZeroExecutor::ArgumentDescriptor>& executorOutputDescriptors =
@@ -295,7 +295,7 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
                              _npuProfiling,
                              _copyAllTensors,
                              _batchSize);
-    _logger.debug("ZeroInferRequest::ZeroInferRequest - SyncInferRequest completed");
+    _logger.trace("ZeroInferRequest::ZeroInferRequest - SyncInferRequest completed");
 }
 
 void ZeroInferRequest::infer() {
@@ -304,7 +304,7 @@ void ZeroInferRequest::infer() {
 }
 
 void ZeroInferRequest::infer_async() {
-    _logger.debug("InferRequest::infer_async started");
+    _logger.trace("InferRequest::infer_async started");
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "infer_async");
 
     for (const auto& name : _inputAndStateInputNames) {
@@ -340,7 +340,7 @@ void ZeroInferRequest::infer_async() {
 
 void ZeroInferRequest::get_result() {
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "get_result");
-    _logger.debug("InferRequest::get_result start");
+    _logger.trace("InferRequest::get_result start");
 
     for (size_t i = 0; i < _batchSize; i++) {
         _pipeline->pull(i);
@@ -381,7 +381,7 @@ void ZeroInferRequest::get_result() {
     for (size_t i = 0; i < _batchSize; i++) {
         _pipeline->reset(i);
     }
-    _logger.debug("InferRequest::get_result finished");
+    _logger.trace("InferRequest::get_result finished");
 }
 
 void ZeroInferRequest::check_network_precision(const ov::element::Type_t precision) {
@@ -419,11 +419,11 @@ void ZeroInferRequest::check_network_precision(const ov::element::Type_t precisi
 }
 
 std::vector<ov::ProfilingInfo> ZeroInferRequest::get_profiling_info() const {
-    _logger.debug("InferRequest::get_profiling_info started");
+    _logger.trace("InferRequest::get_profiling_info started");
     const auto& compiledModel = *std::dynamic_pointer_cast<const ICompiledModel>(_compiledModel);
     const auto& compilerConfig = compiledModel.get_config();
     if (!compilerConfig.get<PERF_COUNT>() || !_config.get<PERF_COUNT>()) {
-        _logger.info("InferRequest::get_profiling_info complete with empty {}.");
+        _logger.warning("InferRequest::get_profiling_info complete with empty {}.");
         return {};
     }
 

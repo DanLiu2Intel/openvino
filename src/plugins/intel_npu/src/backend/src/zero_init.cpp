@@ -62,7 +62,7 @@ static std::tuple<uint32_t, std::string> queryDriverExtensionVersion(ze_driver_h
 
 ZeroInitStructsHolder::ZeroInitStructsHolder() : log("NPUZeroInitStructsHolder", Logger::global().level()) {
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "ZeroInitStructsHolder::ZeroInitStructsHolder");
-    log.debug("ZeroInitStructsHolder - performing zeInit on VPU only");
+    log.trace("ZeroInitStructsHolder - performing zeInit on VPU only");
     zeroUtils::throwOnFail("zeInit", zeInit(ZE_INIT_FLAG_VPU_ONLY));
 
     uint32_t drivers = 0;
@@ -139,7 +139,7 @@ ZeroInitStructsHolder::ZeroInitStructsHolder() : log("NPUZeroInitStructsHolder",
 
     ze_context_desc_t context_desc = {ZE_STRUCTURE_TYPE_CONTEXT_DESC, 0, 0};
     zeroUtils::throwOnFail("zeContextCreate", zeContextCreate(driver_handle, &context_desc, &context));
-    log.debug("ZeroInitStructsHolder initialize complete");
+    log.trace("ZeroInitStructsHolder initialize complete");
 }
 
 ZeroInitStructsHolder::~ZeroInitStructsHolder() {

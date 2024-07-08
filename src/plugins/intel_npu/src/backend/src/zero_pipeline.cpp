@@ -37,7 +37,7 @@ public:
                   {_event_pool.handle(), stage::EXECUTE, _config},
                   {_event_pool.handle(), stage::READBACK, _config}}},
           _logger("DiscretePipeline", _config.get<LOG_LEVEL>()) {
-        _logger.debug("DiscretePipeline - initialize started");
+        _logger.trace("DiscretePipeline - initialize started");
         const ZeroExecutor* executor = static_cast<const ZeroExecutor*>(executorPtr.get());
         static const std::size_t alignment = STANDARD_PAGE_SIZE;
 
@@ -95,7 +95,7 @@ public:
         for (auto& commandList : _command_list) {
             commandList.close();
         }
-        _logger.debug("DiscretePipeline - initialize completed");
+        _logger.trace("DiscretePipeline - initialize completed");
     };
 
     DiscretePipeline(const DiscretePipeline&) = delete;
@@ -103,7 +103,7 @@ public:
     virtual ~DiscretePipeline() = default;
 
     void push(size_t) override {
-        _logger.debug("DiscretePipeline - push() started");
+        _logger.trace("DiscretePipeline - push() started");
         OV_ITT_TASK_CHAIN(ZERO_INFER_REQUEST_DP_PUSH,
                           itt::domains::LevelZeroBackend,
                           "DiscretePipeline::push",
@@ -114,11 +114,11 @@ public:
         OV_ITT_TASK_NEXT(ZERO_INFER_REQUEST_DP_PUSH, "EXECUTE");
         // Submit the command list for execute
         _command_queues[stage::EXECUTE]->executeCommandList(_command_list[stage::EXECUTE], _fence[stage::EXECUTE]);
-        _logger.debug("DiscretePipeline - push() completed");
+        _logger.trace("DiscretePipeline - push() completed");
     };
 
     void pull(size_t) override {
-        _logger.debug("DiscretePipeline - pull() started");
+        _logger.trace("DiscretePipeline - pull() started");
         OV_ITT_TASK_CHAIN(ZERO_INFER_REQUEST_DP_PULL,
                           itt::domains::LevelZeroBackend,
                           "DiscretePipeline::pull",
@@ -131,7 +131,7 @@ public:
         // Wait for output copy to finish execution for _fence from the host, to make sure that data
         // is available in the hostMem buffer of the output
         _fence[stage::READBACK].hostSynchronize();
-        _logger.debug("DiscretePipeline - pull() completed");
+        _logger.trace("DiscretePipeline - pull() completed");
     };
 
     void reset(size_t) const override {
@@ -173,7 +173,7 @@ public:
 
         OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend,
                            "Zero_infer_request::IntegratedPipeline::IntegratedPipeline");
-        _logger.debug("IntegratedPipeline - initialize started");
+        _logger.trace("IntegratedPipeline - initialize started");
 
         _command_lists.reserve(batch_size);
         _events.reserve(batch_size);
@@ -225,7 +225,7 @@ public:
             }
             _command_lists.at(i)->close();
         }
-        _logger.debug("IntegratedPipeline - initialize completed");
+        _logger.trace("IntegratedPipeline - initialize completed");
     }
 
     IntegratedPipeline(const IntegratedPipeline&) = delete;
@@ -233,18 +233,18 @@ public:
     virtual ~IntegratedPipeline() = default;
 
     void push(size_t batch_index) override {
-        _logger.debug("IntegratedPipeline - push() started");
+        _logger.trace("IntegratedPipeline - push() started");
         OV_ITT_TASK_CHAIN(ZERO_EXECUTOR_IP_PUSH, itt::domains::LevelZeroBackend, "IntegratedPipeline", "push");
         if (sync_output_with_fences_) {
             _command_queue.executeCommandList(*_command_lists.at(batch_index), *_fences.at(batch_index));
         } else {
             _command_queue.executeCommandList(*_command_lists.at(batch_index));
         }
-        _logger.debug("IntegratedPipeline - push() completed");
+        _logger.trace("IntegratedPipeline - push() completed");
     };
 
     void pull(size_t batch_index) override {
-        _logger.debug("IntegratedPipeline - pull() started");
+        _logger.trace("IntegratedPipeline - pull() started");
         OV_ITT_TASK_CHAIN(ZERO_EXECUTOR_IP_PULL, itt::domains::LevelZeroBackend, "IntegratedPipeline", "pull");
         if (sync_output_with_fences_) {
             _fences.at(batch_index)->hostSynchronize();
@@ -255,17 +255,17 @@ public:
         if (_npu_profiling != nullptr) {
             _npu_profiling->sampleNpuTimestamps();
         }
-        _logger.debug("IntegratedPipeline - pull() completed");
+        _logger.trace("IntegratedPipeline - pull() completed");
     };
 
     void reset(size_t batch_index) const override {
-        _logger.debug("IntegratedPipeline - rest() started");
+        _logger.trace("IntegratedPipeline - rest() started");
         if (sync_output_with_fences_) {
             _fences.at(batch_index)->reset();
         } else {
             _events.at(batch_index)->reset();
         }
-        _logger.debug("IntegratedPipeline - rest() completed");
+        _logger.trace("IntegratedPipeline - rest() completed");
     };
 
 private:

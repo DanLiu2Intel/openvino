@@ -68,7 +68,7 @@ ov::SoPtr<IEngineBackend> loadBackend(const std::string& libpath) {
 namespace intel_npu {
 
 // TODO Config will be useless here, since only default values will be used
-NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, [[maybe_unused]] const Config& config)
+NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry)
     : _logger("NPUBackends", Logger::global().level()) {
     std::vector<ov::SoPtr<IEngineBackend>> registeredBackends;
     [[maybe_unused]] const auto registerBackend = [&](ov::SoPtr<IEngineBackend> backend, const std::string& name) {
@@ -78,7 +78,7 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
             for (const auto& device : backendDevices) {
                 deviceNames << device << " ";
             }
-            _logger.debug("Register '%s' with devices '%s'", name.c_str(), deviceNames.str().c_str());
+            _logger.trace("Register '%s' with devices '%s'", name.c_str(), deviceNames.str().c_str());
             registeredBackends.emplace_back(backend);
         }
     };

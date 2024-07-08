@@ -16,7 +16,7 @@ ZeroDevice::ZeroDevice(const std::shared_ptr<ZeroInitStructsHolder>& initStructs
     : _initStructs(initStructs),
       _graph_ddi_table_ext(_initStructs->getGraphDdiTable()),
       log("ZeroDevice", Logger::global().level()) {
-    log.debug("ZeroDevice::ZeroDevice init");
+    log.trace("ZeroDevice::ZeroDevice init");
     device_properties.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
     zeroUtils::throwOnFail("zeDeviceGetProperties",
                            zeDeviceGetProperties(_initStructs->getDevice(), &device_properties));
@@ -80,7 +80,7 @@ ZeroDevice::ZeroDevice(const std::shared_ptr<ZeroInitStructsHolder>& initStructs
     // Find the corresponding command queue group.
     log.trace("ZeroDevice::ZeroDevice - findGroupOrdinal");
     _group_ordinal = zeroUtils::findGroupOrdinal(command_group_properties, device_properties);
-    log.debug("ZeroDevice::ZeroDevice - init completed");
+    log.trace("ZeroDevice::ZeroDevice - init completed");
 }
 
 std::shared_ptr<IExecutor> ZeroDevice::createExecutor(

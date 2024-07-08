@@ -14,7 +14,7 @@ namespace intel_npu {
 namespace driverCompilerAdapter {
 
 LevelZeroCompilerAdapter::LevelZeroCompilerAdapter() : _logger("LevelZeroCompilerAdapter", Logger::global().level()) {
-    _logger.debug("initialize zeAPI");
+    _logger.trace("initialize zeAPI start");
     auto result = zeInit(ZE_INIT_FLAG_VPU_ONLY);
     if (ZE_RESULT_SUCCESS != result) {
         OPENVINO_THROW("L0 initialize zeAPI",
@@ -174,6 +174,7 @@ LevelZeroCompilerAdapter::LevelZeroCompilerAdapter() : _logger("LevelZeroCompile
         apiAdapter =
             std::make_shared<LevelZeroCompilerInDriver<ze_graph_dditable_ext_1_2_t>>(graphExtName, _driverHandle);
     }
+    _logger.trace("initialize zeAPI end");
 }
 
 uint32_t LevelZeroCompilerAdapter::getSupportedOpsetVersion() const {
@@ -182,7 +183,7 @@ uint32_t LevelZeroCompilerAdapter::getSupportedOpsetVersion() const {
 
 NetworkDescription LevelZeroCompilerAdapter::compile(const std::shared_ptr<const ov::Model>& model,
                                                      const Config& config) const {
-    _logger.trace("compileIR");
+    _logger.trace("compileIR start");
     uint32_t supportedOpset = apiAdapter->getSupportedOpset();
 
     auto IR = serializeToIR(model, supportedOpset);
@@ -192,7 +193,7 @@ NetworkDescription LevelZeroCompilerAdapter::compile(const std::shared_ptr<const
 
 ov::SupportedOpsMap LevelZeroCompilerAdapter::query(const std::shared_ptr<const ov::Model>& model,
                                                     const Config& config) const {
-    _logger.trace("queryResult");
+    _logger.trace("queryResult start");
     ov::SupportedOpsMap result;
     const std::string deviceName = "NPU";
 
@@ -206,12 +207,11 @@ ov::SupportedOpsMap LevelZeroCompilerAdapter::query(const std::shared_ptr<const 
     } catch (std::exception& e) {
         OPENVINO_THROW("Fail in calling querynetwork : ", e.what());
     }
-
+    _logger.trace("queryResult end");
     return result;
 }
 
 NetworkMetadata LevelZeroCompilerAdapter::parse(const std::vector<uint8_t>& blob, const Config& config) const {
-    _logger.trace("parseBlob");
     return apiAdapter->parseBlob(blob, config);
 }
 
