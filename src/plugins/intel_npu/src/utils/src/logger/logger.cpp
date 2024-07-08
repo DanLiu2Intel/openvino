@@ -76,9 +76,9 @@ std::printf(" 1-here is going into the !defined(NDEBUG)\n");
     if(i == 0) {
         std::printf(" 3-here is going into the else of NPU_PLUGIN_DEVELOPER_BUILD and !defined(NDEBUG)\n");
     }
-    i++;
     static Logger log("global", ov::log::Level::NO);
 #endif
+    i++;
     return log;
 }
 
