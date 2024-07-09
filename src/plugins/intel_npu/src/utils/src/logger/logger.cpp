@@ -61,6 +61,7 @@ std::printf(" 1-here is going into the !defined(NDEBUG)\n");
 #if defined(NPU_PLUGIN_DEVELOPER_BUILD) || !defined(NDEBUG)
     if(i == 0) {
         std::printf(" 2-here is going into the NPU_PLUGIN_DEVELOPER_BUILD and !defined(NDEBUG)\n");
+        i++;
     }
     ov::log::Level logLvl = ov::log::Level::WARNING;
     if (const auto env = std::getenv("OV_NPU_LOG_LEVEL")) {
@@ -75,6 +76,7 @@ std::printf(" 1-here is going into the !defined(NDEBUG)\n");
 #else
     if(i == 0) {
         std::printf(" 3-here is going into the else of NPU_PLUGIN_DEVELOPER_BUILD and !defined(NDEBUG)\n");
+        i++;
     }
     static Logger log("global", ov::log::Level::NO);
 #endif
