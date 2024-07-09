@@ -52,6 +52,7 @@ std::string printFormattedCStr(const char* fmt, ...) {
 static const char* logLevelPrintout[] = {"NONE", "ERROR", "WARNING", "INFO", "DEBUG", "TRACE"};
 int i = 0;
 Logger& Logger::global() {
+    std::printf("===test\n");
 #if !defined(NDEBUG)
 if(i == 0) {
 std::printf(" 1-here is going into the !defined(NDEBUG)\n");
