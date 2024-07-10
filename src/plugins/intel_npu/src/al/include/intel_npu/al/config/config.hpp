@@ -346,7 +346,9 @@ OptionConcept makeOptionModel() {
 
 class OptionsDesc final {
 public:
-    OptionsDesc() : _logger("OptionsDesc", Logger::global().level()) {}
+    OptionsDesc() : _logger("OptionsDesc", Logger::global().level()) {
+        std::printf(" =====> here is in OptionsDesc constructor\n");
+    }
     template <class Opt>
     void add();
 
