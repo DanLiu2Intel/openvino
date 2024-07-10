@@ -201,6 +201,9 @@ void NPUBackends::registerOptions(OptionsDesc& options) const {
 // TODO config should be also specified to backends, to allow use logging in devices and all levels below
 void NPUBackends::setup(const Config& config) {
     _logger.setLevel(config.get<LOG_LEVEL>());
+    if (_backend != nullptr){
+        _backend->updateInfo(config);
+    }
 }
 
 
