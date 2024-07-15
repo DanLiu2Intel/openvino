@@ -117,35 +117,36 @@ std::ostream& Logger::getLevelStream(ov::log::Level msgLevel) {
     return getColor(msgLevel);
 }
 
-// void Logger::addEntryPackedActive(ov::log::Level msgLevel, std::string_view msg) const {
-//     std::stringstream tempStream;
-//     char timeStr[] = "undefined_time";
-//     time_t now = time(nullptr);
-//     struct tm* loctime = localtime(&now);
-//     if (loctime != nullptr) {
-//         strftime(timeStr, sizeof(timeStr), "%H:%M:%S", loctime);
-//     }
+void Logger::addEntryPackedActive(ov::log::Level msgLevel, std::string_view msg) const {
+    std::stringstream tempStream;
+    char timeStr[] = "undefined_time";
+    time_t now = time(nullptr);
+    struct tm* loctime = localtime(&now);
+    if (loctime != nullptr) {
+        strftime(timeStr, sizeof(timeStr), "%H:%M:%S", loctime);
+    }
 
-//     using namespace std::chrono;
-//     uint32_t ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() % 1000;
-//     auto& stream = getLevelStream(msgLevel);
-//     try {
-//         tempStream << "[" << logLevelPrintout[static_cast<int32_t>(msgLevel) + 1] << "] " << timeStr << "." << ms
-//                    << " [" << _name << "] ";
+    using namespace std::chrono;
+    uint32_t ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() % 1000;
+    auto& stream = getLevelStream(msgLevel);
+    try {
+        // tempStream << "[" << logLevelPrintout[static_cast<int32_t>(msgLevel) + 1] << "] " << timeStr << "." << ms
+        //            << " [" << _name << "] ";
 
-//         tempStream << msg;
+        // tempStream << msg;
+        tempStream << "";
 
-//         static std::mutex logMtx;
-//         std::lock_guard<std::mutex> logMtxLock(logMtx);
-//         stream << tempStream.str() << DEFAULT_COLOR;
-//         stream << std::endl;
-//         stream.flush();
-//     } catch (const std::exception& e) {
-//         std::cerr << "Exception caught in Logger::addEntryPackedActive - " << e.what() << std::endl;
-//     } catch (...) {
-//         std::cerr << "Unknown/internal exception happened in Logger::addEntryPackedActive" << std::endl;
-//     }
-//     stream.flush();
-// }
+        static std::mutex logMtx;
+        std::lock_guard<std::mutex> logMtxLock(logMtx);
+        stream << tempStream.str() << DEFAULT_COLOR;
+        stream << std::endl;
+        stream.flush();
+    } catch (const std::exception& e) {
+        std::cerr << "Exception caught in Logger::addEntryPackedActive - " << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "Unknown/internal exception happened in Logger::addEntryPackedActive" << std::endl;
+    }
+    stream.flush();
+}
 
 }  // namespace intel_npu
