@@ -22,6 +22,7 @@ namespace intel_npu {
 class Plugin : public ov::IPlugin {
 public:
     Plugin();
+    Plugin(bool flag = false);
 
     Plugin(const Plugin&) = delete;
 
