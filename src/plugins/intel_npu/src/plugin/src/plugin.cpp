@@ -138,6 +138,12 @@ size_t getFileSize(std::istream& stream) {
     stream.seekg(0, std::ios_base::end);
     const size_t streamEnd = stream.tellg();
     stream.seekg(streamStart, std::ios_base::beg);
+    
+    if (streamEnd < streamStart) {
+        OPENVINO_THROW("Invalid stream size: streamEnd (", streamEnd,
+                       ") is not larger than streamStart (", streamStart, ")!");
+    }
+    
     return streamEnd - streamStart;
 }
 
@@ -163,6 +169,18 @@ static auto get_specified_device_name(const Config config) {
 static Config add_platform_to_the_config(Config config, const std::string_view platform) {
     config.update({{ov::intel_npu::platform.name(), std::string(platform)}});
     return config;
+}
+
+Plugin::Plugin(bool flag)
+    : _options(std::make_shared<OptionsDesc>()),
+      _globalConfig(_options),
+      _logger("NPUPlugin", Logger::global().level()) {
+        std::printf("  <add here is the test plugin(bool flag)\n");
+
+        if(flag)
+            std::printf("<first test successfully!!!>\n");
+        else
+            std::printf("flag is false! not change to true.\n");
 }
 
 Plugin::Plugin()
@@ -769,6 +787,10 @@ ov::SoPtr<ICompiler> Plugin::getCompiler(const Config& config) const {
 std::atomic<int> Plugin::_compiledModelLoadCounter{1};
 
 static const ov::Version version = {CI_BUILD_NUMBER, NPU_PLUGIN_LIB_NAME};
-OV_DEFINE_PLUGIN_CREATE_FUNCTION(Plugin, version)
+//OV_DEFINE_PLUGIN_CREATE_FUNCTION(Plugin, version)
+
+bool fflag = true;
+OV_DEFINE_PLUGIN_CREATE_FUNCTION(Plugin, version, fflag)
+
 
 }  // namespace intel_npu
