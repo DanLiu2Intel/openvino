@@ -164,7 +164,10 @@ static Config add_platform_to_the_config(Config config, const std::string_view p
     config.update({{ov::intel_npu::platform.name(), std::string(platform)}});
     return config;
 }
-
+/*
+1）通过环境变量只能再代码中使用，也就是在每个func中 多一套判断确定走那一个位置，来决定最终走的是那一部分的plugin和compile_model 已经compiledModel
+2）编译时，通过option决定使用的Plugin和等一系列的内容
+*/
 Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
