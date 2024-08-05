@@ -5,6 +5,8 @@
 
 set(TARGET_NAME compile_tool)
 
+target_link_libraries(${NPU_PLUGIN_TARGET})
+
 if (NOT DEFINED PROJECT_NAME)
     cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
     project(compile_tool_standalone)

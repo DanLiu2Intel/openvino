@@ -19,6 +19,8 @@
 
 #include "tools_helpers.hpp"
 
+#include "src/plugins/intel_npu/src/plugin/include/plugin.hpp"
+
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
 static constexpr char model_message[] = "Required. Path to the XML model.";
@@ -78,6 +80,8 @@ static const char shape_message[] =
         " For dynamic dimensions use symbol `?` or '-1'. Ex. [?,3,?,?]."
         " For bounded dimensions specify range 'min..max'. Ex. [1..10,3,?,?].";
 
+static const char dryon_message[] = "test dry on";
+
 static const char override_model_batch_size[] = "Enforce a model to be compiled for batch size";
 
 DEFINE_bool(h, false, help_message);
@@ -96,6 +100,7 @@ DEFINE_string(iml, "", inputs_model_layout_message);
 DEFINE_string(oml, "", outputs_model_layout_message);
 DEFINE_string(ioml, "", ioml_message);
 DEFINE_string(shape, "", shape_message);
+DEFINE_string(dryon, "", dryon_message);
 DEFINE_uint32(override_model_batch_size, 1, override_model_batch_size);
 
 namespace {
@@ -394,6 +399,7 @@ static void showUsage() {
     std::cout << "    -oml                         <value>     " << outputs_model_layout_message << std::endl;
     std::cout << "    -ioml                       \"<value>\"    " << ioml_message << std::endl;
     std::cout << "    -shape                       <value>     " << shape_message << std::endl;
+    std::cout << "    -dryon                       <value>     " << dryon_message << std::endl;
     std::cout << std::endl;
 }
 
@@ -411,6 +417,10 @@ static bool parseCommandLine(int* argc, char*** argv) {
 
     if (FLAGS_d.empty()) {
         throw std::invalid_argument("Target device name is required");
+    }
+
+    if (!FLAGS_dryon.empty()) {
+        bool flag_Dryon = true;
     }
 
     if (1 < *argc) {

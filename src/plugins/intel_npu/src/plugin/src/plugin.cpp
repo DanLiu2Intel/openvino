@@ -24,7 +24,6 @@
 using namespace intel_npu;
 
 namespace {
-
 const std::vector<size_t> CONSTANT_NODE_DUMMY_SHAPE{1};
 
 const char* NPU_PLUGIN_LIB_NAME = "openvino_intel_npu_plugin";
@@ -156,6 +155,8 @@ void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
 
 namespace intel_npu {
 
+bool flag_Dryon = false;
+
 static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
                             OptionMode mode = OptionMode::Both) {
@@ -176,54 +177,9 @@ static Config add_platform_to_the_config(Config config, const std::string_view p
     return config;
 }
 
-Plugin::Plugin()
-    : _options(std::make_shared<OptionsDesc>()),
-      _globalConfig(_options),
-      _logger("NPUPlugin", Logger::global().level()) {
-    OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
-    set_device_name("NPU");
-
-    registerCommonOptions(*_options);
-    registerCompilerOptions(*_options);
-    registerRunTimeOptions(*_options);
-
-    // parse env_variables to get LOG_LEVEL if needed
-    _globalConfig.parseEnvVars();
-    Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
-
-    // TODO: generation of available backends list can be done during execution of CMake scripts
-    std::vector<AvailableBackends> backendRegistry;
-
-#if defined(OPENVINO_STATIC_LIBRARY)
-    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
-#else
-#    if defined(ENABLE_IMD_BACKEND)
-    if (const auto* envVar = std::getenv("IE_NPU_USE_IMD_BACKEND")) {
-        if (envVarStrToBool("IE_NPU_USE_IMD_BACKEND", envVar)) {
-            backendRegistry.push_back(AvailableBackends::IMD);
-        }
-    }
-#    endif
-
-#    if defined(_WIN32) || defined(_WIN64) || (defined(__linux__) && defined(__x86_64__))
-    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
-#    endif
-#endif
-
-    OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "NPUBackends");
-    _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
-    OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
-    _backends->registerOptions(*_options);
-
-    OV_ITT_TASK_NEXT(PLUGIN, "Metrics");
-    _metrics = std::make_unique<Metrics>(_backends);
-
-    // parse again env_variables after backend is initialized to get backend proprieties
-    _globalConfig.parseEnvVars();
-
-    // Map from name to function {Config -> ov::Any}
-    // Note that some properties are RW before network is loaded, and become RO after network is loaded
-    _properties = {
+std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> Plugin::Generate_supportedPropert(){
+    std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> temp_prop;
+    temp_prop = {
         // OV Public
         // =========
         {ov::supported_properties.name(),
@@ -408,12 +364,6 @@ Plugin::Plugin()
           [](const Config& config) {
               return config.get<EXCLUSIVE_ASYNC_REQUESTS>();
           }}},
-        {ov::internal::supported_properties.name(),
-         {false,
-          ov::PropertyMutability::RO,
-          [&](const Config&) {
-              return _metrics->GetInternalSupportedProperties();
-          }}},
         // NPU Public
         // =========
         {ov::intel_npu::device_alloc_mem_size.name(),
@@ -539,6 +489,110 @@ Plugin::Plugin()
         {ov::intel_npu::batch_mode.name(), {false, ov::PropertyMutability::RW, [](const Config& config) {
                                                 return config.getString<BATCH_MODE>();
                                             }}}};
+    return temp_prop;
+}
+
+/**
+ * @brief init npu-plugin normally
+ * @details  this is original npu-plugin constructor
+ */
+void Plugin::init(){
+    // TODO: generation of available backends list can be done during execution of CMake scripts
+    std::vector<AvailableBackends> backendRegistry;
+
+#if defined(OPENVINO_STATIC_LIBRARY)
+    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+#else
+#    if defined(ENABLE_IMD_BACKEND)
+    if (const auto* envVar = std::getenv("IE_NPU_USE_IMD_BACKEND")) {
+        if (envVarStrToBool("IE_NPU_USE_IMD_BACKEND", envVar)) {
+            backendRegistry.push_back(AvailableBackends::IMD);
+        }
+    }
+#    endif
+
+#    if defined(_WIN32) || defined(_WIN64) || (defined(__linux__) && defined(__x86_64__))
+    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+#    endif
+#endif
+
+    OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "NPUBackends");
+    _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
+    OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
+    _backends->registerOptions(*_options);
+
+    OV_ITT_TASK_NEXT(PLUGIN, "Metrics");
+    _metrics = std::make_unique<Metrics>(_backends);
+
+    // parse again env_variables after backend is initialized to get backend proprieties
+    _globalConfig.parseEnvVars();
+
+    // Map from name to function {Config -> ov::Any}
+    // Note that some properties are RW before network is loaded, and become RO after network is loaded
+    // this is for dry on execution.
+    _properties = Generate_supportedPropert();
+    _properties.insert(
+        // OV Internals
+        // =========
+        {ov::internal::supported_properties.name(),
+         {false,
+          ov::PropertyMutability::RO,
+          [&](const Config&) {
+              return _metrics->GetInternalSupportedProperties();
+          }}});
+    
+}
+
+/**
+ * @brief init npu-plugin without backend
+ * @details  init npu-plugin without backend. This function in only used when compile-tool use flag --dryon and 
+ * compile model to generate blob. Need to notice: the Metrics::GetInternalSupportedProperties() param is used an
+ * global variable, which method is false-postive.
+ */
+void Plugin::initPluginWithoutBackend(){
+    OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "create empty NPUBackends");
+    _backends = std::make_shared<NPUBackends>();
+
+    OV_ITT_TASK_NEXT(PLUGIN, "Metrics");
+    _metrics = std::make_unique<Metrics>(_backends);
+
+    // Map from name to function {Config -> ov::Any}
+    // Note that some properties are RW before network is loaded, and become RO after network is loaded
+    // this is for dry on execution.
+    //difference is Metrics::GetInternalSupportedProperties()
+    _properties = Generate_supportedPropert();
+    _properties.insert(
+        // OV Internals
+        // =========
+        {ov::internal::supported_properties.name(),
+         {false,
+          ov::PropertyMutability::RO,
+          [&](const Config&) {
+              return Metrics::GetInternalSupportedProperties();
+          }}}); //this part seems not need.
+}
+
+
+Plugin::Plugin()
+    : _options(std::make_shared<OptionsDesc>()),
+      _globalConfig(_options),
+      _logger("NPUPlugin", Logger::global().level()) {
+    OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
+    set_device_name("NPU");
+
+    registerCommonOptions(*_options);
+    registerCompilerOptions(*_options);
+    registerRunTimeOptions(*_options);
+
+    // parse env_variables to get LOG_LEVEL if needed
+    _globalConfig.parseEnvVars();
+    Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
+    
+    bool flag_Dryon = false;
+    if (flag_Dryon)
+        initPluginWithoutBackend();
+    else
+        init();
 
     for (auto& property : _properties) {
         if (std::get<0>(property.second)) {
@@ -612,66 +666,87 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         }
     }
 
-    const auto platform = _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
-    auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
-    localConfig.update({{ov::intel_npu::platform.name(), platform}});
-
-    set_batch_config(_backends->isBatchingSupported(), localConfig);
-
-    if (!model->get_variables().empty()) {
-        if (localConfig.get<BATCH_MODE>() == ov::intel_npu::BatchMode::PLUGIN) {
-            OPENVINO_THROW("This model contains states, thus it is not supported when handling batching on the plugin");
-        }
-
-        _logger.info("The batching will be handled by the compiler due to states found inside the IR");
-
-        std::stringstream strStream;
-        strStream << ov::intel_npu::BatchMode::COMPILER;
-        localConfig.update({{ov::intel_npu::batch_mode.name(), strStream.str()}});
-    }
-
-    // Update stepping w/ information from driver, unless provided by user or we are off-device
-    // Ignore, if compilation was requested for platform, different from current
-    if (!localConfig.has<STEPPING>() && device != nullptr &&
-        device->getName() == ov::intel_npu::Platform::standardize(platform) &&
-        _metrics->GetBackendName() == "level_zero") {
-        try {
-            localConfig.update({{ov::intel_npu::stepping.name(), std::to_string(device->getSubDevId())}});
-        } catch (...) {
-            _logger.warning("Stepping information not implemented by selected backend. Skipping. Please provide "
-                            "NPU_STEPPING if required.");
-        }
-    }
-    // Update max_tiles w/ information from driver, unless provided by user or we are off-device
-    // Ignore, if compilation was requested for platform, different from current
-    if (!localConfig.has<MAX_TILES>() && device != nullptr &&
-        device->getName() == ov::intel_npu::Platform::standardize(platform) &&
-        _metrics->GetBackendName() == "level_zero") {
-        try {
-            localConfig.update({{ov::intel_npu::max_tiles.name(), std::to_string(device->getMaxNumSlices())}});
-        } catch (...) {
-            _logger.warning("Max tiles information not implemented by selected backend. Skipping. Please provide "
-                            "NPU_MAX_TILES if required.");
-        }
-    }
-
-    OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
-
     std::shared_ptr<ov::ICompiledModel> compiledModel;
+    bool flag_Dryon = false;
 
-    try {
-        bool profiling = localConfig.get<PERF_COUNT>();
+    if (flag_Dryon){
+        std::shared_ptr<IDevice> device = nullptr;
+        OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
 
-        compiledModel = std::make_shared<CompiledModel>(model,
-                                                        shared_from_this(),
-                                                        device,
-                                                        getCompiler(localConfig),
-                                                        profiling,
-                                                        localConfig);
-    } catch (const std::exception& ex) {
-        OPENVINO_THROW(ex.what());
-    } catch (...) {
-        OPENVINO_THROW("Unexpected exception thrown upon attempting to create the \"CompiledModel\" object");
+        try {
+            bool profiling = localConfig.get<PERF_COUNT>();
+            compiledModel = std::make_shared<CompiledModel>(model,
+                                                            shared_from_this(),
+                                                            device,
+                                                            getCompiler(localConfig),
+                                                            profiling,
+                                                            localConfig);
+        } catch (const std::exception& ex) {
+            OPENVINO_THROW(ex.what());
+        } catch (...) {
+            OPENVINO_THROW("Unexpected exception thrown upon attempting to create the \"CompiledModel\" object");
+        }        
+    } else {
+
+        const auto platform = _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
+        auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
+        localConfig.update({{ov::intel_npu::platform.name(), platform}});
+
+        set_batch_config(_backends->isBatchingSupported(), localConfig);
+
+        if (!model->get_variables().empty()) {
+            if (localConfig.get<BATCH_MODE>() == ov::intel_npu::BatchMode::PLUGIN) {
+                OPENVINO_THROW("This model contains states, thus it is not supported when handling batching on the plugin");
+            }
+
+            _logger.info("The batching will be handled by the compiler due to states found inside the IR");
+
+            std::stringstream strStream;
+            strStream << ov::intel_npu::BatchMode::COMPILER;
+            localConfig.update({{ov::intel_npu::batch_mode.name(), strStream.str()}});
+        }
+
+        // Update stepping w/ information from driver, unless provided by user or we are off-device
+        // Ignore, if compilation was requested for platform, different from current
+        if (!localConfig.has<STEPPING>() && device != nullptr &&
+            device->getName() == ov::intel_npu::Platform::standardize(platform) &&
+            _metrics->GetBackendName() == "level_zero") {
+            try {
+                localConfig.update({{ov::intel_npu::stepping.name(), std::to_string(device->getSubDevId())}});
+            } catch (...) {
+                _logger.warning("Stepping information not implemented by selected backend. Skipping. Please provide "
+                                "NPU_STEPPING if required.");
+            }
+        }
+        // Update max_tiles w/ information from driver, unless provided by user or we are off-device
+        // Ignore, if compilation was requested for platform, different from current
+        if (!localConfig.has<MAX_TILES>() && device != nullptr &&
+            device->getName() == ov::intel_npu::Platform::standardize(platform) &&
+            _metrics->GetBackendName() == "level_zero") {
+            try {
+                localConfig.update({{ov::intel_npu::max_tiles.name(), std::to_string(device->getMaxNumSlices())}});
+            } catch (...) {
+                _logger.warning("Max tiles information not implemented by selected backend. Skipping. Please provide "
+                                "NPU_MAX_TILES if required.");
+            }
+        }
+
+        OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
+
+        try {
+            bool profiling = localConfig.get<PERF_COUNT>();
+
+            compiledModel = std::make_shared<CompiledModel>(model,
+                                                            shared_from_this(),
+                                                            device,
+                                                            getCompiler(localConfig),
+                                                            profiling,
+                                                            localConfig);
+        } catch (const std::exception& ex) {
+            OPENVINO_THROW(ex.what());
+        } catch (...) {
+            OPENVINO_THROW("Unexpected exception thrown upon attempting to create the \"CompiledModel\" object");
+        }
     }
 
     ++_compiledModelLoadCounter;

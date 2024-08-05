@@ -66,6 +66,9 @@ ov::SoPtr<IEngineBackend> loadBackend(const std::string& libpath, const Config& 
 }  // namespace
 
 namespace intel_npu {
+NPUBackends::NPUBackends() : _logger("NPUBackends", Logger::global().level()) {
+    _backend = nullptr;
+}
 
 // TODO Config will be useless here, since only default values will be used
 NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, [[maybe_unused]] const Config& config)

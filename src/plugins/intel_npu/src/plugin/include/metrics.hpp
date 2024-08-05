@@ -42,7 +42,7 @@ public:
     ov::device::Type GetDeviceType(const std::string& specifiedDeviceName) const;
 
     std::vector<ov::PropertyName> GetCachingProperties() const;
-    std::vector<ov::PropertyName> GetInternalSupportedProperties() const;
+    static std::vector<ov::PropertyName> GetInternalSupportedProperties();
 
     ~Metrics() = default;
 
