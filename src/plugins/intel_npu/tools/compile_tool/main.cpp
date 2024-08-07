@@ -19,7 +19,7 @@
 
 #include "tools_helpers.hpp"
 
-#include "src/plugins/intel_npu/src/plugin/include/plugin.hpp"
+#include "al/include/update_flage.hpp"
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -47,12 +47,12 @@ static constexpr char outputs_precision_message[] =
 
 static constexpr char iop_message[] =
         "Optional. Specifies precision for input and output layers by name.\n"
-        "                                             Example: -iop \"input:FP16, output:FP16\".\n"
+        "                                            Example: -iop \"input:FP16, output:FP16\".\n"
         "                                             Notice that quotes are required.\n"
         "                                             Overwrites precision from ip and op options for specified "
         "layers.";
 
-static constexpr char inputs_layout_message[] = "Optional. Specifies layout for all input layers of the network.";
+static constexpr char inputs_l ayout_message[] = "Optional. Specifies layout for all input layers of the network.";
 
 static constexpr char outputs_layout_message[] = "Optional. Specifies layout for all output layers of the network.";
 
@@ -420,7 +420,7 @@ static bool parseCommandLine(int* argc, char*** argv) {
     }
 
     if (!FLAGS_dryon.empty()) {
-        bool flag_Dryon = true;
+        intel_npu::update_fflag(true);
     }
 
     if (1 < *argc) {

@@ -18,7 +18,7 @@
 #include "openvino/runtime/so_ptr.hpp"
 
 namespace intel_npu {
-extern bool flag_Dryon; 
+extern bool flag_Dryon;
 class Plugin : public ov::IPlugin {
 public:
     Plugin();

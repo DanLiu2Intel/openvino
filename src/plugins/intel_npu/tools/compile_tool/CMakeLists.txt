@@ -4,8 +4,9 @@
 #
 
 set(TARGET_NAME compile_tool)
-
-target_link_libraries(${NPU_PLUGIN_TARGET})
+message("==========1============")
+# find_package(openvino::npu_al) #感觉这部分不需要使用
+message("==========2============")
 
 if (NOT DEFINED PROJECT_NAME)
     cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
@@ -26,7 +27,8 @@ ov_add_target(ADD_CPPLINT
                   PRIVATE
                       openvino::runtime
                       gflags
-                      Threads::Threads)
+                      Threads::Threads
+                      openvino::npu_al)
 
 set_target_properties(${TARGET_NAME} PROPERTIES
                           FOLDER ${CMAKE_CURRENT_SOURCE_DIR}
