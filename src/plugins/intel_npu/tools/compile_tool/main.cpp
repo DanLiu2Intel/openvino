@@ -19,7 +19,9 @@
 
 #include "tools_helpers.hpp"
 
-#include "al/include/update_flage.hpp"
+
+#include "update_dryon_flag.hpp"
+
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -52,7 +54,7 @@ static constexpr char iop_message[] =
         "                                             Overwrites precision from ip and op options for specified "
         "layers.";
 
-static constexpr char inputs_l ayout_message[] = "Optional. Specifies layout for all input layers of the network.";
+static constexpr char inputs_layout_message[] = "Optional. Specifies layout for all input layers of the network.";
 
 static constexpr char outputs_layout_message[] = "Optional. Specifies layout for all output layers of the network.";
 
@@ -420,7 +422,7 @@ static bool parseCommandLine(int* argc, char*** argv) {
     }
 
     if (!FLAGS_dryon.empty()) {
-        intel_npu::update_fflag(true);
+        intel_npu::update_dryon_flag(true);
     }
 
     if (1 < *argc) {

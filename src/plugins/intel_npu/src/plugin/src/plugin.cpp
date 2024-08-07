@@ -568,7 +568,7 @@ void Plugin::initPluginWithoutBackend(){
          {false,
           ov::PropertyMutability::RO,
           [&](const Config&) {
-              return Metrics::GetInternalSupportedProperties();
+              return Metrics_internalSupportedProperties;
           }}}); //this part seems not need.
 }
 
@@ -589,6 +589,11 @@ Plugin::Plugin()
     Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
     
     bool flag_Dryon = false;
+    if (flag_Dryon)
+        std::printf(" <compile_tool>flag_Dryon is flase");
+    else
+        std::printf(" <compile_tool>flag_Dryon is true");
+        
     if (flag_Dryon)
         initPluginWithoutBackend();
     else
@@ -668,6 +673,11 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
     bool flag_Dryon = false;
+
+    if (flag_Dryon)
+        std::printf(" <compile_tool>flag_Dryon is flase");
+    else
+        std::printf(" <compile_tool>flag_Dryon is true");
 
     if (flag_Dryon){
         std::shared_ptr<IDevice> device = nullptr;

@@ -14,6 +14,7 @@ set_target_properties(${TARGET_NAME} PROPERTIES EXPORT_NAME npu_al)
 target_include_directories(${TARGET_NAME}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        # ${CMAKE_CURRENT_SOURCE_DIR}/../plugin/include
 )
 
 if(ENABLE_MLIR_COMPILER)
