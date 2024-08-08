@@ -20,11 +20,14 @@ ov_add_target(ADD_CPPLINT
               TYPE EXECUTABLE
               NAME ${TARGET_NAME}
               ROOT ${CMAKE_CURRENT_SOURCE_DIR}
+              INCLUDES
+              ${PROJECT_SOURCE_DIR}/src/plugins/intel_npu/src/al/include/
               LINK_LIBRARIES
                   PRIVATE
                       openvino::runtime
                       gflags
-                      Threads::Threads)
+                      Threads::Threads
+                      openvino::npu_al)
 
 set_target_properties(${TARGET_NAME} PROPERTIES
                           FOLDER ${CMAKE_CURRENT_SOURCE_DIR}

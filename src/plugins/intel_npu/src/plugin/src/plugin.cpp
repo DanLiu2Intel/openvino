@@ -20,6 +20,7 @@
 #include "openvino/runtime/intel_npu/properties.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "remote_context.hpp"
+#include "update_dryon_flag.hpp"
 
 using namespace intel_npu;
 
@@ -176,10 +177,18 @@ static Config add_platform_to_the_config(Config config, const std::string_view p
     return config;
 }
 
+extern DryonExecution globalDryonExecutionManager;
+
 Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
+    
+    if(globalDryonExecutionManager.get_dryon_flag()){
+        std::printf("=====> Plugin(1)init true\n");
+    }else{
+        std::printf("=====> Plugin(1)init false\n");
+    }
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -584,6 +593,11 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    if(globalDryonExecutionManager.get_dryon_flag()){
+        std::printf("=====> Plugin(2)compileModel true\n");
+    } else {
+        std::printf("=====> Plugin(2)compileModel false\n");
+    }
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
 

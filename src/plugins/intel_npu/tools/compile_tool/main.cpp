@@ -19,6 +19,8 @@
 
 #include "tools_helpers.hpp"
 
+#include "update_dryon_flag.hpp"
+
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
 static constexpr char model_message[] = "Required. Path to the XML model.";
@@ -96,9 +98,11 @@ DEFINE_string(iml, "", inputs_model_layout_message);
 DEFINE_string(oml, "", outputs_model_layout_message);
 DEFINE_string(ioml, "", ioml_message);
 DEFINE_string(shape, "", shape_message);
+DEFINE_bool(dryon, false, help_message);
 DEFINE_uint32(override_model_batch_size, 1, override_model_batch_size);
 
 namespace {
+extern intel_npu::DryonExecution intel_npu::globalDryonExecutionManager;
 std::vector<std::string> splitStringList(const std::string& str, char delim) {
     if (str.empty())
         return {};
@@ -411,6 +415,22 @@ static bool parseCommandLine(int* argc, char*** argv) {
 
     if (FLAGS_d.empty()) {
         throw std::invalid_argument("Target device name is required");
+    }
+
+    if (FLAGS_dryon) {//this is time, this class, has not been create.
+        if (intel_npu::globalDryonExecutionManager.get_dryon_flag()) {
+            std::printf("=====> compile_tool(0)  true\n");
+        } else {
+            std::printf("=====> compile_tool(0)  false\n");
+        }
+
+        intel_npu::globalDryonExecutionManager.update_dryon_flag(true);
+
+        if (intel_npu::globalDryonExecutionManager.get_dryon_flag()) {
+            std::printf("=====> compile_tool(0.2)  true\n");
+        } else {
+            std::printf("=====> compile_tool(0.2)  false\n");
+        }
     }
 
     if (1 < *argc) {
