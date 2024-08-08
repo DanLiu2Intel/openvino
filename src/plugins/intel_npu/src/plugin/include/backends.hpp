@@ -24,6 +24,7 @@ enum class AvailableBackends { LEVEL_ZERO, IMD };
 class NPUBackends final {
 public:
     explicit NPUBackends(const std::vector<AvailableBackends>& backendRegistry, const Config& config);
+    NPUBackends();
 
     std::shared_ptr<IDevice> getDevice(const std::string& specificName = "") const;
     std::shared_ptr<IDevice> getDevice(const ov::AnyMap& paramMap) const;

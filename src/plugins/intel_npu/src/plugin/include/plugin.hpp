@@ -18,7 +18,6 @@
 #include "openvino/runtime/so_ptr.hpp"
 
 namespace intel_npu {
-
 class Plugin : public ov::IPlugin {
 public:
     Plugin();
@@ -54,6 +53,10 @@ public:
                                     const ov::AnyMap& properties) const override;
 
 private:
+    void init();
+    void initPluginWithoutBackend();
+    std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> Generate_supportedPropert();
+
     ov::SoPtr<ICompiler> getCompiler(const Config& config) const;
 
     std::shared_ptr<NPUBackends> _backends;

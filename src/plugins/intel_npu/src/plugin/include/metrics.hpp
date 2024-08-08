@@ -17,6 +17,8 @@
 
 namespace intel_npu {
 
+static std::vector<ov::PropertyName> Metrics_internalSupportedProperties = {ov::internal::caching_properties.name()};
+
 class Metrics final {
 public:
     Metrics(const std::shared_ptr<const NPUBackends>& backends);

@@ -4,6 +4,11 @@
 #
 
 set(TARGET_NAME compile_tool)
+message("==========1============")
+# find_package(openvino::npu_al)
+file(GLOB_RECURSE DRYONEXECUTION_HEADERS ${PROJECT_SOURCE_DIR}/src/plugins/intel_npu/src/*.hpp)
+message("==========2============")
+message("@@@@${DRYONEXECUTION_HEADERS}@@@@")
 
 if (NOT DEFINED PROJECT_NAME)
     cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
@@ -15,16 +20,20 @@ endif()
 #
 # Define the target
 #
-
+message("${CMAKE_CURRENT_SOURCE_DIR} is what???")
+message("${PROJECT_SOURCE_DIR} is what???")
 ov_add_target(ADD_CPPLINT
               TYPE EXECUTABLE
               NAME ${TARGET_NAME}
               ROOT ${CMAKE_CURRENT_SOURCE_DIR}
+              INCLUDES
+              ${PROJECT_SOURCE_DIR}/src/plugins/intel_npu/src/al/include/
               LINK_LIBRARIES
                   PRIVATE
                       openvino::runtime
                       gflags
-                      Threads::Threads)
+                      Threads::Threads
+                      openvino::npu_al)
 
 set_target_properties(${TARGET_NAME} PROPERTIES
                           FOLDER ${CMAKE_CURRENT_SOURCE_DIR}
