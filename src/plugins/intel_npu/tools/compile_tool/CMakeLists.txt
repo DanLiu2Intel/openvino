@@ -5,7 +5,7 @@
 
 set(TARGET_NAME compile_tool)
 message("==========1============")
-# find_package(openvino::npu_al) #感觉这部分不需要使用
+# find_package(openvino::npu_al)
 file(GLOB_RECURSE DRYONEXECUTION_HEADERS ${PROJECT_SOURCE_DIR}/src/plugins/intel_npu/src/*.hpp)
 message("==========2============")
 message("@@@@${DRYONEXECUTION_HEADERS}@@@@")
@@ -27,7 +27,6 @@ ov_add_target(ADD_CPPLINT
               NAME ${TARGET_NAME}
               ROOT ${CMAKE_CURRENT_SOURCE_DIR}
               INCLUDES
-              /home/dl5w0502/vpux/openvino/src/plugins/intel_npu/src/al/include/
               ${PROJECT_SOURCE_DIR}/src/plugins/intel_npu/src/al/include/
               LINK_LIBRARIES
                   PRIVATE

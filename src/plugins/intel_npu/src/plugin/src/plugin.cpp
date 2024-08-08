@@ -20,6 +20,7 @@
 #include "openvino/runtime/intel_npu/properties.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "remote_context.hpp"
+#include "update_dryon_flag.hpp"
 
 using namespace intel_npu;
 
@@ -154,8 +155,6 @@ void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
 }  // namespace
 
 namespace intel_npu {
-
-bool flag_Dryon = false;
 
 static Config merge_configs(const Config& globalConfig,
                             const std::map<std::string, std::string>& rawConfig,
@@ -588,16 +587,19 @@ Plugin::Plugin()
     _globalConfig.parseEnvVars();
     Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
     
-    bool flag_Dryon = false;
-    if (flag_Dryon)
-        std::printf(" <compile_tool>flag_Dryon is flase");
+    // bool  = false;
+    if (get_dryon_flag())
+        std::printf(" <plugin111>flag_Dryon is true\n");
     else
-        std::printf(" <compile_tool>flag_Dryon is true");
+        std::printf(" <plugin111>flag_Dryon is flase\n");
         
-    if (flag_Dryon)
+    if (get_dryon_flag()){
+        std::printf("     =========>init plugin without backend\n");
         initPluginWithoutBackend();
-    else
+    } else {
+        std::printf("     =========>init plugin normally\n");
         init();
+    }
 
     for (auto& property : _properties) {
         if (std::get<0>(property.second)) {
@@ -672,14 +674,14 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     }
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
-    bool flag_Dryon = false;
 
-    if (flag_Dryon)
-        std::printf(" <compile_tool>flag_Dryon is flase");
+    if (get_dryon_flag())
+        std::printf(" <compile_tool222>flag_Dryon is true\n");
     else
-        std::printf(" <compile_tool>flag_Dryon is true");
+        std::printf(" <compile_tool222>flag_Dryon is flase\n");
 
-    if (flag_Dryon){
+    if (get_dryon_flag()){
+        std::printf("     =========>compile_tool plugin without backend and device\n");
         std::shared_ptr<IDevice> device = nullptr;
         OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
 
@@ -697,7 +699,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             OPENVINO_THROW("Unexpected exception thrown upon attempting to create the \"CompiledModel\" object");
         }        
     } else {
-
+        std::printf("     =========>compile_model normally\n");
         const auto platform = _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
         auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
         localConfig.update({{ov::intel_npu::platform.name(), platform}});

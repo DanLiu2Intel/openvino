@@ -422,7 +422,9 @@ static bool parseCommandLine(int* argc, char*** argv) {
     }
 
     if (!FLAGS_dryon.empty()) {
+        std::printf("  ,(1), compile_tool fl=%d\n", intel_npu::get_dryon_flag());
         intel_npu::update_dryon_flag(true);
+        std::printf("  ,(2), compile_tool fl=%d\n", intel_npu::get_dryon_flag());
     }
 
     if (1 < *argc) {
