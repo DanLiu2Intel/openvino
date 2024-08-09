@@ -5,7 +5,6 @@
 
 namespace intel_npu {
 
-
 bool DryonExecution::get_dryon_flag() {
     if(flag_Dryon)
         std::cout << " (get)!!!! true"<< std::endl;
