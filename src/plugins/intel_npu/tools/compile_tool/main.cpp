@@ -80,6 +80,8 @@ static const char shape_message[] =
         " For dynamic dimensions use symbol `?` or '-1'. Ex. [?,3,?,?]."
         " For bounded dimensions specify range 'min..max'. Ex. [1..10,3,?,?].";
 
+static const char dryon_message[] = "test dry on execution";
+
 static const char override_model_batch_size[] = "Enforce a model to be compiled for batch size";
 
 DEFINE_bool(h, false, help_message);
@@ -98,7 +100,7 @@ DEFINE_string(iml, "", inputs_model_layout_message);
 DEFINE_string(oml, "", outputs_model_layout_message);
 DEFINE_string(ioml, "", ioml_message);
 DEFINE_string(shape, "", shape_message);
-DEFINE_bool(dryon, false, help_message);
+DEFINE_string(dryon, "", dryon_message);
 DEFINE_uint32(override_model_batch_size, 1, override_model_batch_size);
 
 namespace {
@@ -416,20 +418,14 @@ static bool parseCommandLine(int* argc, char*** argv) {
         throw std::invalid_argument("Target device name is required");
     }
 
-    if (FLAGS_dryon) {//this is time, this class, has not been create.
-        if (intel_npu::DryonExecution::getDryonInstance().get_dryon_flag()) {
-            std::printf("=====> compile_tool(0)  true\n");
-        } else {
-            std::printf("=====> compile_tool(0)  false\n");
-        }
+    if (!FLAGS_d.empty()) {//this is time, this class, has not been create.
+        bool isDryon = intel_npu::DryonExecution::getDryonInstance().get_dryon_flag();
+        std::printf("  1.Current Dryon flag: %d\n", isDryon);
 
         intel_npu::DryonExecution::getDryonInstance().update_dryon_flag(true);
 
-        if (intel_npu::DryonExecution::getDryonInstance().get_dryon_flag()) {
-            std::printf("=====> compile_tool(0.2)  true\n");
-        } else {
-            std::printf("=====> compile_tool(0.2)  false\n");
-        }
+        isDryon = intel_npu::DryonExecution::getDryonInstance().get_dryon_flag();
+        std::printf("  2.Current Dryon flag: %d\n", isDryon);
     }
 
     if (1 < *argc) {

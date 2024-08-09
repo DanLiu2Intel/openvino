@@ -181,12 +181,10 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
-    
-    if(DryonExecution::getDryonInstance().get_dryon_flag()){
-        std::printf("=====> Plugin(1)init true\n");
-    }else{
-        std::printf("=====> Plugin(1)init false\n");
-    }
+
+    bool isDryon = intel_npu::DryonExecution::getDryonInstance().get_dryon_flag();
+    std::printf("  3.(Plugin init)Current Dryon flag: %d\n", isDryon);
+
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -591,11 +589,8 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
-    if(DryonExecution::getDryonInstance().get_dryon_flag()){
-        std::printf("=====> Plugin(2)compileModel true\n");
-    } else {
-        std::printf("=====> Plugin(2)compileModel false\n");
-    }
+    bool isDryon = intel_npu::DryonExecution::getDryonInstance().get_dryon_flag();
+    std::printf("  4.(Plugin compile_model)Current Dryon flag: %d\n", isDryon);
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
 
