@@ -102,7 +102,6 @@ DEFINE_bool(dryon, false, help_message);
 DEFINE_uint32(override_model_batch_size, 1, override_model_batch_size);
 
 namespace {
-extern intel_npu::DryonExecution intel_npu::globalDryonExecutionManager;
 std::vector<std::string> splitStringList(const std::string& str, char delim) {
     if (str.empty())
         return {};
@@ -418,15 +417,15 @@ static bool parseCommandLine(int* argc, char*** argv) {
     }
 
     if (FLAGS_dryon) {//this is time, this class, has not been create.
-        if (intel_npu::globalDryonExecutionManager.get_dryon_flag()) {
+        if (intel_npu::DryonExecution::getDryonInstance().get_dryon_flag()) {
             std::printf("=====> compile_tool(0)  true\n");
         } else {
             std::printf("=====> compile_tool(0)  false\n");
         }
 
-        intel_npu::globalDryonExecutionManager.update_dryon_flag(true);
+        intel_npu::DryonExecution::getDryonInstance().update_dryon_flag(true);
 
-        if (intel_npu::globalDryonExecutionManager.get_dryon_flag()) {
+        if (intel_npu::DryonExecution::getDryonInstance().get_dryon_flag()) {
             std::printf("=====> compile_tool(0.2)  true\n");
         } else {
             std::printf("=====> compile_tool(0.2)  false\n");
