@@ -27,6 +27,7 @@ ov_add_target(ADD_CPPLINT
                       openvino::runtime
                       gflags
                       Threads::Threads
+                  PUBLIC
                       openvino::npu_al)
 
 set_target_properties(${TARGET_NAME} PROPERTIES
