@@ -26,9 +26,15 @@ public:
     std::string GetFullDeviceName(const std::string& specifiedDeviceName) const;
     IDevice::Uuid GetDeviceUuid(const std::string& specifiedDeviceName) const;
     const std::vector<std::string>& GetSupportedConfigKeys() const;
-    static const std::vector<std::string>& GetOptimizationCapabilities();
-    static const std::tuple<uint32_t, uint32_t, uint32_t>& GetRangeForAsyncInferRequest();
-    static const std::tuple<uint32_t, uint32_t>& GetRangeForStreams();
+    static const std::vector<std::string>& GetOptimizationCapabilities() {
+        return _optimizationCapabilities;
+    }
+    static const std::tuple<uint32_t, uint32_t, uint32_t>& GetRangeForAsyncInferRequest() {
+        return _rangeForAsyncInferRequests;
+    }
+    static const std::tuple<uint32_t, uint32_t>& GetRangeForStreams() {
+        _rangeForStreams;
+    }
     std::string GetDeviceArchitecture(const std::string& specifiedDeviceName) const;
     std::string GetBackendName() const;
     uint64_t GetDeviceAllocMemSize(const std::string& specifiedDeviceName) const;
@@ -41,8 +47,12 @@ public:
     std::map<ov::element::Type, float> GetGops(const std::string& specifiedDeviceName) const;
     ov::device::Type GetDeviceType(const std::string& specifiedDeviceName) const;
 
-    static const std::vector<ov::PropertyName> GetCachingProperties();
-    static const std::vector<ov::PropertyName> GetInternalSupportedProperties();
+    static const std::vector<ov::PropertyName> GetCachingProperties() {
+        return _cachingProperties;
+    }
+    static const std::vector<ov::PropertyName> GetInternalSupportedProperties() {
+        return _internalSupportedProperties;
+    }
 
     ~Metrics() = default;
 
@@ -50,12 +60,26 @@ private:
     const std::shared_ptr<const NPUBackends> _backends;
     std::vector<std::string> _supportedMetrics;
     std::vector<std::string> _supportedConfigKeys;
-    const std::vector<std::string> _optimizationCapabilities = {
+    static std::vector<std::string> _optimizationCapabilities;
+    static std::vector<ov::PropertyName> _cachingProperties;
+
+    static std::vector<ov::PropertyName> _internalSupportedProperties;
+
+    // Metric to provide a hint for a range for number of async infer requests. (bottom bound, upper bound, step)
+    static std::tuple<uint32_t, uint32_t, uint32_t> _rangeForAsyncInferRequests;
+
+    // Metric to provide information about a range for streams.(bottom bound, upper bound)
+    static std::tuple<uint32_t, uint32_t> _rangeForStreams;
+
+    std::string getDeviceName(const std::string& specifiedDeviceName) const;
+};
+
+ std::vector<std::string> Metrics::_optimizationCapabilities = {
         ov::device::capability::FP16,
         ov::device::capability::INT8,
         ov::device::capability::EXPORT_IMPORT,
     };
-    std::vector<ov::PropertyName> _cachingProperties = {ov::device::architecture.name(),
+ std::vector<ov::PropertyName> Metrics::_cachingProperties = {ov::device::architecture.name(),
                                                               ov::intel_npu::compilation_mode_params.name(),
                                                               ov::intel_npu::tiles.name(),
                                                               ov::intel_npu::dpu_groups.name(),
@@ -67,15 +91,13 @@ private:
                                                               ov::intel_npu::batch_mode.name(),
                                                               ov::hint::execution_mode.name()};
 
-    const std::vector<ov::PropertyName> _internalSupportedProperties = {ov::internal::caching_properties.name()};
+std::vector<ov::PropertyName> Metrics::_internalSupportedProperties = {ov::internal::caching_properties.name()};
 
-    // Metric to provide a hint for a range for number of async infer requests. (bottom bound, upper bound, step)
-    const std::tuple<uint32_t, uint32_t, uint32_t> _rangeForAsyncInferRequests{1u, 10u, 1u};
+// Metric to provide a hint for a range for number of async infer requests. (bottom bound, upper bound, step)
+std::tuple<uint32_t, uint32_t, uint32_t> Metrics::_rangeForAsyncInferRequests = {1u, 10u, 1u};
 
-    // Metric to provide information about a range for streams.(bottom bound, upper bound)
-    const std::tuple<uint32_t, uint32_t> _rangeForStreams{1u, 4u};
+// Metric to provide information about a range for streams.(bottom bound, upper bound)
+std::tuple<uint32_t, uint32_t> Metrics::_rangeForStreams = {1u, 4u};
 
-    std::string getDeviceName(const std::string& specifiedDeviceName) const;
-};
 
 }  // namespace intel_npu

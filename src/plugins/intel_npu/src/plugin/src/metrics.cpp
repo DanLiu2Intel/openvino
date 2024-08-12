@@ -64,18 +64,18 @@ const std::vector<std::string>& Metrics::GetSupportedConfigKeys() const {
     return _supportedConfigKeys;
 }
 
-// TODO each backend may support different optimization capabilities
-const std::vector<std::string>& Metrics::GetOptimizationCapabilities() {
-    return _optimizationCapabilities;
-}
+// // TODO each backend may support different optimization capabilities
+// const std::vector<std::string>& Metrics::GetOptimizationCapabilities() {
+//     return _optimizationCapabilities;
+// }
 
-const std::tuple<uint32_t, uint32_t, uint32_t>& Metrics::GetRangeForAsyncInferRequest() {
-    return _rangeForAsyncInferRequests;
-}
+// const std::tuple<uint32_t, uint32_t, uint32_t>& Metrics::GetRangeForAsyncInferRequest() {
+//     return _rangeForAsyncInferRequests;
+// }
 
-const std::tuple<uint32_t, uint32_t>& Metrics::GetRangeForStreams() {
-    return _rangeForStreams;
-}
+// const std::tuple<uint32_t, uint32_t>& Metrics::GetRangeForStreams() {
+//     return _rangeForStreams;
+// }
 
 std::string Metrics::GetDeviceArchitecture(const std::string& specifiedDeviceName) const {
     const auto devName = getDeviceName(specifiedDeviceName);
@@ -91,13 +91,13 @@ IDevice::Uuid Metrics::GetDeviceUuid(const std::string& specifiedDeviceName) con
     return IDevice::Uuid{};
 }
 
-std::vector<ov::PropertyName> Metrics::GetCachingProperties() {
-    return _cachingProperties;
-}
+// std::vector<ov::PropertyName> Metrics::GetCachingProperties() {
+//     return _cachingProperties;
+// }
 
-std::vector<ov::PropertyName> Metrics::GetInternalSupportedProperties() {
-    return _internalSupportedProperties;
-}
+// std::vector<ov::PropertyName> Metrics::GetInternalSupportedProperties() {
+//     return _internalSupportedProperties;
+// }
 
 std::string Metrics::GetBackendName() const {
     if (_backends == nullptr) {

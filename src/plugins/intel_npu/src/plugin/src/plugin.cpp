@@ -315,7 +315,7 @@ Plugin::Plugin()
         {ov::device::capabilities.name(),
          {true,
           ov::PropertyMutability::RO,
-          [&](const Config&) {      
+          [&](const Config&) {
               return Metrics::GetOptimizationCapabilities();
           }}},
         {ov::optimal_number_of_infer_requests.name(),
@@ -328,7 +328,8 @@ Plugin::Plugin()
                     _backends->getCompilationPlatform(config.get<PLATFORM>(), config.get<DEVICE_ID>()))));
               else
                 //how to process this option?
-                return std::string(platform);
+                return static_cast<uint32_t>(getOptimalNumberOfInferRequestsInParallel(add_platform_to_the_config(
+                    config,std::string(config.get<PLATFORM>()))));
           }}},
         {ov::range_for_async_infer_requests.name(),
          {true,
@@ -552,13 +553,13 @@ Plugin::Plugin()
           [](const Config& config) {
               return config.getString<BACKEND_COMPILATION_PARAMS>();
           }}},
-        {ov::intel_npu::batch_mode.name(), 
+        {ov::intel_npu::batch_mode.name(),
          {false,
-          ov::PropertyMutability::RW, 
+          ov::PropertyMutability::RW,
           [](const Config& config) {
               return config.getString<BATCH_MODE>();
         }}},
-        {ov::intel_npu::ENABLE_DRY_ON_EXECUTION.name(),
+        {ov::intel_npu::enable_dry_on_execution.name(),
          {false,
           ov::PropertyMutability::RW,
           [](const Config& config) {
