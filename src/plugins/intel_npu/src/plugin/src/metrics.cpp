@@ -11,6 +11,33 @@
 
 namespace intel_npu {
 
+const std::vector<std::string> Metrics::_optimizationCapabilities = {
+        ov::device::capability::FP16,
+        ov::device::capability::INT8,
+        ov::device::capability::EXPORT_IMPORT,
+    };
+
+const std::vector<ov::PropertyName> Metrics::_cachingProperties = {ov::device::architecture.name(),
+                                                              ov::intel_npu::compilation_mode_params.name(),
+                                                              ov::intel_npu::tiles.name(),
+                                                              ov::intel_npu::dpu_groups.name(),
+                                                              ov::intel_npu::dma_engines.name(),
+                                                              ov::intel_npu::compilation_mode.name(),
+                                                              ov::intel_npu::driver_version.name(),
+                                                              ov::intel_npu::compiler_type.name(),
+                                                              ov::intel_npu::use_elf_compiler_backend.name(),
+                                                              ov::intel_npu::batch_mode.name(),
+                                                              ov::hint::execution_mode.name()};
+
+const std::vector<ov::PropertyName> Metrics::_internalSupportedProperties = {ov::internal::caching_properties.name()};
+
+// Metric to provide a hint for a range for number of async infer requests. (bottom bound, upper bound, step)
+const std::tuple<uint32_t, uint32_t, uint32_t> Metrics::_rangeForAsyncInferRequests = {1u, 10u, 1u};
+
+// Metric to provide information about a range for streams.(bottom bound, upper bound)
+const std::tuple<uint32_t, uint32_t> Metrics::_rangeForStreams = {1u, 4u};
+
+
 Metrics::Metrics(const std::shared_ptr<const NPUBackends>& backends) : _backends(backends) {
     _supportedMetrics = {ov::supported_properties.name(),
                          ov::available_devices.name(),
