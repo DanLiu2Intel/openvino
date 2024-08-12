@@ -204,4 +204,33 @@ struct WORKLOAD_TYPE final : OptionBase<WORKLOAD_TYPE, ov::WorkloadType> {
 
     static std::string toString(const ov::WorkloadType& val);
 };
+
+//
+// ENABLE_DRY_ON_EXECUTION
+//
+
+struct ENABLE_DRY_ON_EXECUTION final : OptionBase<ENABLE_DRY_ON_EXECUTION, bool> {
+    static std::string_view key() {
+        return ov::intel_npu::enable_dry_on_execution.name();
+    }
+
+    static bool defaultValue() {
+        return false;
+    }
+
+#ifdef NPU_PLUGIN_DEVELOPER_BUILD
+    static std::string_view envVar() {
+        return "IE_NPU_ENABLE_DRY_ON_EXECUTION";
+    }
+#endif
+
+    static constexpr std::string_view getTypeName() {
+        return "bool";
+    }
+
+    static OptionMode mode() {
+        return OptionMode::RunTime;
+    }
+};
+
 }  // namespace intel_npu

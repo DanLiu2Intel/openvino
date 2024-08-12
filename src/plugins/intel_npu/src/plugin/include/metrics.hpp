@@ -26,9 +26,9 @@ public:
     std::string GetFullDeviceName(const std::string& specifiedDeviceName) const;
     IDevice::Uuid GetDeviceUuid(const std::string& specifiedDeviceName) const;
     const std::vector<std::string>& GetSupportedConfigKeys() const;
-    const std::vector<std::string>& GetOptimizationCapabilities() const;
-    const std::tuple<uint32_t, uint32_t, uint32_t>& GetRangeForAsyncInferRequest() const;
-    const std::tuple<uint32_t, uint32_t>& GetRangeForStreams() const;
+    static const std::vector<std::string>& GetOptimizationCapabilities();
+    static const std::tuple<uint32_t, uint32_t, uint32_t>& GetRangeForAsyncInferRequest();
+    static const std::tuple<uint32_t, uint32_t>& GetRangeForStreams();
     std::string GetDeviceArchitecture(const std::string& specifiedDeviceName) const;
     std::string GetBackendName() const;
     uint64_t GetDeviceAllocMemSize(const std::string& specifiedDeviceName) const;
@@ -41,8 +41,8 @@ public:
     std::map<ov::element::Type, float> GetGops(const std::string& specifiedDeviceName) const;
     ov::device::Type GetDeviceType(const std::string& specifiedDeviceName) const;
 
-    std::vector<ov::PropertyName> GetCachingProperties() const;
-    std::vector<ov::PropertyName> GetInternalSupportedProperties() const;
+    static const std::vector<ov::PropertyName> GetCachingProperties();
+    static const std::vector<ov::PropertyName> GetInternalSupportedProperties();
 
     ~Metrics() = default;
 
@@ -55,7 +55,7 @@ private:
         ov::device::capability::INT8,
         ov::device::capability::EXPORT_IMPORT,
     };
-    const std::vector<ov::PropertyName> _cachingProperties = {ov::device::architecture.name(),
+    std::vector<ov::PropertyName> _cachingProperties = {ov::device::architecture.name(),
                                                               ov::intel_npu::compilation_mode_params.name(),
                                                               ov::intel_npu::tiles.name(),
                                                               ov::intel_npu::dpu_groups.name(),

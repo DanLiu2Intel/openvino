@@ -65,15 +65,15 @@ const std::vector<std::string>& Metrics::GetSupportedConfigKeys() const {
 }
 
 // TODO each backend may support different optimization capabilities
-const std::vector<std::string>& Metrics::GetOptimizationCapabilities() const {
+const std::vector<std::string>& Metrics::GetOptimizationCapabilities() {
     return _optimizationCapabilities;
 }
 
-const std::tuple<uint32_t, uint32_t, uint32_t>& Metrics::GetRangeForAsyncInferRequest() const {
+const std::tuple<uint32_t, uint32_t, uint32_t>& Metrics::GetRangeForAsyncInferRequest() {
     return _rangeForAsyncInferRequests;
 }
 
-const std::tuple<uint32_t, uint32_t>& Metrics::GetRangeForStreams() const {
+const std::tuple<uint32_t, uint32_t>& Metrics::GetRangeForStreams() {
     return _rangeForStreams;
 }
 
@@ -91,11 +91,11 @@ IDevice::Uuid Metrics::GetDeviceUuid(const std::string& specifiedDeviceName) con
     return IDevice::Uuid{};
 }
 
-std::vector<ov::PropertyName> Metrics::GetCachingProperties() const {
+std::vector<ov::PropertyName> Metrics::GetCachingProperties() {
     return _cachingProperties;
 }
 
-std::vector<ov::PropertyName> Metrics::GetInternalSupportedProperties() const {
+std::vector<ov::PropertyName> Metrics::GetInternalSupportedProperties() {
     return _internalSupportedProperties;
 }
 
