@@ -92,7 +92,7 @@ private:
     const std::shared_ptr<const ov::Model> _model;
     Config _config;
     Logger _logger;
-    const std::shared_ptr<IDevice> _device;
+    mutable std::shared_ptr<IDevice> _device;
     mutable std::shared_ptr<IExecutor> _executorPtr;
     std::shared_ptr<ov::threading::ITaskExecutor> _resultExecutor;
 

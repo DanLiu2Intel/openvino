@@ -204,7 +204,6 @@ void Config::parseEnvVars() {
                           opt.key().data(),
                           envVar,
                           opt.envVar().data());
-
                 _impl[opt.key().data()] = opt.validateAndParse(envVar);
             }
         }

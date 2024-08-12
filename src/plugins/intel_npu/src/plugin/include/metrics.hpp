@@ -26,9 +26,19 @@ public:
     std::string GetFullDeviceName(const std::string& specifiedDeviceName) const;
     IDevice::Uuid GetDeviceUuid(const std::string& specifiedDeviceName) const;
     const std::vector<std::string>& GetSupportedConfigKeys() const;
-    const std::vector<std::string> GetOptimizationCapabilities() const;
-    const std::tuple<uint32_t, uint32_t, uint32_t>& GetRangeForAsyncInferRequest() const;
-    const std::tuple<uint32_t, uint32_t>& GetRangeForStreams() const;
+
+    static const std::vector<std::string>& GetOptimizationCapabilities() {
+        return _optimizationCapabilities;
+    }
+
+    static const std::tuple<uint32_t, uint32_t, uint32_t>& GetRangeForAsyncInferRequest() {
+        return _rangeForAsyncInferRequests;
+    }
+
+    static const std::tuple<uint32_t, uint32_t>& GetRangeForStreams() {
+        _rangeForStreams;
+    }
+
     std::string GetDeviceArchitecture(const std::string& specifiedDeviceName) const;
     std::string GetBackendName() const;
     uint64_t GetDeviceAllocMemSize(const std::string& specifiedDeviceName) const;
@@ -41,8 +51,13 @@ public:
     std::map<ov::element::Type, float> GetGops(const std::string& specifiedDeviceName) const;
     ov::device::Type GetDeviceType(const std::string& specifiedDeviceName) const;
 
-    std::vector<ov::PropertyName> GetCachingProperties() const;
-    std::vector<ov::PropertyName> GetInternalSupportedProperties() const;
+    static const std::vector<ov::PropertyName> GetCachingProperties() {
+        return _cachingProperties;
+    }
+
+    static const std::vector<ov::PropertyName> GetInternalSupportedProperties() {
+        return _internalSupportedProperties;
+    }
 
     ~Metrics() = default;
 
@@ -50,31 +65,16 @@ private:
     const std::shared_ptr<const NPUBackends> _backends;
     std::vector<std::string> _supportedMetrics;
     std::vector<std::string> _supportedConfigKeys;
-    const std::vector<std::string> _optimizationCapabilities = {
-        ov::device::capability::FP16,
-        ov::device::capability::INT8,
-        ov::device::capability::EXPORT_IMPORT,
-    };
-    const std::vector<ov::PropertyName> _cachingProperties = {ov::device::architecture.name(),
-                                                              ov::intel_npu::compilation_mode_params.name(),
-                                                              ov::intel_npu::tiles.name(),
-                                                              ov::intel_npu::dpu_groups.name(),
-                                                              ov::intel_npu::dma_engines.name(),
-                                                              ov::intel_npu::compilation_mode.name(),
-                                                              ov::intel_npu::driver_version.name(),
-                                                              ov::intel_npu::compiler_type.name(),
-                                                              ov::intel_npu::use_elf_compiler_backend.name(),
-                                                              ov::intel_npu::batch_mode.name(),
-                                                              ov::hint::execution_mode.name()};
+    static const std::vector<std::string> _optimizationCapabilities;
+    static const std::vector<ov::PropertyName> _cachingProperties;
 
-    const std::vector<ov::PropertyName> _internalSupportedProperties = {ov::internal::caching_properties.name()};
+    static const std::vector<ov::PropertyName> _internalSupportedProperties;
 
     // Metric to provide a hint for a range for number of async infer requests. (bottom bound, upper bound, step)
-    const std::tuple<uint32_t, uint32_t, uint32_t> _rangeForAsyncInferRequests{1u, 10u, 1u};
+    static const std::tuple<uint32_t, uint32_t, uint32_t> _rangeForAsyncInferRequests;
 
     // Metric to provide information about a range for streams.(bottom bound, upper bound)
-    const std::tuple<uint32_t, uint32_t> _rangeForStreams{1u, 4u};
-
+    static const std::tuple<uint32_t, uint32_t> _rangeForStreams;
     std::string getDeviceName(const std::string& specifiedDeviceName) const;
 };
 

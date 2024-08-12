@@ -366,5 +366,16 @@ static constexpr ov::Property<std::string, ov::PropertyMutability::RO> backend_n
  */
 static constexpr ov::Property<std::string> backend_compilation_params{"NPU_BACKEND_COMPILATION_PARAMS"};
 
+/**
+ * @brief [Only for NPU compiler]
+ * Type: std::Boolean, default is "NO".
+ * Config for backend for plugin initlization.
+ * If set to 'YES', plugin will be initilizated normally with backend.
+ * If not, plugin will be initilizated without backend and pass empty device to compilation.
+ * If set to 'NO', only compilation with MLIR pipeline can be finished and can not do inference.
+ * Available values: "YES", "NO".
+ */
+static constexpr ov::Property<bool> enable_dry_on_execution{"ENABLE_DRY_ON_EXECUTION"};
+
 }  // namespace intel_npu
 }  // namespace ov

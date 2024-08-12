@@ -199,40 +199,60 @@ Plugin::Plugin()
     registerRunTimeOptions(*_options);
 
     // parse env_variables to get LOG_LEVEL if needed
+    std::printf(" (1) _globalConfig.parseEnvVars();");
     _globalConfig.parseEnvVars();
 
     // TODO: generation of available backends list can be done during execution of CMake scripts
     std::vector<AvailableBackends> backendRegistry;
 
+    if (const auto* envVar = std::getenv("IE_NPU_ENABLE_DRY_ON_EXECUTION")) {
+        std::printf("getenv(IE_NPU_ENABLE_DRY_ON_EXECUTION) is %s\n", envVar);
+        OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "create empty NPUBackends");
+        _logger.info("initialize Plugin without backend. Only compilation can be performed!");
+        std::printf("initialize Plugin without backend. Only compilation can be performed!\n");
+        //warning or error? from perspective of the comments, should not be warning or error.
+        //TODO: need init backend again in compiledModel to perform inference.
+        _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
+
+        //TODO1: which is better?
+        //backend init with empty backendRegistry: metric can be initialized normally and it will impact properties little.
+        //No backend: backend is empty, metric and compile_model all need to part to perform this job.
+        //TODO2: No backend or backend init with empty backendRegistry, which is better?
+    } else {
+        std::printf("initialize Plugin normally.\n");
+        _logger.info("initialize Plugin normally.");
 #if defined(OPENVINO_STATIC_LIBRARY)
-    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
-#else
+        backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+    #else
 #    if defined(ENABLE_IMD_BACKEND)
-    if (const auto* envVar = std::getenv("IE_NPU_USE_IMD_BACKEND")) {
-        if (envVarStrToBool("IE_NPU_USE_IMD_BACKEND", envVar)) {
-            backendRegistry.push_back(AvailableBackends::IMD);
+        if (const auto* envVar = std::getenv("IE_NPU_USE_IMD_BACKEND")) {
+            if (envVarStrToBool("IE_NPU_USE_IMD_BACKEND", envVar)) {
+                backendRegistry.push_back(AvailableBackends::IMD);
+            }
         }
-    }
 #    endif
 
 #    if defined(_WIN32) || defined(_WIN64) || (defined(__linux__) && defined(__x86_64__))
-    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+        backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
 #    endif
 #endif
 
-    OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "NPUBackends");
-    _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
-    OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
-    _backends->registerOptions(*_options);
+        OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "NPUBackends");
+        _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
+        OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
+        _backends->registerOptions(*_options);
+    }
 
     OV_ITT_TASK_NEXT(PLUGIN, "Metrics");
     _metrics = std::make_unique<Metrics>(_backends);
 
     // parse again env_variables after backend is initialized to get backend proprieties
+    std::printf(" (2) _globalConfig.parseEnvVars();");
     _globalConfig.parseEnvVars();
 
     // Map from name to function {Config -> ov::Any}
     // Note that some properties are RW before network is loaded, and become RO after network is loaded
+    //TODO: this part should be reorganized for backends is empty.
     _properties = {
         // OV Public
         // =========
@@ -306,10 +326,13 @@ Plugin::Plugin()
          {true,
           ov::PropertyMutability::RO,
           [&](const Config&) {
-              return _metrics->GetAvailableDevicesNames();
+              if (_metrics != nullptr)
+                  return _metrics->GetAvailableDevicesNames();
+              else
+                  return  std::vector<std::string>();
           }}},
         {ov::workload_type.name(),
-         {_backends->isCommandQueueExtSupported(),
+         {_backends->isWorkloadTypeSupported(),/////backend//// no backend, this part should be what?
           ov::PropertyMutability::RW,
           [](const Config& config) {
               return config.get<WORKLOAD_TYPE>();
@@ -318,27 +341,33 @@ Plugin::Plugin()
          {true,
           ov::PropertyMutability::RO,
           [&](const Config&) {
-              return _metrics->GetOptimizationCapabilities();
+              return Metrics::GetOptimizationCapabilities();
           }}},
         {ov::optimal_number_of_infer_requests.name(),
          {true,
           ov::PropertyMutability::RO,
           [&](const Config& config) {
-              return static_cast<uint32_t>(getOptimalNumberOfInferRequestsInParallel(add_platform_to_the_config(
-                  config,
-                  _backends->getCompilationPlatform(config.get<PLATFORM>(), config.get<DEVICE_ID>()))));
+            std::printf("  ===1 getCompilationPlatform() 1\n");
+              if (_metrics != nullptr)
+                return static_cast<uint32_t>(getOptimalNumberOfInferRequestsInParallel(add_platform_to_the_config(
+                    config,
+                    _backends->getCompilationPlatform(config.get<PLATFORM>(), config.get<DEVICE_ID>()))));
+              else
+                //how to process this option?
+                return static_cast<uint32_t>(getOptimalNumberOfInferRequestsInParallel(add_platform_to_the_config(
+                    config,std::string(config.get<PLATFORM>()))));
           }}},
         {ov::range_for_async_infer_requests.name(),
          {true,
           ov::PropertyMutability::RO,
           [&](const Config&) {
-              return _metrics->GetRangeForAsyncInferRequest();
+              return Metrics::GetRangeForAsyncInferRequest();
           }}},
         {ov::range_for_streams.name(),
          {true,
           ov::PropertyMutability::RO,
           [&](const Config&) {
-              return _metrics->GetRangeForStreams();
+              return Metrics::GetRangeForStreams();
           }}},
         {ov::num_streams.name(),
          {true,
@@ -351,24 +380,28 @@ Plugin::Plugin()
           ov::PropertyMutability::RO,
           [&](const Config& config) {
               const auto specifiedDeviceName = get_specified_device_name(config);
-              auto devUuid = _metrics->GetDeviceUuid(specifiedDeviceName);
+              IDevice::Uuid devUuid;
+              if (_metrics != nullptr)
+                devUuid = _metrics->GetDeviceUuid(specifiedDeviceName);
+              else
+                devUuid = IDevice::Uuid{};
               return decltype(ov::device::uuid)::value_type{devUuid};
           }}},
         // Add FULL_DEVICE_NAME and DEVICE_ARCHITECTURE in supported
         // properties list only in case of non-empty device list (#1424144d)
         {ov::device::architecture.name(),
-         {!_metrics->GetAvailableDevicesNames().empty(),
+         {!_metrics->GetAvailableDevicesNames().empty(),////metric
           ov::PropertyMutability::RO,
           [&](const Config& config) {
               const auto specifiedDeviceName = get_specified_device_name(config);
-              return _metrics->GetDeviceArchitecture(specifiedDeviceName);
+              return _metrics->GetDeviceArchitecture(specifiedDeviceName);//////metric
           }}},
         {ov::device::full_name.name(),
-         {!_metrics->GetAvailableDevicesNames().empty(),
+         {!_metrics->GetAvailableDevicesNames().empty(),//////metric
           ov::PropertyMutability::RO,
           [&](const Config& config) {
               const auto specifiedDeviceName = get_specified_device_name(config);
-              return _metrics->GetFullDeviceName(specifiedDeviceName);
+              return _metrics->GetFullDeviceName(specifiedDeviceName);//////metric
           }}},
         {ov::hint::model_priority.name(),
          {true,
@@ -380,25 +413,25 @@ Plugin::Plugin()
          {true,
           ov::PropertyMutability::RO,
           [&](const Config& config) {
-              return _metrics->GetPciInfo(get_specified_device_name(config));
+              return _metrics->GetPciInfo(get_specified_device_name(config));//////metric
           }}},
         {ov::device::gops.name(),
          {true,
           ov::PropertyMutability::RO,
           [&](const Config& config) {
-              return _metrics->GetGops(get_specified_device_name(config));
+              return _metrics->GetGops(get_specified_device_name(config));//////metric
           }}},
         {ov::device::type.name(),
          {true,
           ov::PropertyMutability::RO,
           [&](const Config& config) {
-              return _metrics->GetDeviceType(get_specified_device_name(config));
+              return _metrics->GetDeviceType(get_specified_device_name(config));//////metric
           }}},
         {ov::execution_devices.name(),
          {true,
           ov::PropertyMutability::RO,
           [&](const Config& config) {
-              if (_metrics->GetAvailableDevicesNames().size() > 1) {
+              if (_metrics->GetAvailableDevicesNames().size() > 1) {//////metric
                   return std::string("NPU." + config.get<DEVICE_ID>());
               } else {
                   return std::string("NPU");
@@ -410,7 +443,7 @@ Plugin::Plugin()
          {false,
           ov::PropertyMutability::RO,
           [&](const Config&) {
-              return _metrics->GetCachingProperties();
+              return Metrics::GetCachingProperties();
           }}},
         {ov::internal::exclusive_async_requests.name(),
          {false,
@@ -422,7 +455,7 @@ Plugin::Plugin()
          {false,
           ov::PropertyMutability::RO,
           [&](const Config&) {
-              return _metrics->GetInternalSupportedProperties();
+              return Metrics::GetInternalSupportedProperties();
           }}},
         // NPU Public
         // =========
@@ -430,19 +463,19 @@ Plugin::Plugin()
          {true,
           ov::PropertyMutability::RO,
           [&](const Config& config) {
-              return _metrics->GetDeviceAllocMemSize(get_specified_device_name(config));
+              return _metrics->GetDeviceAllocMemSize(get_specified_device_name(config));//////metric
           }}},
         {ov::intel_npu::device_total_mem_size.name(),
          {true,
           ov::PropertyMutability::RO,
           [&](const Config& config) {
-              return _metrics->GetDeviceTotalMemSize(get_specified_device_name(config));
+              return _metrics->GetDeviceTotalMemSize(get_specified_device_name(config));//////metric
           }}},
         {ov::intel_npu::driver_version.name(),
          {true,
           ov::PropertyMutability::RO,
           [&](const Config& config) {
-              return _metrics->GetDriverVersion();
+              return _metrics->GetDriverVersion();//////metric
           }}},
         {ov::intel_npu::compilation_mode_params.name(),
          {true,
@@ -525,7 +558,7 @@ Plugin::Plugin()
          {false,
           ov::PropertyMutability::RO,
           [&](const Config&) {
-              return _metrics->GetBackendName();
+              return _metrics->GetBackendName();//////metric
           }}},
         {ov::intel_npu::use_elf_compiler_backend.name(),
          {false,
@@ -557,15 +590,68 @@ Plugin::Plugin()
           [](const Config& config) {
               return config.getString<BACKEND_COMPILATION_PARAMS>();
           }}},
-        {ov::intel_npu::batch_mode.name(), {false, ov::PropertyMutability::RW, [](const Config& config) {
-                                                return config.getString<BATCH_MODE>();
-                                            }}}};
+        {ov::intel_npu::batch_mode.name(),
+         {false,
+          ov::PropertyMutability::RW,
+          [](const Config& config) {
+              return config.getString<BATCH_MODE>();
+        }}},
+        {ov::intel_npu::enable_dry_on_execution.name(),
+         {false,
+          ov::PropertyMutability::RW,
+          [](const Config& config) {
+              return config.get<ENABLE_DRY_ON_EXECUTION>();
+          }}}};
 
     for (auto& property : _properties) {
         if (std::get<0>(property.second)) {
             _supportedProperties.emplace_back(ov::PropertyName(property.first, std::get<1>(property.second)));
         }
     }
+}
+
+std::shared_ptr<IDevice> Plugin::init_backends_and_get_device(const Config& localConfig) const {
+    //TODO: the origin _backends need to be freed to avoid memory leak?
+    if (const auto* envVar = std::getenv("IE_NPU_ENABLE_DRY_ON_EXECUTION")) {
+        std::printf("  init_backends_and_get_device  ***envVar is %s* \n", envVar);
+        if(envVar == "YES")
+            std::printf("init_backends_and_get_device   is YES\n");
+        if(envVar == "NO")
+            std::printf("init_backends_and_get_device   is NO\n");
+    }
+
+    _logger.info("Initialize backends separately.");
+    std::vector<AvailableBackends> backendRegistry;
+
+    #if defined(OPENVINO_STATIC_LIBRARY)
+        backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+    #else
+#    if defined(ENABLE_IMD_BACKEND)
+        if (const auto* envVar = std::getenv("IE_NPU_USE_IMD_BACKEND")) {
+            if (envVarStrToBool("IE_NPU_USE_IMD_BACKEND", envVar)) {
+                backendRegistry.push_back(AvailableBackends::IMD);
+            }
+        }
+#    endif
+
+#    if defined(_WIN32) || defined(_WIN64) || (defined(__linux__) && defined(__x86_64__))
+        backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+#    endif
+#endif
+
+    _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
+    OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
+    _backends->registerOptions(*_options);
+    
+    //todo is it need?
+    _metrics = std::make_unique<Metrics>(_backends);
+
+    // parse again env_variables after backend is initialized to get backend proprieties
+    _globalConfig.parseEnvVars();
+
+    auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
+
+    return device;
 }
 
 void Plugin::set_property(const ov::AnyMap& properties) {
@@ -580,7 +666,7 @@ void Plugin::set_property(const ov::AnyMap& properties) {
             }
         }
     }
-
+    std::printf(" (3) _globalConfig.parseEnvVars();");
     _globalConfig.update(config);
     if (_backends != nullptr) {
         _backends->setup(_globalConfig);
@@ -638,65 +724,96 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             OPENVINO_THROW("Option 'CACHE_DIR' is not supported with MLIR compiler type");
         }
     }
-
-    const auto platform = _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
-    auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
-    localConfig.update({{ov::intel_npu::platform.name(), platform}});
-
-    set_batch_config(_backends->isBatchingSupported(), localConfig);
-
-    if (!model->get_variables().empty()) {
-        if (localConfig.get<BATCH_MODE>() == ov::intel_npu::BatchMode::PLUGIN) {
-            OPENVINO_THROW("This model contains states, thus it is not supported when handling batching on the plugin");
-        }
-
-        _logger.info("The batching will be handled by the compiler due to states found inside the IR");
-
-        std::stringstream strStream;
-        strStream << ov::intel_npu::BatchMode::COMPILER;
-        localConfig.update({{ov::intel_npu::batch_mode.name(), strStream.str()}});
-    }
-
-    // Update stepping w/ information from driver, unless provided by user or we are off-device
-    // Ignore, if compilation was requested for platform, different from current
-    if (!localConfig.has<STEPPING>() && device != nullptr &&
-        device->getName() == ov::intel_npu::Platform::standardize(platform) &&
-        _metrics->GetBackendName() == "level_zero") {
-        try {
-            localConfig.update({{ov::intel_npu::stepping.name(), std::to_string(device->getSubDevId())}});
-        } catch (...) {
-            _logger.warning("Stepping information not implemented by selected backend. Skipping. Please provide "
-                            "NPU_STEPPING if required.");
-        }
-    }
-    // Update max_tiles w/ information from driver, unless provided by user or we are off-device
-    // Ignore, if compilation was requested for platform, different from current
-    if (!localConfig.has<MAX_TILES>() && device != nullptr &&
-        device->getName() == ov::intel_npu::Platform::standardize(platform) &&
-        _metrics->GetBackendName() == "level_zero") {
-        try {
-            localConfig.update({{ov::intel_npu::max_tiles.name(), std::to_string(device->getMaxNumSlices())}});
-        } catch (...) {
-            _logger.warning("Max tiles information not implemented by selected backend. Skipping. Please provide "
-                            "NPU_MAX_TILES if required.");
-        }
-    }
-
-    OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
-
     std::shared_ptr<ov::ICompiledModel> compiledModel;
-    try {
+    if (const auto* envVar = std::getenv("IE_NPU_ENABLE_DRY_ON_EXECUTION")){
+        std::printf("   compile_model std::getenv NO BACKEND\n");
+        //TODO: is here need update MaxTile and some other condig? which value should be set?
+        //it can be pass by manally.
+        auto device = nullptr;
+        OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
         bool profiling = localConfig.get<PERF_COUNT>();
+
         compiledModel = std::make_shared<CompiledModel>(model,
                                                         shared_from_this(),
                                                         device,
                                                         getCompiler(localConfig),
                                                         profiling,
                                                         localConfig);
-    } catch (const std::exception& ex) {
-        OPENVINO_THROW(ex.what());
-    } catch (...) {
-        OPENVINO_THROW("Unexpected exception thrown upon attempting to create the \"CompiledModel\" object");
+    } else {
+        std::printf("   compile_model std::getenv CONTAIN BACKEND\n");
+        // Before going any further: if
+        // ... 1 - NPUW mode is activated
+        // ... 2 - this request is NOT coming from NPUW,
+        // activate the NPUW path
+        auto useNpuwKey = ov::intel_npu::use_npuw.name();
+        if (properties.count(useNpuwKey) && properties.at(useNpuwKey).as<bool>()) {
+            // CACHE_DIR isn't supported with NPU_USE_NPUW
+            if (properties.count(ov::cache_dir.name()) || !_globalConfig.get<CACHE_DIR>().empty()) {
+                OPENVINO_THROW("Option 'CACHE_DIR' is not supported with NPU_USE_NPUW");
+            }
+            return std::make_shared<ov::npuw::CompiledModel>(model->clone(), shared_from_this(), properties);
+        }
+
+        std::printf("  ===1 getCompilationPlatform() 2\n");
+        const auto platform = _backends->getCompilationPlatform(localConfig.get<PLATFORM>(), localConfig.get<DEVICE_ID>());
+        auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
+        localConfig.update({{ov::intel_npu::platform.name(), platform}});
+
+        set_batch_config(_backends->isBatchingSupported(), localConfig);
+
+        if (!model->get_variables().empty()) {
+            if (localConfig.get<BATCH_MODE>() == ov::intel_npu::BatchMode::PLUGIN) {
+                OPENVINO_THROW("This model contains states, thus it is not supported when handling batching on the plugin");
+            }
+
+            _logger.info("The batching will be handled by the compiler due to states found inside the IR");
+
+            std::stringstream strStream;
+            strStream << ov::intel_npu::BatchMode::COMPILER;
+            localConfig.update({{ov::intel_npu::batch_mode.name(), strStream.str()}});
+        }
+
+        // Update stepping w/ information from driver, unless provided by user or we are off-device
+        // Ignore, if compilation was requested for platform, different from current
+        if (!localConfig.has<STEPPING>() && device != nullptr &&
+            device->getName() == ov::intel_npu::Platform::standardize(platform) &&
+            _metrics->GetBackendName() == "level_zero") {
+            try {
+                localConfig.update({{ov::intel_npu::stepping.name(), std::to_string(device->getSubDevId())}});
+            } catch (...) {
+                _logger.warning("Stepping information not implemented by selected backend. Skipping. Please provide "
+                                "NPU_STEPPING if required.");
+            }
+        }
+        // Update max_tiles w/ information from driver, unless provided by user or we are off-device
+        // Ignore, if compilation was requested for platform, different from current
+        if (!localConfig.has<MAX_TILES>() && device != nullptr &&
+            device->getName() == ov::intel_npu::Platform::standardize(platform) &&
+            _metrics->GetBackendName() == "level_zero") {
+            try {
+                localConfig.update({{ov::intel_npu::max_tiles.name(), std::to_string(device->getMaxNumSlices())}});
+            } catch (...) {
+                _logger.warning("Max tiles information not implemented by selected backend. Skipping. Please provide "
+                                "NPU_MAX_TILES if required.");
+            }
+        }
+
+        OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
+
+        try {
+            bool profiling = localConfig.get<PERF_COUNT>();
+
+            compiledModel = std::make_shared<CompiledModel>(model,
+                                                            shared_from_this(),
+                                                            device,
+                                                            getCompiler(localConfig),
+                                                            profiling,
+                                                            localConfig);
+        } catch (const std::exception& ex) {
+            OPENVINO_THROW(ex.what());
+        } catch (...) {
+            OPENVINO_THROW("Unexpected exception thrown upon attempting to create the \"CompiledModel\" object");
+        }
     }
 
     ++_compiledModelLoadCounter;

@@ -3,6 +3,7 @@
 //
 
 #include "compiled_model.hpp"
+#include "plugin.hpp"
 
 #include <fstream>
 #include <string_view>
@@ -113,10 +114,14 @@ CompiledModel::~CompiledModel() {
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
-
+    //backend is empty
+    if (std::dynamic_pointer_cast<const Plugin>(get_plugin())->is_backend_empty()) {
+        _device = std::dynamic_pointer_cast<const Plugin>(get_plugin())->init_backends_and_get_device(_config);
+    }
     if (_executorPtr == nullptr && _device != nullptr) {
         _executorPtr = _device->createExecutor(_networkPtr, _config);
     }
+
     if (_executorPtr == nullptr) {
         OPENVINO_THROW(NO_EXECUTOR_FOR_INFERENCE);
     }
@@ -141,6 +146,9 @@ void CompiledModel::export_model(std::ostream& stream) const {
     _logger.debug("CompiledModel::export_model");
     const auto&& blob = _compiler->getCompiledNetwork(_networkPtr);
     stream.write(reinterpret_cast<const char*>(blob.data()), blob.size());
+    if (!stream) {
+        OPENVINO_THROW("Stream is in bad status after writing data!");
+    }
     std::stringstream str;
     str << "Blob size: " << blob.size() << ", hash: " << std::hex << hash(blob);
     _logger.info(str.str().c_str());
