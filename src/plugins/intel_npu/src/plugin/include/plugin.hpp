@@ -53,16 +53,22 @@ public:
     ov::SupportedOpsMap query_model(const std::shared_ptr<const ov::Model>& model,
                                     const ov::AnyMap& properties) const override;
 
+    bool is_backend_empty() const {
+        return _backends->is_empty() ? true : false;
+    }
+
+    std::shared_ptr<IDevice> init_backends_and_get_device(const Config& localConfig) const;
+
 private:
     ov::SoPtr<ICompiler> getCompiler(const Config& config) const;
 
-    std::shared_ptr<NPUBackends> _backends;
+    mutable std::shared_ptr<NPUBackends> _backends;
 
     std::map<std::string, std::string> _config;
     std::shared_ptr<OptionsDesc> _options;
-    Config _globalConfig;
+    mutable Config _globalConfig;
     Logger _logger;
-    std::unique_ptr<Metrics> _metrics;
+    mutable std::unique_ptr<Metrics> _metrics;
 
     // properties map: {name -> [supported, mutable, eval function]}
     std::map<std::string, std::tuple<bool, ov::PropertyMutability, std::function<ov::Any(const Config&)>>> _properties;

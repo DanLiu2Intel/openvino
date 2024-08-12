@@ -130,12 +130,10 @@ void Logger::addEntryPackedActive(ov::log::Level msgLevel, std::string_view msg)
     uint32_t ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count() % 1000;
     auto& stream = getLevelStream(msgLevel);
     try {
-        //tempStream << "[" << logLevelPrintout[static_cast<int32_t>(msgLevel) + 1] << "] " << timeStr << "." << ms
-        //           << " [" << _name << "] ";
+        tempStream << "[" << logLevelPrintout[static_cast<int32_t>(msgLevel) + 1] << "] " << timeStr << "." << ms
+                   << " [" << _name << "] ";
 
-        //tempStream << msg;
-
-        tempStream << "";
+        tempStream << msg;
 
         static std::mutex logMtx;
         std::lock_guard<std::mutex> logMtxLock(logMtx);

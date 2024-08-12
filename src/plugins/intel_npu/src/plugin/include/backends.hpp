@@ -24,6 +24,7 @@ enum class AvailableBackends { LEVEL_ZERO, IMD };
 class NPUBackends final {
 public:
     explicit NPUBackends(const std::vector<AvailableBackends>& backendRegistry, const Config& config);
+    NPUBackends();
 
     std::shared_ptr<IDevice> getDevice(const std::string& specificName = "") const;
     std::shared_ptr<IDevice> getDevice(const ov::AnyMap& paramMap) const;
@@ -38,7 +39,9 @@ public:
     std::string getCompilationPlatform(const std::string_view platform, const std::string& deviceId) const;
 
     void setup(const Config& config);
-
+    bool is_empty() const {
+        return _backend == nullptr ? true : false;
+    }
 private:
     Logger _logger;
     ov::SoPtr<IEngineBackend> _backend;
