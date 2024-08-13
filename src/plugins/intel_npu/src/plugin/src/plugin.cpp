@@ -188,6 +188,7 @@ Plugin::Plugin()
     registerRunTimeOptions(*_options);
 
     // parse env_variables to get LOG_LEVEL if needed
+    std::printf(" (1) _globalConfig.parseEnvVars();");
     _globalConfig.parseEnvVars();
     Logger::global().setLevel(_globalConfig.get<LOG_LEVEL>());
 
@@ -236,6 +237,7 @@ Plugin::Plugin()
     _metrics = std::make_unique<Metrics>(_backends);
 
     // parse again env_variables after backend is initialized to get backend proprieties
+    std::printf(" (2) _globalConfig.parseEnvVars();");
     _globalConfig.parseEnvVars();
 
     // Map from name to function {Config -> ov::Any}
@@ -599,7 +601,7 @@ void Plugin::set_property(const ov::AnyMap& properties) {
             }
         }
     }
-
+    std::printf(" (3) _globalConfig.parseEnvVars();");
     _globalConfig.update(config);
     if (_backends != nullptr) {
         _backends->setup(_globalConfig);

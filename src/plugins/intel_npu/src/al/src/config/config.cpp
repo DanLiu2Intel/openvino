@@ -33,6 +33,7 @@ void splitAndApply(const std::string& str, char delim, std::function<void(std::s
 //
 
 bool OptionParser<bool>::parse(std::string_view val) {
+    std::printf("  OptionParser<bool>::parse  val=%s \n", val.data());
     if (val == "YES") {
         return true;
     } else if (val == "NO") {
@@ -196,15 +197,19 @@ Config::Config(const std::shared_ptr<const OptionsDesc>& desc) : _desc(desc) {
 
 void Config::parseEnvVars() {
     auto log = Logger::global().clone("Config");
-
+    int i = 0;
     _desc->walk([&](const details::OptionConcept& opt) {
         if (!opt.envVar().empty()) {
+            std::printf("   (no config error1--) _desc->walk[%d], opt.key().data()=%s\n", i, opt.key().data());
             if (const auto envVar = std::getenv(opt.envVar().data())) {
                 log.trace("Update option '%s' to value '%s' parsed from environment variable '%s'",
                           opt.key().data(),
                           envVar,
                           opt.envVar().data());
-
+                std::printf("Update option '%s' to value '%s' parsed from environment variable '%s'",
+                opt.key().data(),
+                envVar,
+                opt.envVar().data());
                 _impl[opt.key().data()] = opt.validateAndParse(envVar);
             }
         }
@@ -218,6 +223,7 @@ void Config::update(const ConfigMap& options, OptionMode mode) {
         log.trace("Update option '%s' to value '%s'", p.first.c_str(), p.second.c_str());
 
         const auto opt = _desc->get(p.first, mode);
+        std::printf("   (no config error2) update\n");
         _impl[opt.key().data()] = opt.validateAndParse(p.second);
     }
 }
