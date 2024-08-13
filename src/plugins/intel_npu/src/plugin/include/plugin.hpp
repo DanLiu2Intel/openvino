@@ -57,7 +57,7 @@ public:
         return _backends->is_empty() ? true : false;
     }
 
-    std::shared_ptr<IDevice> init_backends_and_get_device(const Config& localConfig);
+    std::shared_ptr<IDevice> init_backends_and_get_device(const Config& localConfig) const;
 
 private:
     ov::SoPtr<ICompiler> getCompiler(const Config& config) const;

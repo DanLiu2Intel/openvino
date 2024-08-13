@@ -589,8 +589,16 @@ Plugin::Plugin()
     }
 }
 
-std::shared_ptr<IDevice> init_backends_and_get_device(const Config& localConfig) {
+std::shared_ptr<IDevice> Plugin::init_backends_and_get_device(const Config& localConfig) const {
     //TODO: the origin _backends need to be freed to avoid memory leak?
+    if (const auto* envVar = std::getenv("IE_NPU_ENABLE_DRY_ON_EXECUTION")) {
+        std::printf("  init_backends_and_get_device  ***envVar is %s* \n", envVar);
+        if(envVar == "YES")
+            std::printf("init_backends_and_get_device   is YES\n");
+        if(envVar == "NO")
+            std::printf("init_backends_and_get_device   is NO\n");
+    }
+
     _logger.info("Initialize backends separately.");
     std::vector<AvailableBackends> backendRegistry;
 
@@ -610,20 +618,18 @@ std::shared_ptr<IDevice> init_backends_and_get_device(const Config& localConfig)
 #    endif
 #endif
 
-        OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "NPUBackends");
-        _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
-        OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
-        _backends->registerOptions(*_options);
-    }
-
+    _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
+    OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
+    _backends->registerOptions(*_options);
+    
     //todo is it need?
-    OV_ITT_TASK_NEXT(PLUGIN, "Metrics");
     _metrics = std::make_unique<Metrics>(_backends);
 
     // parse again env_variables after backend is initialized to get backend proprieties
     _globalConfig.parseEnvVars();
 
     auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
+
     return device;
 }
 
