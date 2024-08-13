@@ -589,6 +589,44 @@ Plugin::Plugin()
     }
 }
 
+std::shared_ptr<IDevice> init_backends_and_get_device(const Config& localConfig) {
+    //TODO: the origin _backends need to be freed to avoid memory leak?
+    _logger.info("Initialize backends separately.");
+    std::vector<AvailableBackends> backendRegistry;
+
+    #if defined(OPENVINO_STATIC_LIBRARY)
+        backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+    #else
+#    if defined(ENABLE_IMD_BACKEND)
+        if (const auto* envVar = std::getenv("IE_NPU_USE_IMD_BACKEND")) {
+            if (envVarStrToBool("IE_NPU_USE_IMD_BACKEND", envVar)) {
+                backendRegistry.push_back(AvailableBackends::IMD);
+            }
+        }
+#    endif
+
+#    if defined(_WIN32) || defined(_WIN64) || (defined(__linux__) && defined(__x86_64__))
+        backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+#    endif
+#endif
+
+        OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "NPUBackends");
+        _backends = std::make_shared<NPUBackends>(backendRegistry, _globalConfig);
+        OV_ITT_TASK_NEXT(PLUGIN, "registerOptions");
+        _backends->registerOptions(*_options);
+    }
+
+    //todo is it need?
+    OV_ITT_TASK_NEXT(PLUGIN, "Metrics");
+    _metrics = std::make_unique<Metrics>(_backends);
+
+    // parse again env_variables after backend is initialized to get backend proprieties
+    _globalConfig.parseEnvVars();
+
+    auto device = _backends->getDevice(localConfig.get<DEVICE_ID>());
+    return device;
+}
+
 void Plugin::set_property(const ov::AnyMap& properties) {
     const std::map<std::string, std::string> config = any_copy(properties);
     update_log_level(config);

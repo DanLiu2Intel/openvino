@@ -53,6 +53,12 @@ public:
     ov::SupportedOpsMap query_model(const std::shared_ptr<const ov::Model>& model,
                                     const ov::AnyMap& properties) const override;
 
+    bool is_backend_empty() const {
+        return _backends->is_empty() ? true : false;
+    }
+
+    std::shared_ptr<IDevice> init_backends_and_get_device(const Config& localConfig);
+
 private:
     ov::SoPtr<ICompiler> getCompiler(const Config& config) const;
 
