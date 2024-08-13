@@ -195,6 +195,7 @@ Plugin::Plugin()
     std::vector<AvailableBackends> backendRegistry;
 
     if (const auto* envVar = std::getenv("IE_NPU_ENABLE_DRY_ON_EXECUTION")) {
+        std::printf("getenv(IE_NPU_ENABLE_DRY_ON_EXECUTION) is %s\n", envVar);
         OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "create empty NPUBackends");
         _logger.info("initialize Plugin without backend. Only compilation can be performed!");
         std::printf("initialize Plugin without backend. Only compilation can be performed!\n");
@@ -207,6 +208,7 @@ Plugin::Plugin()
         //No backend: backend is empty, metric and compile_model all need to part to perform this job.
         //TODO2: No backend or backend init with empty backendRegistry, which is better?
     } else {
+        std::printf("initialize Plugin normally.\n");
         _logger.info("initialize Plugin normally.");
 #if defined(OPENVINO_STATIC_LIBRARY)
         backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
