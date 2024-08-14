@@ -131,7 +131,7 @@ void Logger::addEntryPackedActive(ov::log::Level msgLevel, std::string_view msg)
     auto& stream = getLevelStream(msgLevel);
     try {
         tempStream << "[" << logLevelPrintout[static_cast<int32_t>(msgLevel) + 1] << "] " << timeStr << "." << ms
-                  << " [" << _name << "] ";
+                   << " [" << _name << "] ";
 
         tempStream << msg;
 
