@@ -196,6 +196,7 @@ Config::Config(const std::shared_ptr<const OptionsDesc>& desc) : _desc(desc) {
 
 void Config::parseEnvVars() {
     auto log = Logger::global().clone("Config");
+
     _desc->walk([&](const details::OptionConcept& opt) {
         if (!opt.envVar().empty()) {
             if (const auto envVar = std::getenv(opt.envVar().data())) {
@@ -203,9 +204,6 @@ void Config::parseEnvVars() {
                           opt.key().data(),
                           envVar,
                           opt.envVar().data());
-                opt.key().data(),
-                envVar,
-                opt.envVar().data());
                 _impl[opt.key().data()] = opt.validateAndParse(envVar);
             }
         }

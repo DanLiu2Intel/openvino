@@ -239,7 +239,6 @@ struct OptionBase {
 
     // Overload this to provide more specific parser.
     static ValueType parse(std::string_view val) {
-        std:printf("  ValueType parse()\n");
         return OptionParser<ValueType>::parse(val);
     }
 
@@ -324,6 +323,7 @@ struct OptionConcept final {
 template <class Opt>
 std::shared_ptr<OptionValue> validateAndParse(std::string_view val) {
     using ValueType = typename Opt::ValueType;
+    
     try {
         auto parsedVal = Opt::parse(val);
         Opt::validateValue(parsedVal);
