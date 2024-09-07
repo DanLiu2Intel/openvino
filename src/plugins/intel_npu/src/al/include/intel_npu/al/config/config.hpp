@@ -323,7 +323,6 @@ struct OptionConcept final {
 template <class Opt>
 std::shared_ptr<OptionValue> validateAndParse(std::string_view val) {
     using ValueType = typename Opt::ValueType;
-    
     try {
         auto parsedVal = Opt::parse(val);
         Opt::validateValue(parsedVal);
