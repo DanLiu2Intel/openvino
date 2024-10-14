@@ -40,6 +40,16 @@ public:
 
     void setup(const Config& config);
 
+    bool isExist() {
+        if (_backend == nullptr) {
+            std::printf("  ===> backend test is empty!\n");
+        } else {
+            std::printf("  ===> backend test exist!!!\n");
+        }
+        return _backend == nullptr ? false : true;
+    }
+
+
 private:
     Logger _logger;
     ov::SoPtr<IEngineBackend> _backend;

@@ -126,9 +126,11 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
 
     if (_backend != nullptr) {
         _logger.info("Use '%s' backend for inference", _backend->getName().c_str());
-    } else {
-        _logger.error("Cannot find backend for inference. Make sure the device is available.");
     }
+    //move this part to compiled_model part. because except inference, there is no backend needed.
+    // else {
+    //     _logger.("Cannot find backend for inference. Make sure the device is available.");
+    // }
 }
 
 ov::SoPtr<IEngineBackend> NPUBackends::getIEngineBackend() {
@@ -201,6 +203,12 @@ std::shared_ptr<IDevice> NPUBackends::getDevice(const ov::AnyMap& paramMap) cons
 }
 
 std::vector<std::string> NPUBackends::getAvailableDevicesNames() const {
+    std::printf(" ===  >getAvailableDevicesNames> \n");
+    if(_backend == nullptr) {
+        std::printf("          return empty \n");
+    } else {
+        std::printf("          return %d backends \n", _backend->getDeviceNames().size());
+    }
     return _backend == nullptr ? std::vector<std::string>() : _backend->getDeviceNames();
 }
 
