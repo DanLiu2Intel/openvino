@@ -114,6 +114,11 @@ CompiledModel::~CompiledModel() {
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
+    if (!std::dynamic_pointer_cast<const Plugin>(get_plugin()).isbackendsExist()) {
+        std::printf(" ===> Cannot find backend for inference. Make sure the device is available.\n");
+        _logger.error("Cannot find backend for inference. Make sure the device is available.");
+        OPENVINO_THROW("Can't create infer request!");
+    }
 
     if (_executorPtr == nullptr && _device != nullptr) {
         _executorPtr = _device->createExecutor(_networkPtr, _config);
@@ -406,6 +411,12 @@ void CompiledModel::initialize_properties() {
 void CompiledModel::create_executor() {
     if (_config.get<CREATE_EXECUTOR>()) {
         _logger.info("Creating the executor inside the \"CompiledModel\" constructor");
+
+        if (!std::dynamic_pointer_cast<const Plugin>(get_plugin()).isbackendsExist()) {
+            std::printf("  ===> backend is empty. Now EXECUTOR only can be created out of \"CompiledModel\" constructor! \n");
+            _logger.warning("backend is empty. Now EXECUTOR only can be created out of \"CompiledModel\" constructor!");
+            return ;
+        }
 
         // If no device has been defined, the executor shall keep the default value of "nullptr". In this scenario,
         // only export operations will be allowed
