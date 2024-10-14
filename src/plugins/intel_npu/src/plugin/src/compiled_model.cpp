@@ -413,9 +413,10 @@ void CompiledModel::create_executor() {
         _logger.info("Creating the executor inside the \"CompiledModel\" constructor");
 
         if (!std::dynamic_pointer_cast<const Plugin>(get_plugin()).isbackendsExist()) {
-            std::printf("  ===> backend is empty. Now EXECUTOR only can be created out of \"CompiledModel\" constructor! \n");
+            std::printf(
+                "  ===> backend is empty. Now EXECUTOR only can be created out of \"CompiledModel\" constructor! \n");
             _logger.warning("backend is empty. Now EXECUTOR only can be created out of \"CompiledModel\" constructor!");
-            return ;
+            return;
         }
 
         // If no device has been defined, the executor shall keep the default value of "nullptr". In this scenario,

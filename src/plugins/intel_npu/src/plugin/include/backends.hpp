@@ -49,7 +49,6 @@ public:
         return _backend == nullptr ? false : true;
     }
 
-
 private:
     Logger _logger;
     ov::SoPtr<IEngineBackend> _backend;
