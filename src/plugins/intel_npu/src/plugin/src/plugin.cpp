@@ -191,7 +191,6 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
-    std::printf(" ====>NPU Plugin::Plugin()\n");
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -204,7 +203,7 @@ Plugin::Plugin()
 
     // TODO: generation of available backends list can be done during execution of CMake scripts
     std::vector<AvailableBackends> backendRegistry;
-    std::printf(" ====>NPU Plugin::Plugin()  before call init backend\n");
+    
 #if defined(OPENVINO_STATIC_LIBRARY)
     backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
 #else

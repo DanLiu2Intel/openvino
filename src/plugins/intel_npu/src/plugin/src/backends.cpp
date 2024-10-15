@@ -70,8 +70,7 @@ namespace intel_npu {
 // TODO Config will be useless here, since only default values will be used
 NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, [[maybe_unused]] const Config& config)
     : _logger("NPUBackends", Logger::global().level()) {
-    std::printf("  passed in NPUBackends, backendRegistry.size()=%d \n", backendRegistry.size());
-    std::vector<ov::SoPtr<IEngineBackend>> registeredBackends;
+    std::map<std::string, ov::SoPtr<IEngineBackend>> registeredBackends;
     [[maybe_unused]] const auto registerBackend = [&](ov::SoPtr<IEngineBackend> backend, const std::string& name) {
         const auto backendDevices = backend->getDeviceNames();
         if (!backendDevices.empty()) {
@@ -80,8 +79,7 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
                 deviceNames << device << " ";
             }
             _logger.debug("Register '%s' with devices '%s'", name.c_str(), deviceNames.str().c_str());
-            registeredBackends.emplace_back(backend);
-            std::printf("   >>>registeredBackends.size() = %d, name: %s\n", registeredBackends.size(), name.c_str());
+            registeredBackends.emplace(name, backend);
         }
     };
 
@@ -118,19 +116,27 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
     }
 
     if (registeredBackends.empty()) {
-        registeredBackends.emplace_back(nullptr);
+        registeredBackends.emplace("", nullptr);
     }
 
     // TODO: implementation of getDevice methods needs to be updated to go over all
     // registered backends to search a device.
     // A single backend is chosen for now to keep existing behavior
-    _backend = *registeredBackends.begin();
+    _backend = registeredBackends.begin()->second;
 
-    if (_backend != nullptr) {
-        _logger.info("Use '%s' backend for inference", _backend->getName().c_str());
+    if (registeredBackends.size() > 1) {
+        _logger.debug("Both ZeroBackend and IMDBackend inited successfully. Use '%s' backend for inference",
+                      _backend->getName().c_str());
     } else {
-        _logger.warning("Cannot find backend for inference. Make sure the device is available.");
-    }//    // move this part to compiled_model part. because except inference, there is no backend needed.
+        auto name = registeredBackends.begin()->first;
+        if (name == "npu_imd_backend") {
+            _logger.debug("Only IMDBackend inited successfuly.");
+        } else if (name == "npu_level_zero_backend") {
+            _logger.debug("Only ZeroBackend inited successfuly.");
+        } else {
+            _logger.warning("No backend inited successfully. Only offline compilation can be done!");
+        }
+    }
 }
 
 ov::SoPtr<IEngineBackend> NPUBackends::getIEngineBackend() {
@@ -203,12 +209,6 @@ std::shared_ptr<IDevice> NPUBackends::getDevice(const ov::AnyMap& paramMap) cons
 }
 
 std::vector<std::string> NPUBackends::getAvailableDevicesNames() const {
-    std::printf(" ===  >getAvailableDevicesNames> \n");
-    if (_backend == nullptr) {
-        std::printf("          return empty \n");
-    } else {
-        std::printf("          return %d backends \n", _backend->getDeviceNames().size());
-    }
     return _backend == nullptr ? std::vector<std::string>() : _backend->getDeviceNames();
 }
 

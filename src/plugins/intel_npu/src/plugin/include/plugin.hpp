@@ -53,10 +53,6 @@ public:
     ov::SupportedOpsMap query_model(const std::shared_ptr<const ov::Model>& model,
                                     const ov::AnyMap& properties) const override;
 
-    bool isbackendsExist() const {
-        return _backends->isExist();
-    }
-
 private:
     ov::SoPtr<ICompiler> getCompiler(const Config& config) const;
 
