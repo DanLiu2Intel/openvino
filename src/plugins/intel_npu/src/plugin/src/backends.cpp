@@ -71,7 +71,7 @@ namespace intel_npu {
 NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, [[maybe_unused]] const Config& config)
     : _logger("NPUBackends", Logger::global().level()) {
     std::printf("  passed in NPUBackends, backendRegistry.size()=%d \n", backendRegistry.size());
-    std::vector<ov::SoPtr<IEngineBackend>, std::string> registeredBackends;
+    std::vector<ov::SoPtr<IEngineBackend>> registeredBackends;
     [[maybe_unused]] const auto registerBackend = [&](ov::SoPtr<IEngineBackend> backend, const std::string& name) {
         const auto backendDevices = backend->getDeviceNames();
         if (!backendDevices.empty()) {
