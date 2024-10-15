@@ -40,7 +40,7 @@ public:
 
     void setup(const Config& config);
 
-    bool isExist() {
+    bool isExist() const {
         if (_backend == nullptr) {
             std::printf("  ===> backend test is empty!\n");
         } else {

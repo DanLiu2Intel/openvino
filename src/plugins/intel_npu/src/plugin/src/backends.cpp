@@ -70,7 +70,8 @@ namespace intel_npu {
 // TODO Config will be useless here, since only default values will be used
 NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, [[maybe_unused]] const Config& config)
     : _logger("NPUBackends", Logger::global().level()) {
-    std::vector<ov::SoPtr<IEngineBackend>> registeredBackends;
+    std::printf("  passed in NPUBackends, backendRegistry.size()=%d \n", backendRegistry.size());
+    std::vector<ov::SoPtr<IEngineBackend>, std::string> registeredBackends;
     [[maybe_unused]] const auto registerBackend = [&](ov::SoPtr<IEngineBackend> backend, const std::string& name) {
         const auto backendDevices = backend->getDeviceNames();
         if (!backendDevices.empty()) {
@@ -80,12 +81,13 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
             }
             _logger.debug("Register '%s' with devices '%s'", name.c_str(), deviceNames.str().c_str());
             registeredBackends.emplace_back(backend);
+            std::printf("   >>>registeredBackends.size() = %d, name: %s\n", registeredBackends.size(), name.c_str());
         }
     };
 
     for (const auto& name : backendRegistry) {
         std::string backendName = backendToString(name);
-        _logger.debug("Try '%s' backend", backendName.c_str());
+        _logger.debug("Try to init '%s' backend", backendName.c_str());
 
         try {
 #if !defined(OPENVINO_STATIC_LIBRARY) && defined(ENABLE_IMD_BACKEND)
@@ -126,11 +128,9 @@ NPUBackends::NPUBackends(const std::vector<AvailableBackends>& backendRegistry, 
 
     if (_backend != nullptr) {
         _logger.info("Use '%s' backend for inference", _backend->getName().c_str());
-    }
-    // move this part to compiled_model part. because except inference, there is no backend needed.
-    // else {
-    //     _logger.("Cannot find backend for inference. Make sure the device is available.");
-    // }
+    } else {
+        _logger.warning("Cannot find backend for inference. Make sure the device is available.");
+    }//    // move this part to compiled_model part. because except inference, there is no backend needed.
 }
 
 ov::SoPtr<IEngineBackend> NPUBackends::getIEngineBackend() {

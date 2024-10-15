@@ -7,6 +7,7 @@
 #include <fstream>
 #include <string_view>
 
+#include "plugin.hpp"
 #include "async_infer_request.hpp"
 #include "intel_npu/al/config/common.hpp"
 #include "intel_npu/al/config/compiler.hpp"
@@ -114,7 +115,7 @@ CompiledModel::~CompiledModel() {
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
-    if (!std::dynamic_pointer_cast<const Plugin>(get_plugin()).isbackendsExist()) {
+    if (!((std::dynamic_pointer_cast<const Plugin>(get_plugin()))->isbackendsExist())) {
         std::printf(" ===> Cannot find backend for inference. Make sure the device is available.\n");
         _logger.error("Cannot find backend for inference. Make sure the device is available.");
         OPENVINO_THROW("Can't create infer request!");
@@ -412,7 +413,7 @@ void CompiledModel::create_executor() {
     if (_config.get<CREATE_EXECUTOR>()) {
         _logger.info("Creating the executor inside the \"CompiledModel\" constructor");
 
-        if (!std::dynamic_pointer_cast<const Plugin>(get_plugin()).isbackendsExist()) {
+        if (!((std::dynamic_pointer_cast<const Plugin>(get_plugin()))->isbackendsExist())) {
             std::printf(
                 "  ===> backend is empty. Now EXECUTOR only can be created out of \"CompiledModel\" constructor! \n");
             _logger.warning("backend is empty. Now EXECUTOR only can be created out of \"CompiledModel\" constructor!");
