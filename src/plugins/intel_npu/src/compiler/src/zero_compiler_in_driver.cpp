@@ -376,7 +376,6 @@ void LevelZeroCompilerInDriver<TableExtension>::getNativeBinary(ze_graph_dditabl
     // Get blob size first
     auto result = _graphDdiTableExt.pfnGetNativeBinary(graphHandle, &blobSize, nullptr);
     blob.resize(blobSize);
-    std::printf(" before call 2\n");
     OPENVINO_ASSERT(result == ZE_RESULT_SUCCESS,
                     "Failed to compile network. L0 pfnGetNativeBinary get blob size",
                     " result: ",
@@ -389,7 +388,6 @@ void LevelZeroCompilerInDriver<TableExtension>::getNativeBinary(ze_graph_dditabl
 
     // Get blob data
     result = _graphDdiTableExt.pfnGetNativeBinary(graphHandle, &blobSize, blob.data());
-    std::printf(" before call 3\n");
     OPENVINO_ASSERT(result == ZE_RESULT_SUCCESS,
                     "Failed to compile network. L0 pfnGetNativeBinary get blob data",
                     " result: ",
@@ -412,7 +410,6 @@ void LevelZeroCompilerInDriver<TableExtension>::getNativeBinary(ze_graph_dditabl
                                                                 size_t& blobSize) const {
     // Get blob ptr and size
     auto result = _graphDdiTableExt.pfnGetNativeBinary2(graphHandle, &blobSize, &blobPtr);
-    std::printf(" before call 4\n");
     OPENVINO_ASSERT(result == ZE_RESULT_SUCCESS,
                     "Failed to compile network. L0 pfnGetNativeBinary get blob size",
                     " result: ",
@@ -961,7 +958,8 @@ NetworkDescription LevelZeroCompilerInDriver<TableExtension>::compile(const std:
     ze_graph_handle_t graphHandle;
 
     result = seriazlideIRModelAndCreateGraph(model, config, deviceGraphProperties, graphHandle);
-    std::printf(" before call 5\n");
+
+    std::printf(" --------call getLatestBuildError strat--------\n");
     OPENVINO_ASSERT(result == ZE_RESULT_SUCCESS,
                     "Failed to compile network. L0 createGraph",
                     " result: ",
@@ -971,7 +969,7 @@ NetworkDescription LevelZeroCompilerInDriver<TableExtension>::compile(const std:
                     uint64_t(result),
                     ". ",
                     getLatestBuildError());
-
+    std::printf(" --------call getLatestBuildError end--------\n");
     auto networkMeta = getNetworkMeta(graphHandle);
     networkMeta.name = model->get_friendly_name();
 
@@ -1218,6 +1216,15 @@ std::string LevelZeroCompilerInDriver<TableExtension>::getLatestBuildError() con
     uint32_t size = 0;
     // Null graph handle to get erro log
     auto result = _graphDdiTableExt.pfnBuildLogGetString(nullptr, &size, nullptr);
+    std::printf("  --1--> getLatestBuildError log=%s\n", logContent.c_str());
+    std::printf("  --1--> getLatestBuildError size=%d\n", size);
+    if ( logContent.find( "::stored" ) != std::string::npos ) {
+        std::printf("    --1-->stored\n");
+    }
+    if ( logContent.find( "::found" ) != std::string::npos ) {
+        std::printf("    --1s-->found\n");
+    }
+
     if (ZE_RESULT_SUCCESS != result) {
         // The failure will not break normal execution, only warning here
         _logger.warning("getLatestBuildError Failed to get size of latest error log!");
@@ -1231,18 +1238,18 @@ std::string LevelZeroCompilerInDriver<TableExtension>::getLatestBuildError() con
         return "";
     }
 
-    // Get log content
+    // Get log contents
     std::string logContent{};
     logContent.resize(size);
     result = _graphDdiTableExt.pfnBuildLogGetString(nullptr, &size, const_cast<char*>(logContent.data()));
-    std::printf("  ----> getLatestBuildError log=%s\n", logContent.c_str());
-    std::printf("  ----> getLatestBuildError size=%d\n", size);
 
-    if ( logContent.find( "result_t::stored" ) != std::string::npos ) {
-        std::printf("    ---->stored\n");
+    std::printf("  --2--> getLatestBuildError log=%s\n", logContent.c_str());
+    std::printf("  --2--> getLatestBuildError size=%d\n", size);
+    if ( logContent.find( "::stored" ) != std::string::npos ) {
+        std::printf("    --2-->stored\n");
     }
-    if ( logContent.find( "result_t::found" ) != std::string::npos ) {
-        std::printf("    ---->found\n");
+    if ( logContent.find( "::found" ) != std::string::npos ) {
+        std::printf("    --2-->found\n");
     }
 
     if (ZE_RESULT_SUCCESS != result) {
