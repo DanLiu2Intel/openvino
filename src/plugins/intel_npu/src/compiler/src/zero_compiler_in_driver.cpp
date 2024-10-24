@@ -958,6 +958,7 @@ NetworkDescription LevelZeroCompilerInDriver<TableExtension>::compile(const std:
 
     result = seriazlideIRModelAndCreateGraph(model, config, deviceGraphProperties, graphHandle);
 
+    std::printf(" --------call getLatestBuildError strat--------\n");
     OPENVINO_ASSERT(result == ZE_RESULT_SUCCESS,
                     "Failed to compile network. L0 createGraph",
                     " result: ",
@@ -967,7 +968,7 @@ NetworkDescription LevelZeroCompilerInDriver<TableExtension>::compile(const std:
                     uint64_t(result),
                     ". ",
                     getLatestBuildError());
-
+    std::printf(" --------call getLatestBuildError end--------\n");
     auto networkMeta = getNetworkMeta(graphHandle);
     networkMeta.name = model->get_friendly_name();
 
@@ -1210,6 +1211,15 @@ std::string LevelZeroCompilerInDriver<TableExtension>::getLatestBuildError() con
     uint32_t size = 0;
     // Null graph handle to get erro log
     auto result = _graphDdiTableExt.pfnBuildLogGetString(nullptr, &size, nullptr);
+    std::printf("  --1--> getLatestBuildError log=%s\n", logContent.c_str());
+    std::printf("  --1--> getLatestBuildError size=%d\n", size);
+    if ( logContent.find( "::stored" ) != std::string::npos ) {
+        std::printf("    --1-->stored\n");
+    }
+    if ( logContent.find( "::found" ) != std::string::npos ) {
+        std::printf("    --1s-->found\n");
+    }
+
     if (ZE_RESULT_SUCCESS != result) {
         // The failure will not break normal execution, only warning here
         _logger.warning("getLatestBuildError Failed to get size of latest error log!");
@@ -1223,10 +1233,20 @@ std::string LevelZeroCompilerInDriver<TableExtension>::getLatestBuildError() con
         return "";
     }
 
-    // Get log content
+    // Get log contents
     std::string logContent{};
     logContent.resize(size);
     result = _graphDdiTableExt.pfnBuildLogGetString(nullptr, &size, const_cast<char*>(logContent.data()));
+
+    std::printf("  --2--> getLatestBuildError log=%s\n", logContent.c_str());
+    std::printf("  --2--> getLatestBuildError size=%d\n", size);
+    if ( logContent.find( "::stored" ) != std::string::npos ) {
+        std::printf("    --2-->stored\n");
+    }
+    if ( logContent.find( "::found" ) != std::string::npos ) {
+        std::printf("    --2-->found\n");
+    }
+
     if (ZE_RESULT_SUCCESS != result) {
         // The failure will not break normal execution, only warning here
         _logger.warning("getLatestBuildError size of latest error log > 0, failed to get "
