@@ -372,7 +372,7 @@ void LevelZeroCompilerInDriver<TableExtension>::getNativeBinary(ze_graph_dditabl
     // Get blob size first
     auto result = _graphDdiTableExt.pfnGetNativeBinary(graphHandle, &blobSize, nullptr);
     blob.resize(blobSize);
-
+    std::printf(" before call 2\n");
     OPENVINO_ASSERT(result == ZE_RESULT_SUCCESS,
                     "Failed to compile network. L0 pfnGetNativeBinary get blob size",
                     " result: ",
@@ -385,7 +385,7 @@ void LevelZeroCompilerInDriver<TableExtension>::getNativeBinary(ze_graph_dditabl
 
     // Get blob data
     result = _graphDdiTableExt.pfnGetNativeBinary(graphHandle, &blobSize, blob.data());
-
+    std::printf(" before call 3\n");
     OPENVINO_ASSERT(result == ZE_RESULT_SUCCESS,
                     "Failed to compile network. L0 pfnGetNativeBinary get blob data",
                     " result: ",
@@ -408,7 +408,7 @@ void LevelZeroCompilerInDriver<TableExtension>::getNativeBinary(ze_graph_dditabl
                                                                 size_t& blobSize) const {
     // Get blob ptr and size
     auto result = _graphDdiTableExt.pfnGetNativeBinary2(graphHandle, &blobSize, &blobPtr);
-
+    std::printf(" before call 4\n");
     OPENVINO_ASSERT(result == ZE_RESULT_SUCCESS,
                     "Failed to compile network. L0 pfnGetNativeBinary get blob size",
                     " result: ",
@@ -938,8 +938,12 @@ NetworkDescription LevelZeroCompilerInDriver<TableExtension>::compile(const std:
                                                                       const Config& config) const {
     _logger.debug("compile start");
 
+    std::printf("=================1====================\n");
+    getLatestBuildError();
+    std::printf("=================2====================\n");
     ze_device_graph_properties_t deviceGraphProperties{};
     auto result = _graphDdiTableExt.pfnDeviceGetGraphProperties(_deviceHandle, &deviceGraphProperties);
+    std::printf(" before call 1\n");
     if (ZE_RESULT_SUCCESS != result) {
         OPENVINO_THROW("Failed to compile network. L0 pfnDeviceGetGraphProperties",
                        " result: ",
@@ -953,7 +957,7 @@ NetworkDescription LevelZeroCompilerInDriver<TableExtension>::compile(const std:
     ze_graph_handle_t graphHandle;
 
     result = seriazlideIRModelAndCreateGraph(model, config, deviceGraphProperties, graphHandle);
-
+    std::printf(" before call 5\n");
     OPENVINO_ASSERT(result == ZE_RESULT_SUCCESS,
                     "Failed to compile network. L0 createGraph",
                     " result: ",
@@ -970,6 +974,9 @@ NetworkDescription LevelZeroCompilerInDriver<TableExtension>::compile(const std:
     _logger.debug("compile end");
 
     auto networkDescription = NetworkDescription(std::move(networkMeta));
+    std::printf("=================3====================\n");
+    getLatestBuildError();
+    std::printf("=================4====================\n");
     return networkDescription;
 }
 
@@ -1200,6 +1207,7 @@ NetworkMetadata LevelZeroCompilerInDriver<TableExtension>::getNetworkMeta(ze_gra
 template <typename TableExtension>
 template <typename T, typename std::enable_if_t<!NotSupportLogHandle(T), bool>>
 std::string LevelZeroCompilerInDriver<TableExtension>::getLatestBuildError() const {
+    std::printf("  ----> getLatestBuildError start\n");
     _logger.debug("getLatestBuildError start");
 
     // Get log size
@@ -1223,6 +1231,16 @@ std::string LevelZeroCompilerInDriver<TableExtension>::getLatestBuildError() con
     std::string logContent{};
     logContent.resize(size);
     result = _graphDdiTableExt.pfnBuildLogGetString(nullptr, &size, const_cast<char*>(logContent.data()));
+    std::printf("  ----> getLatestBuildError log=%s\n", logContent.c_str());
+    std::printf("  ----> getLatestBuildError size=%d\n", size);
+
+    if ( cache_status.find( "cache_status_t::stored" ) != std::string::npos ) {
+        std::printf("    ---->stored\n");
+    }
+    if ( cache_status.find( "cache_status_t::found" ) != std::string::npos ) {
+        std::printf("    ---->found\n");
+    }
+
     if (ZE_RESULT_SUCCESS != result) {
         // The failure will not break normal execution, only warning here
         _logger.warning("getLatestBuildError size of latest error log > 0, failed to get "
@@ -1230,6 +1248,7 @@ std::string LevelZeroCompilerInDriver<TableExtension>::getLatestBuildError() con
         return "";
     }
     _logger.debug("getLatestBuildError end");
+    std::printf("  ----> getLatestBuildError end\n");
     return logContent;
 }
 
