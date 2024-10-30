@@ -191,6 +191,7 @@ private:
 
     template <typename T = TableExtension, typename std::enable_if_t<NotSupportLogHandle(T), bool> = true>
     std::string getLatestBuildError() const {
+        std::printf("  --getLatestBuildError2--> this part seems not support log.\n");
         return "";
     }
 
