@@ -1234,10 +1234,10 @@ std::string LevelZeroCompilerInDriver<TableExtension>::getLatestBuildError() con
     std::printf("  ----> getLatestBuildError log=%s\n", logContent.c_str());
     std::printf("  ----> getLatestBuildError size=%d\n", size);
 
-    if ( cache_status.find( "cache_status_t::stored" ) != std::string::npos ) {
+    if ( logContent.find( "result_t::stored" ) != std::string::npos ) {
         std::printf("    ---->stored\n");
     }
-    if ( cache_status.find( "cache_status_t::found" ) != std::string::npos ) {
+    if ( logContent.find( "result_t::found" ) != std::string::npos ) {
         std::printf("    ---->found\n");
     }
 
