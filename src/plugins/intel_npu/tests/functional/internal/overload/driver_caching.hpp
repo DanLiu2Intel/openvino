@@ -4,34 +4,35 @@
 #include <common_test_utils/test_assertions.hpp>
 #include <sstream>
 
-
+// #include "shared_test_classes/base/ov_subgraph.hpp"s
+#include "base/ov_behavior_test_utils.hpp"
 
 #include "intel_npu/npu_private_properties.hpp"
 #include "openvino/core/except.hpp"
 #include "openvino/opsets/opset8.hpp"
 #include "openvino/runtime/properties.hpp"
-#include "zero_init.hpp"
 
 #include "intel_npu/utils/zero/zero_utils.hpp"
 
-// #include "shared_test_classes/base/ov_subgraph.hpp"s
-#include "base/ov_behavior_test_utils.hpp"
 
 #include "stdio.h" //
-
-#include<stdlib.h>// env setting
+#include <stdlib.h>// env setting
 
 #include "zero_types.hpp"
 //src/plugins/intel_npu/src/backend/include/zero_types.hpp
 
 #include "zero_backend.hpp"
-#include "zero_compiler_in_driver.hpp"
-#include "zero_init.hpp"
 
 #include "intel_npu/config/common.hpp"
 #include "intel_npu/config/compiler.hpp"
 #include "intel_npu/config/runtime.hpp"
 #include "intel_npu/config/config.hpp"
+
+#include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/backend/include/zero_backend.hpp"
+#include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/al/include/intel_npu/config/config.hpp"
+
+#include <filesystem>
+
 
 #include <chrono> // cal time
 
@@ -56,10 +57,6 @@ inline std::shared_ptr<ov::Model> getConstantGraph() {
     res->get_output_tensor(0).set_names({"tensor_output"});
     results.push_back(res);
     return std::make_shared<Model>(results, params);
-}
-
-inline bool isCommandQueueExtSupported() {
-    return std::make_shared<::intel_npu::ZeroInitStructsHolder>()->getCommandQueueDdiTable().version() > 0;
 }
 
 std::string generateCacheDirName(const std::string& test_name) {
@@ -129,7 +126,7 @@ public:
                 configItem.second.print(result);
             }
         }
-        std::printf("<====local test name> %s\n", result.str());
+        std::printf("<====local test name> %s\n", result.str().c_str());
         return result.str();
     }
 
@@ -149,9 +146,9 @@ public:
     }
 
     void TearDown() override {
-        if (!m_cache_dir.empty()) {
-            ov::test::utils::removeFilesWithExt(m_cache_dir);
-            ov::test::utils::removeDir(m_cache_dir);
+        if (!m_cache_dir.empty() && !std::filesystem::exists(m_cache_dir)) {
+            std::filesystem::remove_all(m_cache_dir);
+            //ov::test::utils::removeDir(m_cache_dir);
         }
 
         if (!configuration.empty()) {
