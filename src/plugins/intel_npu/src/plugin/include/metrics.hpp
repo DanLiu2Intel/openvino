@@ -9,8 +9,8 @@
 #include <vector>
 
 #include "backends.hpp"
-#include "npu.hpp"
-#include "npu_private_properties.hpp"
+#include "intel_npu/common/npu.hpp"
+#include "intel_npu/npu_private_properties.hpp"
 #include "openvino/runtime/intel_npu/properties.hpp"
 #include "openvino/runtime/internal_properties.hpp"
 #include "openvino/runtime/properties.hpp"
@@ -26,7 +26,7 @@ public:
     std::string GetFullDeviceName(const std::string& specifiedDeviceName) const;
     IDevice::Uuid GetDeviceUuid(const std::string& specifiedDeviceName) const;
     const std::vector<std::string>& GetSupportedConfigKeys() const;
-    const std::vector<std::string>& GetOptimizationCapabilities() const;
+    const std::vector<std::string> GetOptimizationCapabilities() const;
     const std::tuple<uint32_t, uint32_t, uint32_t>& GetRangeForAsyncInferRequest() const;
     const std::tuple<uint32_t, uint32_t>& GetRangeForStreams() const;
     std::string GetDeviceArchitecture(const std::string& specifiedDeviceName) const;
@@ -34,7 +34,7 @@ public:
     uint64_t GetDeviceAllocMemSize(const std::string& specifiedDeviceName) const;
     uint64_t GetDeviceTotalMemSize(const std::string& specifiedDeviceName) const;
     uint32_t GetDriverVersion() const;
-    uint32_t GetDriverExtVersion() const;
+    uint32_t GetGraphExtVersion() const;
     uint32_t GetSteppingNumber(const std::string& specifiedDeviceName) const;
     uint32_t GetMaxTiles(const std::string& specifiedDeviceName) const;
     ov::device::PCIInfo GetPciInfo(const std::string& specifiedDeviceName) const;

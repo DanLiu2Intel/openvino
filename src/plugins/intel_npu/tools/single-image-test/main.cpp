@@ -17,6 +17,7 @@
 
 #include <gflags/gflags.h>
 
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -108,6 +109,10 @@ DEFINE_string(scale_values, "", scale_values_message);
 DEFINE_string(img_bin_precision, "", "Specify the precision of the binary input files. Eg: 'FP32,FP16,I32,I64,U8'");
 
 DEFINE_bool(run_test, false, "Run the test (compare current results with previously dumped)");
+DEFINE_string(
+    ref_dir,
+    "",
+    "A directory with reference blobs to compare with in run_test mode. Leave it empty to use the current folder.");
 DEFINE_string(mode, "", "Comparison mode to use");
 
 DEFINE_uint32(top_k, 1, "Top K parameter for 'classification' mode");
@@ -216,6 +221,8 @@ void parseCommandLine(int argc, char* argv[]) {
     std::cout << "    Mean_values [channel1,channel2,channel3]  " << FLAGS_mean_values << std::endl;
     std::cout << "    Scale_values [channel1,channel2,channel3] " << FLAGS_scale_values << std::endl;
     if (FLAGS_run_test) {
+        std::cout << "    Reference files direcotry:                "
+                  << (FLAGS_ref_dir.empty() ? "Current directory" : FLAGS_ref_dir) << std::endl;
         std::cout << "    Mode:             " << FLAGS_mode << std::endl;
         if (strEq(FLAGS_mode, "classification")) {
             std::cout << "    Top K:            " << FLAGS_top_k << std::endl;
@@ -280,7 +287,8 @@ std::vector<cv::Mat> ovToCV(const ov::Tensor& tensor, const ov::Shape& shape, co
                     "Unsupported layout: ", layout.to_string());
 
     OPENVINO_ASSERT(precision == ov::element::Type_t::u8 || precision == ov::element::Type_t::f32 ||
-                            precision == ov::element::Type_t::f16 || precision == ov::element::Type_t::i32,
+                            precision == ov::element::Type_t::f16 || precision == ov::element::Type_t::bf16 ||
+                            precision == ov::element::Type_t::i32,
                     "Unsupported precision: ", precision.get_type_name());
 
     int cvType = 0;
@@ -295,6 +303,9 @@ std::vector<cv::Mat> ovToCV(const ov::Tensor& tensor, const ov::Shape& shape, co
     } else if (precision == ov::element::Type_t::f16) {
         cvType = CV_16SC1;
         elemSize = sizeof(ov::float16);
+    } else if (precision == ov::element::Type_t::bf16) {
+        cvType = CV_16SC1;
+        elemSize = sizeof(ov::bfloat16);
     } else if (precision == ov::element::Type_t::i32) {
         cvType = CV_32SC1;
         elemSize = sizeof(int32_t);
@@ -385,11 +396,14 @@ void cvToOV(const cv::Mat& cvImg, const ov::Tensor& tensor, const ov::Shape& sha
         cvType = static_cast<int>(CV_32FC(C));
     } else if (precision == ov::element::Type_t::f16) {
         cvType = static_cast<int>(CV_16SC(C));
+    } else if (precision == ov::element::Type_t::bf16) {
+        cvType = static_cast<int>(CV_16SC(C));
     } else if (precision == ov::element::Type_t::i32) {
         cvType = static_cast<int>(CV_32SC(C));
     } else {
         OPENVINO_ASSERT(precision == ov::element::Type_t::u8 || precision == ov::element::Type_t::f32 ||
-                                precision == ov::element::Type_t::f16 || precision == ov::element::Type_t::i32,
+                                precision == ov::element::Type_t::f16 || precision == ov::element::Type_t::bf16 ||
+                                precision == ov::element::Type_t::i32,
                         "Unsupported precision ", precision.get_type_name());
     }
 
@@ -430,6 +444,10 @@ void cvToOV(const cv::Mat& cvImg, const ov::Tensor& tensor, const ov::Shape& sha
             const auto inPtr = in.ptr<float>();
             const auto outPtr = out.ptr<ov::float16>();
             convertBufferType(outPtr, inPtr, out.size().area() * C);
+        } else if (precision == ov::element::Type_t::bf16) {
+            const auto inPtr = in.ptr<float>();
+            const auto outPtr = out.ptr<ov::bfloat16>();
+            convertBufferType(outPtr, inPtr, out.size().area() * C);
         } else if (precision == ov::element::Type_t::i32) {
             in.convertTo(out, CV_32S);
         } else {
@@ -444,7 +462,8 @@ void cvToOV(const cv::Mat& cvImg, const ov::Tensor& tensor, const ov::Shape& sha
     } else if (layout == ov::Layout("NCHW")) {
         auto tensorPlanes = ovToCV(tensor, shape, layout, 0);
 
-        if (precision != ov::element::Type_t::f16) {
+        if (!(precision == ov::element::Type_t::f16 ||
+            precision == ov::element::Type_t::bf16)) {
             cv::split(in, tensorPlanes);
         } else {
             std::vector<cv::Mat> inPlanes;
@@ -454,8 +473,13 @@ void cvToOV(const cv::Mat& cvImg, const ov::Tensor& tensor, const ov::Shape& sha
 
             for (size_t i = 0; i < tensorPlanes.size(); ++i) {
                 const auto inPtr = inPlanes[i].ptr<float>();
-                const auto outPtr = tensorPlanes[i].ptr<ov::float16>();
-                convertBufferType(outPtr, inPtr, inPlanes[i].size().area());
+                if (precision == ov::element::Type_t::f16) {
+                    const auto outPtr = tensorPlanes[i].ptr<ov::float16>();
+                    convertBufferType(outPtr, inPtr, inPlanes[i].size().area());
+                } else if (precision == ov::element::Type_t::bf16) {
+                    const auto outPtr = tensorPlanes[i].ptr<ov::bfloat16>();
+                    convertBufferType(outPtr, inPtr, inPlanes[i].size().area());
+                }
             }
         }
 
@@ -1176,7 +1200,8 @@ bool computeRRMSE(const ov::Tensor& output, const ov::Tensor& reference) {
 
     double rrmseLoss = sqrt(error / sum);
 
-    std::cout << "RRMSE loss : " << rrmseLoss << "   RRMSE threshold : " << FLAGS_rrmse_loss_threshold << std::endl;
+    std::cout << "RRMSE loss : " << std::fixed << std::setprecision(4) << rrmseLoss
+              << "   RRMSE threshold : " << FLAGS_rrmse_loss_threshold << std::endl;
     return rrmseLoss <= FLAGS_rrmse_loss_threshold;
 }
 
@@ -1243,7 +1268,8 @@ bool computeNRMSE(const ov::Tensor& output, const ov::Tensor& reference) {
     double nrmseLoss =
             sqrt(error / size) / std::max(0.001f, std::max(maxOutput - minOutput, maxReference - minReference));
 
-    std::cout << "NRMSE loss : " << nrmseLoss << "   NRMSE threshold : " << FLAGS_nrmse_loss_threshold << std::endl;
+    std::cout << "NRMSE loss : " << std::fixed << std::setprecision(4) << nrmseLoss
+              << "   NRMSE threshold : " << FLAGS_nrmse_loss_threshold << std::endl;
     return nrmseLoss <= FLAGS_nrmse_loss_threshold;
 }
 
@@ -1295,7 +1321,7 @@ bool testPSNR(const TensorMap& outputs, const TensorMap& references, const int d
 
     auto result = utils::runPSNRMetric(actOutput, refOutput, dstHeight, dstWidth, scaleBorder, normalizedImage);
 
-    if (std::fabs(result - FLAGS_psnr_reference) > FLAGS_psnr_tolerance) {
+    if (FLAGS_psnr_reference - result > FLAGS_psnr_tolerance) {
         std::cout << "Absolute difference between actual value " << result << " and reference value "
                   << FLAGS_psnr_reference << " larger then tolerance " << FLAGS_psnr_tolerance << std::endl;
         return false;
@@ -1388,7 +1414,7 @@ void nameIOTensors(std::shared_ptr<ov::Model> model) {
     for (std::size_t id = 0ul; id < inputInfo.size(); ++id) {
         auto ii = inputInfo[id];
         if (ii.get_names().empty()) {
-            ii.add_names({"input_" + std::to_string(ii.get_index())});
+            ii.add_names({"input_" + std::to_string(ii.get_index()) + "_" + std::to_string(id)});
         }
     }
 
@@ -1396,7 +1422,7 @@ void nameIOTensors(std::shared_ptr<ov::Model> model) {
     for (std::size_t id = 0ul; id < outputInfo.size(); ++id) {
         auto oi = outputInfo[id];
         if (oi.get_names().empty()) {
-            oi.add_names({"output_" + std::to_string(oi.get_index())});
+            oi.add_names({"output_" + std::to_string(oi.get_index()) + "_" + std::to_string(id)});
         }
     }
 }
@@ -1754,6 +1780,8 @@ static int runSingleImageTest() {
                         inputBinPrecisionForOneInfer[inferIdx][precisionIdx] = ov::element::f32;
                     } else if (strEq(precision, "FP16")) {
                         inputBinPrecisionForOneInfer[inferIdx][precisionIdx] = ov::element::f16;
+                    } else if (strEq(precision, "BF16")) {
+                        inputBinPrecisionForOneInfer[inferIdx][precisionIdx] = ov::element::bf16;
                     } else if (strEq(precision, "I32")) {
                         inputBinPrecisionForOneInfer[inferIdx][precisionIdx] = ov::element::i32;
                     } else if (strEq(precision, "I64")) {
@@ -1801,6 +1829,8 @@ static int runSingleImageTest() {
                 ov::element::Type prc_in = ov::element::u8;
                 if (FLAGS_ip == "FP16")
                     prc_in = ov::element::f16;
+                else if (FLAGS_ip == "BF16")
+                    prc_in = ov::element::bf16;
                 else if (FLAGS_ip == "FP32")
                     prc_in = ov::element::f32;
                 else if (FLAGS_ip == "I32")
@@ -2037,10 +2067,14 @@ static int runSingleImageTest() {
                     ostr << netFileName << "_ref_out_" << outputInd << "_case_" << numberOfTestCase << ".blob";
                     const auto blobFileName = ostr.str();
 
-                    std::cout << "Load reference output #" << outputInd << " from " << blobFileName << " as "
+                    std::filesystem::path fullPath = FLAGS_ref_dir;
+                    fullPath /= blobFileName;
+                    const auto blobFileFullName = fullPath.string();
+
+                    std::cout << "Load reference output #" << outputInd << " from " << blobFileFullName << " as "
                               << precision << std::endl;
 
-                    const ov::Tensor referenceTensor = loadTensor(precision, shape, blobFileName);
+                    const ov::Tensor referenceTensor = loadTensor(precision, shape, blobFileFullName);
                     referenceTensors.emplace(tensorName, referenceTensor);
 
                     // Determine the output layout

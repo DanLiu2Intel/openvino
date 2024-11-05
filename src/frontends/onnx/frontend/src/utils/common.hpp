@@ -26,6 +26,11 @@ namespace onnx {
 namespace common {
 const ov::element::Type& get_ov_element_type(std::int64_t onnx_type);
 
+/// \brief Function does a default checks for a node. Raise an exception if checks are failed
+/// \param[in]  node    Node to check
+/// \param[in]  min_inputs_size  Minimal amount of inputs expected
+void default_op_checks(const Node& node, size_t min_inputs_size);
+
 /// \brief      Return a monotonic sequence.
 ///
 /// \note       Limitations: this function may not work for very large integer values
@@ -181,6 +186,15 @@ inline uint32_t convert_float_seed(const float seed) {
     return *static_cast<const uint32_t*>(seed_ptr);
 }
 
+/// \brief Tries normalize axis against the rank.
+///
+/// Throws if rank is dynamic or, axis outside rank range [-rank, rank).
+///
+/// \param description  Additional description added to error message.
+/// \param axis         Axis value to be normalized.
+/// \param rank         Rank used for axis normalization.
+/// \return             Normalized axis value.
+int64_t normalize_axis(const std::string& description, const int64_t axis, const Rank& rank);
 }  // namespace  common
 }  // namespace onnx
 }  // namespace frontend
