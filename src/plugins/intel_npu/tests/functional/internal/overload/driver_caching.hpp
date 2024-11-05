@@ -5,8 +5,8 @@
 #include <sstream>
 
 
-#include "intel_npu/al/config/common.hpp"
-#include "npu_private_properties.hpp"
+
+#include "intel_npu/npu_private_properties.hpp"
 #include "openvino/core/except.hpp"
 #include "openvino/opsets/opset8.hpp"
 #include "openvino/runtime/properties.hpp"
@@ -28,9 +28,10 @@
 #include "zero_compiler_in_driver.hpp"
 #include "zero_init.hpp"
 
-#include "intel_npu/al/config/common.hpp"
-#include "intel_npu/al/config/compiler.hpp"
-#include "intel_npu/al/config/runtime.hpp"
+#include "intel_npu/config/common.hpp"
+#include "intel_npu/config/compiler.hpp"
+#include "intel_npu/config/runtime.hpp"
+#include "intel_npu/config/config.hpp"
 
 #include <chrono> // cal time
 
@@ -137,7 +138,7 @@ public:
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
         config = any_copy(configuration);
         // std::shared_ptr<ZeroEngineBackend> zeroBackend = nullptr;
-        zeroBackend = std::make_shared<ZeroEngineBackend>(config);
+        zeroBackend = std::make_shared<intel_npu::ZeroEngineBackend>(config);
         if (!zeroBackend) {
             GTEST_SKIP() << "LevelZeroCompilerAdapter init failed to cast zeroBackend, zeroBackend is a nullptr";
         }
@@ -163,16 +164,14 @@ public:
 private:
     std::shared_ptr<ov::Core> core = utils::PluginCache::get().core();
     ov::AnyMap configuration;
-    const Config config;
     std::shared_ptr<ov::Model> function;
-    ov::Output<const ov::Node> input;
-    ov::Output<const ov::Node> output;
 
-    std::shared_ptr<ZeroEngineBackend> zeroBackend;
+    intel_npu::Config config;
+    std::shared_ptr<intel_npu::ZeroEngineBackend> zeroBackend;
     ze_graph_dditable_ext_curr_t& graph_ddi_table_ext;
 
     std::string m_cache_dir; //it is need to be distinguished on Windows and Linux?
-}
+};
 
 TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
     //TODO: check driver version, if less than 1.5 will not support cache feature.
