@@ -867,8 +867,8 @@ NetworkDescription LevelZeroCompilerInDriver<TableExtension>::compile(const std:
                                                                       const Config& config) const {
     _logger.debug("compile start");
     std::printf("=================1====================\n");//add by manual
-    getLatestBuildError(_graphDdiTableExt);
-    std::printf("=================2====================\n");
+    auto res1 = intel_npu::zeroUtils::getLatestBuildError(_graphDdiTableExt);
+    std::printf("=================2===================res1:%s=\n", res1.c_str());
 
     ze_device_graph_properties_t deviceGraphProperties{};
     auto result = _graphDdiTableExt.pfnDeviceGetGraphProperties(_deviceHandle, &deviceGraphProperties);
@@ -890,8 +890,8 @@ NetworkDescription LevelZeroCompilerInDriver<TableExtension>::compile(const std:
 
     auto networkDescription = NetworkDescription(std::move(networkMeta));
     std::printf("=================5====================\n");//add by manual
-    getLatestBuildError(_graphDdiTableExt);
-    std::printf("=================6====================\n");
+    auto res2 = intel_npu::zeroUtils::getLatestBuildError(_graphDdiTableExt);
+    std::printf("=================6===================res2:%s=\n", res2.c_str());
     return networkDescription;
 }
 
