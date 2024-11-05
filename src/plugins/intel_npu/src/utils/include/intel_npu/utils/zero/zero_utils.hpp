@@ -10,16 +10,10 @@
 
 #include "intel_npu/config/runtime.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
-#include "intel_npu/utils/zero/zero_api.hpp"
 #include "intel_npu/utils/zero/zero_result.hpp"
 #include "zero_types.hpp"
 
 namespace intel_npu {
-
-struct ArgumentDescriptor {
-    ze_graph_argument_properties_3_t info;
-    uint32_t idx;
-};
 
 namespace zeroUtils {
 
@@ -179,28 +173,10 @@ static inline std::size_t getSizeIOBytes(const ze_graph_argument_properties_3_t&
     return size_in_bytes;
 }
 
-static inline uint32_t findGroupOrdinal(ze_device_handle_t device_handle, const ze_device_properties_t& properties) {
+static inline uint32_t findGroupOrdinal(
+    const std::vector<ze_command_queue_group_properties_t>& command_group_properties,
+    const ze_device_properties_t& properties) {
     auto log = Logger::global().clone("findGroupOrdinal");
-
-        std::vector<ze_command_queue_group_properties_t> command_group_properties;
-    uint32_t command_queue_group_count = 0;
-    // Discover all command queue groups
-    THROW_ON_FAIL_FOR_LEVELZERO(
-        "zeDeviceGetCommandQueueGroupProperties",
-        zeDeviceGetCommandQueueGroupProperties(device_handle, &command_queue_group_count, nullptr));
-
-    log.debug("ZeroDevice::ZeroDevice - resize command_queue_group_count");
-    command_group_properties.resize(command_queue_group_count);
-
-    for (auto& prop : command_group_properties) {
-        prop.stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_GROUP_PROPERTIES;
-        prop.pNext = nullptr;
-    }
-
-    THROW_ON_FAIL_FOR_LEVELZERO("zeDeviceGetCommandQueueGroupProperties",
-                                zeDeviceGetCommandQueueGroupProperties(device_handle,
-                                                                       &command_queue_group_count,
-                                                                       command_group_properties.data()));
 
     if (properties.flags & ZE_DEVICE_PROPERTY_FLAG_INTEGRATED) {
         for (uint32_t index = 0; index < command_group_properties.size(); ++index) {
@@ -248,6 +224,7 @@ static inline std::string getLatestBuildError(ze_graph_dditable_ext_curr_t& _gra
         uint32_t size = 0;
         // Null graph handle to get error log
         auto result = _graph_ddi_table_ext.pfnBuildLogGetString(nullptr, &size, nullptr);
+        std::printf("  --1--> getLatestBuildError size=%d\n", size);
         if (ZE_RESULT_SUCCESS != result) {
             // The failure will not break normal execution, only warning here
             _logger.warning("getLatestBuildError Failed to get size of latest error log!");
@@ -265,6 +242,15 @@ static inline std::string getLatestBuildError(ze_graph_dditable_ext_curr_t& _gra
         std::string logContent{};
         logContent.resize(size);
         result = _graph_ddi_table_ext.pfnBuildLogGetString(nullptr, &size, const_cast<char*>(logContent.data()));
+        std::printf("  --2--> getLatestBuildError log=%s\n", logContent.c_str());
+        std::printf("  --2--> getLatestBuildError size=%d\n", size);
+        if ( logContent.find( "::stored" ) != std::string::npos ) {
+            std::printf("    --2-->stored\n");
+        }
+        if ( logContent.find( "::found" ) != std::string::npos ) {
+            std::printf("    --2-->found\n");
+        }
+        
         if (ZE_RESULT_SUCCESS != result) {
             // The failure will not break normal execution, only warning here
             _logger.warning("getLatestBuildError size of latest error log > 0, failed to get "
