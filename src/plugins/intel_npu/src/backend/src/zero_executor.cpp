@@ -14,10 +14,10 @@
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/config/common.hpp"
 #include "intel_npu/prefix.hpp"
+#include "intel_npu/utils/zero/zero_utils.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "ze_command_queue_npu_ext.h"
 #include "zero_device.hpp"
-#include "zero_utils.hpp"
 
 using namespace intel_npu;
 
