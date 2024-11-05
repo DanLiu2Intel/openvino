@@ -7,8 +7,10 @@ namespace {
 using namespace ov::test::behavior;
 
 const std::vector<ov::AnyMap> emptyConfig = {{}};
-const std::vector<ov::AnyMap> ovCacheConfig = {{ov::cache_dir("./cacheDir")}};
-const std::vector<ov::AnyMap> byPassConfig = {{ov::intel_npu::bypass_umd_caching(false)}};
+const std::vector<ov::AnyMap> ovCacheConfig = {{ov::cache_dir("testCacheDir")}};
+//ov::AnyMap{{ov::cache_dir.name(), m_cacheDir}};
+//ov::AnyMap({ov::cache_dir("test"), ov::force_tbb_terminate(false)}
+const std::vector<ov::AnyMap> byPassConfig = {{ov::intel_npu::bypass_umd_caching(true)}};
 
 INSTANTIATE_TEST_SUITE_P(smoke_CompilationCacheFlag,
                          CompileAndDriverCaching,

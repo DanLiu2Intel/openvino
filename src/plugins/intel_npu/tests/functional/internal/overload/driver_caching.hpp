@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <common_test_utils/test_assertions.hpp>
 #include <sstream>
 
@@ -14,22 +13,19 @@
 
 #include "intel_npu/utils/zero/zero_utils.hpp"
 
-
 #include "stdio.h" //
 #include <stdlib.h>// env setting
 
-#include "zero_types.hpp"
-//src/plugins/intel_npu/src/backend/include/zero_types.hpp
-
 #include "zero_backend.hpp"
+#include "zero_types.hpp"
 
-#include "intel_npu/config/common.hpp"
-#include "intel_npu/config/compiler.hpp"
-#include "intel_npu/config/runtime.hpp"
-#include "intel_npu/config/config.hpp"
+// #include "intel_npu/config/common.hpp"
+// #include "intel_npu/config/compiler.hpp"
+// #include "intel_npu/config/runtime.hpp"
+// #include "intel_npu/config/config.hpp"
 
-#include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/backend/include/zero_backend.hpp"
-#include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/al/include/intel_npu/config/config.hpp"
+// #include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/backend/include/zero_backend.hpp"
+// #include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/al/include/intel_npu/config/config.hpp"
 
 #include <filesystem>
 
@@ -60,12 +56,11 @@ inline std::shared_ptr<ov::Model> getConstantGraph() {
 }
 
 std::string generateCacheDirName(const std::string& test_name) {
-    using namespace std::chrono;
     // Generate unique file names based on test name, thread id and timestamp
     // This allows execution of tests in parallel (stress mode)
     auto hash = std::to_string(std::hash<std::string>()(test_name));
     std::stringstream ss;
-    auto ts = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch());
+    auto ts = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
     ss << hash << "_"
         << "_" << ts.count();
     return ss.str();
@@ -114,13 +109,15 @@ public:
     static std::string getTestCaseName(testing::TestParamInfo<CompileAndModelCachingParams> obj) {
         std::shared_ptr<ov::Model> model;
         std::string targetDevice;
-        ov::AnyMap configuration;
+        ov::AnyMap configuration; //using AnyMap = std::map<std::string, Any>;
+        //const std::map<std::string, std::string>& rawConfig
+        //_globalConfig.update(rawConfig);
         std::tie(model, targetDevice, configuration) = obj.param;
         std::replace(targetDevice.begin(), targetDevice.end(), ':', '.');
         std::ostringstream result;
         result << "targetDevice=" << targetDevice << "_";
         if (!configuration.empty()) {
-            using namespace ov::test::utils;
+            // using namespace ov::test::utils;
             for (auto& configItem : configuration) {
                 result << "configItem=" << configItem.first << "_";
                 configItem.second.print(result);
@@ -133,9 +130,16 @@ public:
     void SetUp() override {
         std::tie(function, target_device, configuration) = this->GetParam();
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
-        config = any_copy(configuration);
+        //ov::AnyMap configuration; //using AnyMap = std::map<std::string, Any>;
+        //const std::map<std::string, std::string>& rawConfig
+        //_globalConfig.update(rawConfig);
+        
+        // const std::map<std::string, std::string> stringConfig = any_copy(configuration);
+        // // Config config;
+        // config.update(stringConfig);
         // std::shared_ptr<ZeroEngineBackend> zeroBackend = nullptr;
-        zeroBackend = std::make_shared<intel_npu::ZeroEngineBackend>(config);
+        // zeroBackend = std::make_shared<intel_npu::ZeroEngineBackend>(config);
+        zeroBackend = std::make_shared<intel_npu::ZeroEngineBackend>();
         if (!zeroBackend) {
             GTEST_SKIP() << "LevelZeroCompilerAdapter init failed to cast zeroBackend, zeroBackend is a nullptr";
         }
@@ -163,7 +167,7 @@ private:
     ov::AnyMap configuration;
     std::shared_ptr<ov::Model> function;
 
-    intel_npu::Config config;
+    // intel_npu::Config& config;
     std::shared_ptr<intel_npu::ZeroEngineBackend> zeroBackend;
     ze_graph_dditable_ext_curr_t& graph_ddi_table_ext;
 

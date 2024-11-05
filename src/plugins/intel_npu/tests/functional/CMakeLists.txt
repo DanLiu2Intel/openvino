@@ -22,6 +22,8 @@ if(ENABLE_DRIVER_COMPILER_ADAPTER)
        openvino_npu_level_zero_backend openvino_npu_zero_result_parser)
 endif()
 
+list(APPEND OPTIONAL_FUNC_TESTS_LIBS openvino_npu_level_zero_backend)
+
 ov_add_test_target(
   NAME
   ${TARGET_NAME}
@@ -37,13 +39,15 @@ ov_add_test_target(
   "${CMAKE_CURRENT_SOURCE_DIR}/internal"
   LINK_LIBRARIES
   ${OPTIONAL_FUNC_TESTS_LIBS}
+  openvino_npu_level_zero_backend
   openvino::func_test_utils
   openvino::funcSharedTests
   openvino::format_reader
   openvino::reference
   openvino::runtime
   openvino::npu_common
-  openvino::npu_al)
+  openvino::npu_al
+  )
 
 if(WIN32)
     if(ENABLE_DX12)
