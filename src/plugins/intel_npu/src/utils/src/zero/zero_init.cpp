@@ -140,10 +140,10 @@ ZeroInitStructsHolder::ZeroInitStructsHolder() : log("NPUZeroInitStructsHolder",
     log.debug("Try to find graph ext version: %d.%d",
               ZE_MAJOR_VERSION(target_graph_ext_version),
               ZE_MINOR_VERSION(target_graph_ext_version));
-    std::printf("   =1=ZeroInitStructsHolder==> graph_ext_name:%s, graph_ext_version=%zu\n", graph_ext_name.c_str(), graph_ext_version);
+    std::printf("   =1=ZeroInitStructsHolder==> graph_ext_name:%s, graph_ext_version=%u\n", graph_ext_name.c_str(), graph_ext_version);
     std::tie(graph_ext_version, graph_ext_name) =
         queryDriverExtensionVersion(ZE_GRAPH_EXT_NAME, target_graph_ext_version, extProps, count);
-    std::printf("   =2=ZeroInitStructsHolder==> graph_ext_name:%s, graph_ext_version=%zu\n", graph_ext_name.c_str(), graph_ext_version);
+    std::printf("   =2=ZeroInitStructsHolder==> graph_ext_name:%s, graph_ext_version=%u\n", graph_ext_name.c_str(), graph_ext_version);
 
     if (graph_ext_name.empty()) {
         OPENVINO_THROW("queryGraphExtensionVersion: Failed to find Graph extension in NPU Driver");

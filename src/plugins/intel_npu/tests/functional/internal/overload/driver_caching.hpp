@@ -23,12 +23,18 @@
 // #include "openvino/runtime/properties.hpp"  //include by config files
 #include "openvino/runtime/intel_npu/properties.hpp"
 
-
-// #include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/backend/include/zero_backend.hpp"
-// #include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/al/include/intel_npu/config/config.hpp"
-
 #include <filesystem>
 #include <chrono> // cal time
+
+//mkdir folder
+#ifdef WIN32
+#include "Shlobj.h"
+#include "shlobj_core.h"
+#include "objbase.h"
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
 
 namespace ov {
 namespace test {
@@ -80,6 +86,7 @@ bool containsCacheStatus(const std::string& str) {
     return str.find("cache_status_t::stored") != std::string::npos;  
 }
 
+//Does this part is need?
 inline std::vector<std::string> listFilesWithExt(const std::string& path) {
     struct dirent* ent;
     DIR* dir = opendir(path.c_str());
@@ -105,9 +112,7 @@ public:
     static std::string getTestCaseName(testing::TestParamInfo<CompileAndModelCachingParams> obj) {
         std::shared_ptr<ov::Model> model;
         std::string targetDevice;
-        ov::AnyMap configuration; //using AnyMap = std::map<std::string, Any>;
-        //const std::map<std::string, std::string>& rawConfig
-        //_globalConfig.update(rawConfig);
+        ov::AnyMap configuration;
         std::tie(model, targetDevice, configuration) = obj.param;
         std::replace(targetDevice.begin(), targetDevice.end(), ':', '.');
         std::ostringstream result;
@@ -128,15 +133,9 @@ public:
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
 
         initStruct = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
-
-        //any test info?
         if (!initStruct) {
             GTEST_SKIP() << "ZeroInitStructsHolder init failed, ZeroInitStructsHolder is a nullptr";
         }
-
-        //this part can be used by each testcase.
-        //ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
-
         APIBaseTest::SetUp();
     }
 
@@ -157,24 +156,21 @@ protected:
     std::shared_ptr<ov::Core> core = utils::PluginCache::get().core();
     ov::AnyMap configuration;
     std::shared_ptr<ov::Model> function;
-
-    // intel_npu::Config& config;
     std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct;
-    // ze_graph_dditable_ext_decorator& graph_ddi_table_ext;
-
-    std::string m_cache_dir; //it is need to be distinguished on Windows and Linux?
+    std::string m_cache_dir;
 };
 
 TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
-    //TODO: check driver version, if less than 1.5 will not support cache feature.
-    
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
     uint32_t graphDdiExtVersion = graph_ddi_table_ext.version();
+    
+    // check driver version, if less than 1.5 will not support cache feature.
     if (graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {
         GTEST_SKIP() << "Skipping test for Driver version less than 1.5, current driver version: " << graphDdiExtVersion;
     }
 
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("printf testsuit content : %s\n", driverLogContent.c_str());
     if ( driverLogContent.find( "::stored" ) != std::string::npos ) {
         std::printf("printf testsuit contain stored");
     }
@@ -182,13 +178,14 @@ TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
     if ( driverLogContent.find( "::found" ) != std::string::npos ) {
         std::printf("printf testsuit contain found");
     }
+    //Note: now this part should be successful on Windows.
     EXPECT_TRUE(containsCacheStatus(driverLogContent));
 }
 
 #ifdef WIN32
 TEST_P(CompileAndDriverCaching, CompilationTwiceOnWindwos) {
     //windows cache dir located on C:\Users\account\AppData\Local\Intel\NPU
-    // attempt to create root folder in AppData\Local
+    // attempt to get/create root folder in AppData\Local
     std::filesystem::path path{};
     wchar_t* local = nullptr;
     auto result = SHGetKnownFolderPath( FOLDERID_LocalAppData, 0, NULL, &local );
@@ -202,14 +199,17 @@ TEST_P(CompileAndDriverCaching, CompilationTwiceOnWindwos) {
 
         if( !std::filesystem::exists(path) )
         {
+            std::printf(" create cache folder");
             std::filesystem::create_directories(path);
         } else {
+            std::printf(" remove cache folder");
             std::filesystem::remove_all(path);
         }
     }
     size_t blobCountInitial = -1;
-    blobCountInitial = listFilesWithExt(path).size();
+    blobCountInitial = listFilesWithExt(path.string()).size();
     size_t blobCountAfterwards = -1;
+    std::printf("win-1: blobCountInitial=%zu, blobCountAfterwards=%zu\n", blobCountInitial, blobCountAfterwards);
     ASSERT_GT(blobCountInitial, 0);
 
     ov::CompiledModel execNet;
@@ -219,9 +219,10 @@ TEST_P(CompileAndDriverCaching, CompilationTwiceOnWindwos) {
     auto endFirst = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationFirst = endFirst - startFirst;
 
-    blobCountAfterwards = listFilesWithExt(path).size();
+    blobCountAfterwards = listFilesWithExt(path.string()).size();
+    std::printf("win-2: blobCountInitial=%zu, blobCountAfterwards=%zu\n", blobCountInitial, blobCountAfterwards);
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
-        ASSERT_GT(blobCountInitial, 0);
+        ASSERT_GT(blobCountInitial, blobCountAfterwards);
     } else {
         ASSERT_EQ(blobCountInitial, blobCountAfterwards - 1);
     }
@@ -231,6 +232,7 @@ TEST_P(CompileAndDriverCaching, CompilationTwiceOnWindwos) {
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endSecond = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
+    std::printf("win-3:(time) durationFirst=%lf, durationSecond=%lf\n", durationFirst, durationSecond);
 
     double epsilon = 20.0;
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
@@ -248,11 +250,19 @@ TEST_P(CompileAndDriverCaching, CompilationTwiceOnLinux) {
     //ON linux, cache dir can be set by env variables.
     m_cache_dir = generateCacheDirName(GetTestName());
     auto temp = setenv("ZE_INTEL_NPU_CACHE_DIR", m_cache_dir.c_str(), 1);
+    //how to creat folder
+    int isCreate = mkdir(m_cache_dir.c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRWXG | S_IRWXO);
+    if( !isCreate )
+        printf("==>create path:%s\n", m_cache_dir.c_str());
+    else
+        printf("==>create path failed! error code : %s \n",isCreate, m_cache_dir.c_str());
+
     size_t blobCountInitial = -1;
     blobCountInitial = listFilesWithExt(m_cache_dir).size();
     size_t blobCountAfterwards = -1;
     ASSERT_GT(blobCountInitial, 0);
-    
+    std::printf("win-1: blobCountInitial=%zu, blobCountAfterwards=%zu\n", blobCountInitial, blobCountAfterwards);
+
     //first run time is longer than second time and will generate the model cache.
     ov::CompiledModel execNet;
     auto startFirst = std::chrono::high_resolution_clock::now();
@@ -261,9 +271,9 @@ TEST_P(CompileAndDriverCaching, CompilationTwiceOnLinux) {
     std::chrono::duration<double> durationFirst = endFirst - startFirst;
 
     blobCountAfterwards = listFilesWithExt(m_cache_dir).size();
-
+    std::printf("win-2: blobCountInitial=%zu, blobCountAfterwards=%zu\n", blobCountInitial, blobCountAfterwards);
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end())  {
-        ASSERT_GT(blobCountInitial, 0);
+        ASSERT_GT(blobCountInitial, blobCountAfterwards);
     } else {
         ASSERT_EQ(blobCountInitial, blobCountAfterwards - 1);
     }
@@ -273,7 +283,7 @@ TEST_P(CompileAndDriverCaching, CompilationTwiceOnLinux) {
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endSecond = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
-
+    std::printf("lin-3:(time) durationFirst=%lf, durationSecond=%lf\n", durationFirst, durationSecond);
     double epsilon = 20.0;
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
         EXPECT_NEAR(durationFirst.count(), durationSecond.count(), epsilon);
