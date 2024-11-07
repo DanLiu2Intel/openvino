@@ -74,8 +74,13 @@ void PluginGraph::initialize(const Config& config) {
     ze_graph_properties_t props{};
     props.stype = ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES;
     auto result = _zeroInitStruct->getGraphDdiTable().pfnGetProperties(_handle, &props);
+        std::printf("======================5=====DriverCompilerAdapter===================\n");
+    std::string driverlog5 = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
+    std::printf("======================6=====DriverCompilerAdapter================driverlog:%s===\n", driverlog5.c_str());
     THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnGetProperties", result, _zeroInitStruct->getGraphDdiTable());
-
+    std::printf("======================7=====DriverCompilerAdapter===================\n");
+    std::string driverlog7 = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
+    std::printf("======================8=====DriverCompilerAdapter================driverlog:%s===\n", driverlog7.c_str());
     _logger.debug("performing pfnGetArgumentProperties3");
     for (uint32_t index = 0; index < props.numGraphArgs; ++index) {
         ze_graph_argument_properties_3_t arg3{};

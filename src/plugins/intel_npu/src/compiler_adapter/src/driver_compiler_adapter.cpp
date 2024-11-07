@@ -151,7 +151,16 @@ DriverCompilerAdapter::DriverCompilerAdapter(const std::shared_ptr<ZeroInitStruc
     _deviceGraphProperties.stype = ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES;
     auto result = _zeroInitStruct->getGraphDdiTable().pfnDeviceGetGraphProperties(_zeroInitStruct->getDevice(),
                                                                                   &_deviceGraphProperties);
+    
+    std::printf("======================1=====DriverCompilerAdapter===================\n");
+    std::string driverlog1 = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
+    std::printf("======================2=====DriverCompilerAdapter================driverlog:%s===\n", driverlog1.c_str());
+
     THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnDeviceGetGraphProperties", result, _zeroInitStruct->getGraphDdiTable());
+
+    std::printf("======================3=====DriverCompilerAdapter===================\n");
+    std::string driverlog3 = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
+    std::printf("======================4=====DriverCompilerAdapter================driverlog:%s===\n", driverlog3.c_str());
 
     _logger.info("DriverCompilerAdapter creating adapter using graphExtVersion");
 

@@ -232,7 +232,7 @@ TEST_P(CompileAndDriverCaching, CompilationTwiceOnWindwos) {
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endSecond = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
-    std::printf("win-3:(time) durationFirst=%lf, durationSecond=%lf\n", durationFirst, durationSecond);
+    std::printf("win-3:(time) durationFirst=%f, durationSecond=%f\n", durationFirst.count(), durationSecond.count());
 
     double epsilon = 20.0;
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
@@ -283,7 +283,7 @@ TEST_P(CompileAndDriverCaching, CompilationTwiceOnLinux) {
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endSecond = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
-    std::printf("lin-3:(time) durationFirst=%lf, durationSecond=%lf\n", durationFirst, durationSecond);
+    std::printf("lin-3:(time) durationFirst=%f, durationSecond=%f\n", durationFirst.count(), durationSecond.count());
     double epsilon = 20.0;
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
         EXPECT_NEAR(durationFirst.count(), durationSecond.count(), epsilon);
