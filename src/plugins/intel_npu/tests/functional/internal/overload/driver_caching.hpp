@@ -179,7 +179,24 @@ TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
         std::printf("printf testsuit contain found");
     }
     //Note: now this part should be successful on Windows.
-    EXPECT_TRUE(containsCacheStatus(driverLogContent));
+    EXPECT_TRUE(!containsCacheStatus(driverLogContent));
+    //need call this part and then check flag 
+    // auto result = graph_ddi_table_ext.pfnCreate2(initStruct->getContext(),
+    //                                                              initStruct->getDevice(),
+    //                                                              &desc,
+    //                                                              graph);
+    
+    std::string driverLogContentAfterCallCreate = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("2printf testsuit content : %s\n", driverLogContentAfterCallCreate.c_str());
+    if ( driverLogContentAfterCallCreate.find( "::stored" ) != std::string::npos ) {
+        std::printf("2printf testsuit contain stored");
+    }
+    
+    if ( driverLogContentAfterCallCreate.find( "::found" ) != std::string::npos ) {
+        std::printf("2printf testsuit contain found");
+    }
+    //Note: now this part should be successful on Windows.
+    EXPECT_TRUE(containsCacheStatus(driverLogContentAfterCallCreate));
 }
 
 #ifdef WIN32
