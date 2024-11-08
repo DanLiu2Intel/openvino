@@ -408,7 +408,7 @@ void ZeGraphExtWrappers<TableExtension>::createGraph(std::pair<size_t, std::shar
 
     std::printf("+++++++++++++++++++add second pfncreate2++++++++++++++++\n");
     ze_graph_handle_t graphHandle2;
-    auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate2(_zeroInitStruct->getContext(),
+    auto result2 = _zeroInitStruct->getGraphDdiTable().pfnCreate2(_zeroInitStruct->getContext(),
                                                                 _zeroInitStruct->getDevice(),
                                                                 &desc,
                                                                 &graphHandle2);

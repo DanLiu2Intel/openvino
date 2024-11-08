@@ -82,8 +82,8 @@ std::map<std::string, std::string> any_copy(const ov::AnyMap& params) {
     return result;
 }
 
-bool containsCacheStatus(const std::string& str) {  
-    return str.find("cache_status_t::stored") != std::string::npos;  
+bool containsCacheStatus(const std::string& str, const std::string cmpstr) {  
+    return str.find(cmpstr) != std::string::npos;  
 }
 
 //Does this part is need?
@@ -140,11 +140,6 @@ public:
     }
 
     void TearDown() override {
-        if (!m_cache_dir.empty() && !std::filesystem::exists(m_cache_dir)) {
-            std::filesystem::remove_all(m_cache_dir);
-            //ov::test::utils::removeDir(m_cache_dir);
-        }
-
         if (!configuration.empty()) {
             utils::PluginCache::get().reset();
         }
@@ -157,77 +152,14 @@ protected:
     ov::AnyMap configuration;
     std::shared_ptr<ov::Model> function;
     std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct;
-    std::string m_cache_dir;
 };
 
 TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
-    uint32_t graphDdiExtVersion = graph_ddi_table_ext.version();
-    
-    // check driver version, if less than 1.5 will not support cache feature.
-    if (graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {
-        GTEST_SKIP() << "Skipping test for Driver version less than 1.5, current driver version: " << graphDdiExtVersion;
-    }
 
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    std::printf("printf testsuit content : %s\n", driverLogContent.c_str());
-    if ( driverLogContent.find( "::stored" ) != std::string::npos ) {
-        std::printf("printf testsuit contain stored");
-    }
-    
-    if ( driverLogContent.find( "::found" ) != std::string::npos ) {
-        std::printf("printf testsuit contain found");
-    }
-    //Note: now this part should be successful on Windows.
-    EXPECT_TRUE(!containsCacheStatus(driverLogContent));
-    //need call this part and then check flag 
-    // auto result = graph_ddi_table_ext.pfnCreate2(initStruct->getContext(),
-    //                                                              initStruct->getDevice(),
-    //                                                              &desc,
-    //                                                              graph);
-    
-    std::string driverLogContentAfterCallCreate = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    std::printf("2printf testsuit content : %s\n", driverLogContentAfterCallCreate.c_str());
-    if ( driverLogContentAfterCallCreate.find( "::stored" ) != std::string::npos ) {
-        std::printf("2printf testsuit contain stored");
-    }
-    
-    if ( driverLogContentAfterCallCreate.find( "::found" ) != std::string::npos ) {
-        std::printf("2printf testsuit contain found");
-    }
-    //Note: now this part should be successful on Windows.
-    EXPECT_TRUE(containsCacheStatus(driverLogContentAfterCallCreate));
-}
-
-#ifdef WIN32
-TEST_P(CompileAndDriverCaching, CompilationTwiceOnWindwos) {
-    //windows cache dir located on C:\Users\account\AppData\Local\Intel\NPU
-    // attempt to get/create root folder in AppData\Local
-    std::filesystem::path path{};
-    wchar_t* local = nullptr;
-    auto result = SHGetKnownFolderPath( FOLDERID_LocalAppData, 0, NULL, &local );
-
-    if( SUCCEEDED( result ) )
-    {
-        // prepend to enable long path name support
-        path = std::filesystem::path( L"\\\\?\\" + std::wstring( local ) + +L"\\Intel\\NPU" );
-
-        CoTaskMemFree( local );
-
-        if( !std::filesystem::exists(path) )
-        {
-            std::printf(" create cache folder");
-            std::filesystem::create_directories(path);
-        } else {
-            std::printf(" remove cache folder");
-            std::filesystem::remove_all(path);
-        }
-    }
-    size_t blobCountInitial = -1;
-    blobCountInitial = listFilesWithExt(path.string()).size();
-    size_t blobCountAfterwards = -1;
-    std::printf("win-1: blobCountInitial=%zu, blobCountAfterwards=%zu\n", blobCountInitial, blobCountAfterwards);
-    ASSERT_GT(blobCountInitial, 0);
+    std::printf("==[1]printf testsuit content1 : %s\n", driverLogContent.c_str());
+    EXPECT_TRUE(containsCacheStatus(driverLogContent, "cache_status_t::stored"));
 
     ov::CompiledModel execNet;
     //first run time will long and will generate the model cache.
@@ -236,79 +168,130 @@ TEST_P(CompileAndDriverCaching, CompilationTwiceOnWindwos) {
     auto endFirst = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationFirst = endFirst - startFirst;
 
-    blobCountAfterwards = listFilesWithExt(path.string()).size();
-    std::printf("win-2: blobCountInitial=%zu, blobCountAfterwards=%zu\n", blobCountInitial, blobCountAfterwards);
-    if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
-        ASSERT_GT(blobCountInitial, blobCountAfterwards);
-    } else {
-        ASSERT_EQ(blobCountInitial, blobCountAfterwards - 1);
-    }
+    std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("printf testsuit content2 : %s\n", driverLogContent2.c_str());
+    EXPECT_TRUE(containsCacheStatus(driverLogContent, "cache_status_t::stored"));
 
     //second time compilation
     auto startSecond = std::chrono::high_resolution_clock::now(); 
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endSecond = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
-    std::printf("win-3:(time) durationFirst=%f, durationSecond=%f\n", durationFirst.count(), durationSecond.count());
 
-    double epsilon = 20.0;
+    std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("printf testsuit content3 : %s\n", driverLogContent3.c_str());
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
-        EXPECT_NEAR(durationFirst.count(), durationSecond.count(), epsilon);
+         EXPECT_TRUE(containsCacheStatus(driverLogContent, ""));
     } else {
-        EXPECT_NEAR(durationFirst.count(), durationSecond.count(), durationFirst.count() / 2.0);
+         EXPECT_TRUE(containsCacheStatus(driverLogContent, "cache_status_t::found"));
     }
 
-    std::filesystem::remove_all(path);
+    //With or without enable UMD caching, the compilation time for the second time should be shorter than the first.
+    std::printf("==[1]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
+    EXPECT_GT(durationFirst.count(), durationSecond.count());
 }
 
-#else
+TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
 
-TEST_P(CompileAndDriverCaching, CompilationTwiceOnLinux) {
-    //ON linux, cache dir can be set by env variables.
-    m_cache_dir = generateCacheDirName(GetTestName());
-    auto temp = setenv("ZE_INTEL_NPU_CACHE_DIR", m_cache_dir.c_str(), 1);
-    //how to creat folder
-    int isCreate = mkdir(m_cache_dir.c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRWXG | S_IRWXO);
-    if( !isCreate )
-        printf("==>create path:%s\n", m_cache_dir.c_str());
-    else
-        printf("==>create path failed! error code : %s \n",isCreate, m_cache_dir.c_str());
-
-    size_t blobCountInitial = -1;
-    blobCountInitial = listFilesWithExt(m_cache_dir).size();
-    size_t blobCountAfterwards = -1;
-    ASSERT_GT(blobCountInitial, 0);
-    std::printf("win-1: blobCountInitial=%zu, blobCountAfterwards=%zu\n", blobCountInitial, blobCountAfterwards);
-
-    //first run time is longer than second time and will generate the model cache.
+    std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[2]printf testsuit content1 : %s\n", driverLogContent.c_str());
+    EXPECT_TRUE(containsCacheStatus(driverLogContent, "cache_status_t::stored"));
+    
     ov::CompiledModel execNet;
-    auto startFirst = std::chrono::high_resolution_clock::now();
+    //first run time will long and will generate the model cache.
+    auto startFirst = std::chrono::high_resolution_clock::now(); 
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endFirst = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationFirst = endFirst - startFirst;
 
-    blobCountAfterwards = listFilesWithExt(m_cache_dir).size();
-    std::printf("win-2: blobCountInitial=%zu, blobCountAfterwards=%zu\n", blobCountInitial, blobCountAfterwards);
-    if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end())  {
-        ASSERT_GT(blobCountInitial, blobCountAfterwards);
-    } else {
-        ASSERT_EQ(blobCountInitial, blobCountAfterwards - 1);
-    }
+    std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("[2]printf testsuit content2 : %s\n", driverLogContent2.c_str());
+    EXPECT_TRUE(containsCacheStatus(driverLogContent, "cache_status_t::stored"));
 
     //second time compilation
     auto startSecond = std::chrono::high_resolution_clock::now(); 
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endSecond = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
-    std::printf("lin-3:(time) durationFirst=%f, durationSecond=%f\n", durationFirst.count(), durationSecond.count());
-    double epsilon = 20.0;
+
+    std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("[2]printf testsuit content3 : %s\n", driverLogContent3.c_str());
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
-        EXPECT_NEAR(durationFirst.count(), durationSecond.count(), epsilon);
+        EXPECT_TRUE(containsCacheStatus(driverLogContent, ""));
     } else {
-        EXPECT_NEAR(durationFirst.count(), durationSecond.count(), durationFirst.count() / 2.0);
+        EXPECT_TRUE(containsCacheStatus(driverLogContent, "cache_status_t::found"));
     }
+
+    std::printf("==[2]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
+    EXPECT_GT(durationFirst.count(), durationSecond.count());
 }
-#endif
+
+TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
+
+    std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[3]printf testsuit content1 : %s\n", driverLogContent.c_str());
+    EXPECT_TRUE(containsCacheStatus(driverLogContent, "cache_status_t::stored"));
+
+    configuration[ov::cache_dir.name()] = "testCacheDir";
+    ov::CompiledModel execNet;
+    //first run time will long and will generate the model cache.
+    auto startFirst = std::chrono::high_resolution_clock::now(); 
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+    auto endFirst = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationFirst = endFirst - startFirst;
+
+    std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("[3]printf testsuit content2 : %s\n", driverLogContent2.c_str());
+    EXPECT_TRUE(containsCacheStatus(driverLogContent, "cache_status_t::stored"));
+
+    //second time compilation
+    auto startSecond = std::chrono::high_resolution_clock::now(); 
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+    auto endSecond = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationSecond = endSecond - startSecond;
+
+    std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("[3]printf testsuit content3 : %s\n", driverLogContent3.c_str());
+    EXPECT_TRUE(!containsCacheStatus(driverLogContent, ""));
+
+    std::printf("==[3]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
+    EXPECT_GT(durationFirst.count(), durationSecond.count());
+}
+
+TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
+
+    std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[4]printf testsuit content1 : %s\n", driverLogContent.c_str());
+    EXPECT_TRUE(containsCacheStatus(driverLogContent, "cache_status_t::stored"));
+
+    configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
+    ov::CompiledModel execNet;
+    //first run time will long and will generate the model cache.
+    auto startFirst = std::chrono::high_resolution_clock::now(); 
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+    auto endFirst = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationFirst = endFirst - startFirst;
+
+    std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("[3]printf testsuit content2 : %s\n", driverLogContent2.c_str());
+    EXPECT_TRUE(containsCacheStatus(driverLogContent, ""));
+
+    //second time compilation
+    auto startSecond = std::chrono::high_resolution_clock::now(); 
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+    auto endSecond = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationSecond = endSecond - startSecond;
+
+    std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("[3]printf testsuit content3 : %s\n", driverLogContent3.c_str());
+    EXPECT_TRUE(!containsCacheStatus(driverLogContent, ""));
+
+    std::printf("==[4] testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
+    EXPECT_GT(durationFirst.count(), durationSecond.count());
+}
 
 
 }  // namespace behavior
