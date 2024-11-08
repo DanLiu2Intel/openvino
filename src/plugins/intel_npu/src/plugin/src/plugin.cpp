@@ -732,7 +732,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
     uint32_t graphDdiExtVersion = graph_ddi_table_ext.version();
     std::string driverLogContent = intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    std::printf("=========intel npu end of compile_model==2==graphDdiExtVersion:%u==driverlog:%s=\n", graphDdiExtVersion, driverLogContent.c_str);
+    std::printf("=========intel npu end of compile_model==2==graphDdiExtVersion:%u==driverlog:%s=\n", graphDdiExtVersion, driverLogContent.c_str());
 
     return compiledModel;
 }
