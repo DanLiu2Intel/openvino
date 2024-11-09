@@ -394,7 +394,7 @@ void ZeGraphExtWrappers<TableExtension>::createGraph(std::pair<size_t, std::shar
 
     _logger.debug("createGraph - performing pfnCreate2");
     // Create querynetwork handle
-        std::printf("======================17=====DriverCompilerAdapter===================\n");
+    std::printf("======================17=====DriverCompilerAdapter===================\n");
     std::string driverlog7 = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
     std::printf("======================18=====DriverCompilerAdapter================driverlog:%s===\n", driverlog7.c_str());
     auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate2(_zeroInitStruct->getContext(),
@@ -406,16 +406,16 @@ void ZeGraphExtWrappers<TableExtension>::createGraph(std::pair<size_t, std::shar
     std::printf("======================20=====DriverCompilerAdapter================driverlog:%s===\n", driverlog19.c_str());
     THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate2", result, _zeroInitStruct->getGraphDdiTable());
 
-    std::printf("+++++++++++++++++++add second pfncreate2++++++++++++++++\n");
-    ze_graph_handle_t graphHandle2;
-    auto result2 = _zeroInitStruct->getGraphDdiTable().pfnCreate2(_zeroInitStruct->getContext(),
-                                                                _zeroInitStruct->getDevice(),
-                                                                &desc,
-                                                                &graphHandle2);
-    std::printf("+++++++++++++++++19=====DriverCompilerAdapter===================\n");
-    std::string driverlog19_2 = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
-    std::printf("+++++++++++++++++20=====DriverCompilerAdapter================driverlog:%s===\n", driverlog19_2.c_str());
-    THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate2", result, _zeroInitStruct->getGraphDdiTable());
+    // std::printf("+++++++++++++++++++add second pfncreate2++++++++++++++++\n");
+    // ze_graph_handle_t graphHandle2;
+    // auto result2 = _zeroInitStruct->getGraphDdiTable().pfnCreate2(_zeroInitStruct->getContext(),
+    //                                                             _zeroInitStruct->getDevice(),
+    //                                                             &desc,
+    //                                                             &graphHandle2);
+    // std::printf("+++++++++++++++++19=====DriverCompilerAdapter===================\n");
+    // std::string driverlog19_2 = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
+    // std::printf("+++++++++++++++++20=====DriverCompilerAdapter================driverlog:%s===\n", driverlog19_2.c_str());
+    // THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate2", result, _zeroInitStruct->getGraphDdiTable());
 }
 
 template <ze_graph_ext_version_t TableExtension>
