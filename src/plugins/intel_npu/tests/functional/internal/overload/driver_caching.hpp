@@ -89,7 +89,15 @@ bool containsCacheStatus(const std::string& str, const std::string cmpstr) {
 void checkSystemCacheDirectory() {
     std::filesystem::path path{};
 #ifdef WIN32
-    path = std::filesystem::path( L"\\\\?\\" + std::wstring( local ) + +L"\\Intel\\NPU" );
+    wchar_t* local = nullptr;
+    auto result = SHGetKnownFolderPath( FOLDERID_LocalAppData, 0, NULL, &local );
+
+    if(SUCCEEDED(result)) {
+        // prepend to enable long path name support
+        path = std::filesystem::path( L"\\\\?\\" + std::wstring( local ) + +L"\\Intel\\NPU" );
+
+        CoTaskMemFree( local );
+    }
 #else
     const char *env = getenv("ZE_INTEL_NPU_CACHE_DIR");
     if (env) {
