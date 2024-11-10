@@ -189,7 +189,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
     std::printf("[1.3]printf testsuit content3 : %s\n", driverLogContent3.c_str());
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
         if (configuration.find("CACHE_DIR") != configuration.end()) {
-            m_cache_dir = configuration.at(ov::cache_dir.name()).as<std::string>();
+            m_cachedir = configuration.at(ov::cache_dir.name()).as<std::string>();
         }
         EXPECT_TRUE(containsCacheStatus(driverLogContent3, ""));
     } else {
@@ -233,7 +233,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::printf("[2.3]printf testsuit content3 : %s\n", driverLogContent3.c_str());
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
         if (configuration.find("CACHE_DIR") != configuration.end()) {
-            m_cache_dir = configuration.at(ov::cache_dir.name()).as<std::string>();
+            m_cachedir = configuration.at(ov::cache_dir.name()).as<std::string>();
         }
         EXPECT_TRUE(containsCacheStatus(driverLogContent3, ""));
     } else {
