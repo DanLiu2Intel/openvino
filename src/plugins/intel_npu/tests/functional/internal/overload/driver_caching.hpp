@@ -135,17 +135,16 @@ public:
 
     void TearDown() override {
         if (!configuration.empty()) {
-            utils::PluginCache::get().reset();
-        }
-
-        if (!m_cachedir.empty()) {
-            core->set_property({ov::cache_dir()});
-            core.reset();
+            if (!m_cachedir.empty()) {
+                core->set_property({ov::cache_dir()});
+                core.reset();
+                ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
+                ov::test::utils::removeDir(m_cachedir);
+            }
             ov::test::utils::PluginCache::get().reset();
-            ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
-            ov::test::utils::removeDir(m_cachedir);
         }
-
+        std::printf(">>>how much teardown will be call? TearDown>>>\n");
+        checkSystemCacheDirectory();
         APIBaseTest::TearDown();
     }
 
@@ -193,7 +192,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
         }
         EXPECT_TRUE(containsCacheStatus(driverLogContent3, ""));
     } else {
-         EXPECT_TRUE(containsCacheStatus(driverLogContent3, "cache_status_t::found"));
+        EXPECT_TRUE(containsCacheStatus(driverLogContent3, "cache_status_t::found"));
     }
 
     //With or without enable UMD caching, the compilation time for the second time should be shorter than the first.
