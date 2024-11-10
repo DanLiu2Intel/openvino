@@ -59,28 +59,6 @@ inline std::shared_ptr<ov::Model> getConstantGraph() {
     return std::make_shared<Model>(results, params);
 }
 
-std::string generateCacheDirName(const std::string& test_name) {
-    // Generate unique file names based on test name, thread id and timestamp
-    // This allows execution of tests in parallel (stress mode)
-    auto hash = std::to_string(std::hash<std::string>()(test_name));
-    std::stringstream ss;
-    auto ts = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch());
-    ss << hash << "_"
-        << "_" << ts.count();
-    return ss.str();
-}
-
-std::map<std::string, std::string> any_copy(const ov::AnyMap& params) {
-    std::map<std::string, std::string> result;
-    for (auto&& value : params) {
-        // The value of cache_encryption_callbacks cannot be converted to std::string
-        if (value.first == ov::cache_encryption_callbacks.name()) {
-            continue;
-        }
-        result.emplace(value.first, value.second.as<std::string>());
-    }
-    return result;
-}
 
 bool containsCacheStatus(const std::string& str, const std::string cmpstr) {  
     return str.find(cmpstr) != std::string::npos;  
@@ -117,26 +95,6 @@ void checkSystemCacheDirectory() {
             std::filesystem::remove_all(entry);
         }
     }
-}
-
-//Does this part is need?
-inline std::vector<std::string> listFilesWithExt(const std::string& path) {
-    struct dirent* ent;
-    DIR* dir = opendir(path.c_str());
-    std::vector<std::string> res;
-    if (dir != nullptr) {
-        while ((ent = readdir(dir)) != NULL) {
-            auto file = ov::test::utils::makePath(path, std::string(ent->d_name));
-            struct stat stat_path;
-            stat(file.c_str(), &stat_path);
-            //cache not contian file extension.
-            if (!S_ISDIR(stat_path.st_mode) && ov::test::utils::endsWith(file, "")) {
-                res.push_back(std::move(file));
-            }
-        }
-        closedir(dir);
-    }
-    return res;
 }
 
 class CompileAndDriverCaching : public testing::WithParamInterface<CompileAndModelCachingParams>,
@@ -180,6 +138,14 @@ public:
             utils::PluginCache::get().reset();
         }
 
+        if (!m_cachedir.empty()) {
+            core->set_property({ov::cache_dir()});
+            core.reset();
+            ov::test::utils::PluginCache::get().reset();
+            ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
+            ov::test::utils::removeDir(m_cachedir);
+        }
+
         APIBaseTest::TearDown();
     }
 
@@ -188,6 +154,7 @@ protected:
     ov::AnyMap configuration;
     std::shared_ptr<ov::Model> function;
     std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct;
+    std::string m_cachedir;
 };
 
 TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
@@ -206,7 +173,11 @@ TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
 
     std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("[1.2]printf testsuit content2 : %s\n", driverLogContent2.c_str());
+#ifdef WIN32
     EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::found"));
+#else
+    EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::stored"));
+#endif
 
     //second time compilation
     auto startSecond = std::chrono::high_resolution_clock::now(); 
@@ -217,7 +188,10 @@ TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
     std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("[1.3]printf testsuit content3 : %s\n", driverLogContent3.c_str());
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
-         EXPECT_TRUE(containsCacheStatus(driverLogContent3, ""));
+        if (configuration.find("CACHE_DIR") != configuration.end()) {
+            m_cache_dir = configuration.at(ov::cache_dir.name()).as<std::string>();
+        }
+        EXPECT_TRUE(containsCacheStatus(driverLogContent3, ""));
     } else {
          EXPECT_TRUE(containsCacheStatus(driverLogContent3, "cache_status_t::found"));
     }
@@ -243,7 +217,11 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
 
     std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("[2.2]printf testsuit content2 : %s\n", driverLogContent2.c_str());
+#ifdef WIN32
     EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::found"));
+#else
+    EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::stored"));
+#endif
 
     //second time compilation
     auto startSecond = std::chrono::high_resolution_clock::now(); 
@@ -254,6 +232,9 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("[2.3]printf testsuit content3 : %s\n", driverLogContent3.c_str());
     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
+        if (configuration.find("CACHE_DIR") != configuration.end()) {
+            m_cache_dir = configuration.at(ov::cache_dir.name()).as<std::string>();
+        }
         EXPECT_TRUE(containsCacheStatus(driverLogContent3, ""));
     } else {
         EXPECT_TRUE(containsCacheStatus(driverLogContent3, "cache_status_t::found"));
