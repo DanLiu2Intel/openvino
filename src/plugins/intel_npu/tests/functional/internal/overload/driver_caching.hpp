@@ -64,6 +64,42 @@ bool containsCacheStatus(const std::string& str, const std::string cmpstr) {
     return str.find(cmpstr) != std::string::npos;  
 }
 
+
+void checkCacheDirectory() {
+    std::filesystem::path path{};
+#ifdef WIN32
+    wchar_t* local = nullptr;
+    auto result = SHGetKnownFolderPath( FOLDERID_LocalAppData, 0, NULL, &local );
+
+    if(SUCCEEDED(result)) {
+        // prepend to enable long path name support
+        path = std::filesystem::path( L"\\\\?\\" + std::wstring( local ) + +L"\\Intel\\NPU" );
+
+        CoTaskMemFree( local );
+    }
+#else
+    const char *env = getenv("ZE_INTEL_NPU_CACHE_DIR");
+    if (env) {
+        path = std::filesystem::path(env);
+    } else {
+        env = getenv("HOME");
+        if (env) {
+            path = std::filesystem::path(env) / ".cache/ze_intel_npu_cache";
+        } else {
+            path = std::filesystem::current_path() / ".cache/ze_intel_npu_cache";
+        }
+    }
+#endif
+
+    std::printf(">>>>check cache psth: %s\n", path.c_str());
+    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
+        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+            std::printf("  >>>>>content: %s \n", entry.path().c_str());
+        }
+    }
+}
+
+
 void checkSystemCacheDirectory() {
     std::filesystem::path path{};
 #ifdef WIN32
@@ -90,9 +126,25 @@ void checkSystemCacheDirectory() {
     }
 #endif
 
+    std::printf(">>>>check cache content1:\n");
     if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
-            std::filesystem::remove_all(entry);
+            std::printf("  >>>>>content: %s \n", entry.path().c_str());
+        }
+    }
+
+    std::printf(">>>>remove cache content:\n");
+    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
+        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+            std::filesystem::remove_all(entry.path());
+            std::printf("  >>>>>remove cache: %s \n", entry.path().c_str());
+        }
+    }
+
+    std::printf(">>>>check cache content2:\n");
+    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
+        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+            std::printf("  >>>>> contain : %s \n", entry.path().c_str());
         }
     }
 }
@@ -136,6 +188,7 @@ public:
     void TearDown() override {
         if (!configuration.empty()) {
             if (!m_cachedir.empty()) {
+                std::printf("            printf m_cachedir:%s \n", m_cachedir.c_str());
                 core->set_property({ov::cache_dir()});
                 core.reset();
                 ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
@@ -157,6 +210,7 @@ protected:
 };
 
 TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
+    checkCacheDirectory();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
 
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
@@ -201,6 +255,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
 }//有一个条件失败，整个test case 就是失败的
 
 TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
+    checkCacheDirectory();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
 
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
@@ -244,6 +299,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
 }
 
 TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
+    checkCacheDirectory();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
 
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
@@ -277,6 +333,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
 }
 
 TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
+    checkCacheDirectory();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
 
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);

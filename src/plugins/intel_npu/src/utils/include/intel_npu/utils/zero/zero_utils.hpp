@@ -248,7 +248,6 @@ static inline std::string getLatestBuildError(ze_graph_dditable_ext_curr_t& _gra
         // Null graph handle to get error log
         auto result = _graph_ddi_table_ext.pfnBuildLogGetString(nullptr, &size, nullptr);
 
-        // std::printf("  --1--> getLatestBuildError size=%d\n", size);
         if (ZE_RESULT_SUCCESS != result) {
             // The failure will not break normal execution, only warning here
             _logger.warning("getLatestBuildError Failed to get size of latest error log!");
@@ -269,12 +268,6 @@ static inline std::string getLatestBuildError(ze_graph_dditable_ext_curr_t& _gra
 
         std::printf("  --2--> getLatestBuildError log=%s\n", logContent.c_str());
         std::printf("  --2--> getLatestBuildError size=%d\n", size);
-        // if ( logContent.find( "::stored" ) != std::string::npos ) {
-        //     std::printf("    --2-->stored\n");
-        // }
-        // if ( logContent.find( "::found" ) != std::string::npos ) {
-        //     std::printf("    --2-->found\n");
-        // }
         
         if (ZE_RESULT_SUCCESS != result) {
             // The failure will not break normal execution, only warning here
