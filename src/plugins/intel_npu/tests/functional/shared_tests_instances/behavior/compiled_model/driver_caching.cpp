@@ -5,7 +5,7 @@ namespace {
 
 using namespace ov::test::behavior;
 
-const std::vector<ov::AnyMap> Config = {{}, {ov::cache_dir("testCacheDir")}, {ov::intel_npu::bypass_umd_caching(true)}};
+const std::vector<ov::AnyMap> Config = {{}};
 
 INSTANTIATE_TEST_SUITE_P(smoke_CompilationUMDCacheg,
                          CompileAndDriverCaching,

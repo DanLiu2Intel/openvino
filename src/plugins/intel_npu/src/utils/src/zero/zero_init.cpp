@@ -252,12 +252,16 @@ ZeroInitStructsHolder::ZeroInitStructsHolder() : log("NPUZeroInitStructsHolder",
 }
 
 ZeroInitStructsHolder::~ZeroInitStructsHolder() {
+    std::printf("  >>>> call ZeroInitStructsHolder deconstructor >>>\n");
     if (context) {
+        std::printf("   >>>> ZeroInitStructsHolder's context is not empty\n");
         log.debug("ZeroInitStructsHolder - performing zeContextDestroy");
         auto result = zeContextDestroy(context);
         if (ZE_RESULT_SUCCESS != result) {
             log.error("zeContextDestroy failed %#X", uint64_t(result));
         }
+    } else {
+        std::printf("   >>>> ZeroInitStructsHolder's context is empty\n");
     }
 }
 

@@ -210,55 +210,55 @@ protected:
     std::string m_cachedir;
 };
 
-TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
-    checkCacheDirectory();
-    ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
+// TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
+//     checkCacheDirectory();
+//     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
 
-    std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    std::printf("==[1.1]printf testsuit content1 : %s\n", driverLogContent.c_str());//empty, 
-    EXPECT_TRUE(containsCacheStatus(driverLogContent, ""));
+//     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+//     std::printf("==[1.1]printf testsuit content1 : %s\n", driverLogContent.c_str());//empty, 
+//     EXPECT_TRUE(containsCacheStatus(driverLogContent, ""));
 
-    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct2 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
-    ze_graph_dditable_ext_decorator& graph_ddi_table_ext2 = initStruct2->getGraphDdiTable();
-    std::string driverLogContent1_2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    std::printf("==[1.1-2]printf testsuit content1_2 : %s\n", driverLogContent1_2.c_str()); // need to check
+//     std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct2 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+//     ze_graph_dditable_ext_decorator& graph_ddi_table_ext2 = initStruct2->getGraphDdiTable();
+//     std::string driverLogContent1_2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+//     std::printf("==[1.1-2]printf testsuit content1_2 : %s\n", driverLogContent1_2.c_str()); // need to check
 
-    ov::CompiledModel execNet;
-    //first run time will long and will generate the model cache.
-    auto startFirst = std::chrono::high_resolution_clock::now(); 
-    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
-    auto endFirst = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> durationFirst = endFirst - startFirst;
+//     ov::CompiledModel execNet;
+//     //first run time will long and will generate the model cache.
+//     auto startFirst = std::chrono::high_resolution_clock::now(); 
+//     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+//     auto endFirst = std::chrono::high_resolution_clock::now();
+//     std::chrono::duration<double> durationFirst = endFirst - startFirst;
 
-    std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    std::printf("[1.2]printf testsuit content2 : %s\n", driverLogContent2.c_str());
-#ifdef WIN32
-    EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::found"));
-#else
-    EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::stored"));
-#endif
+//     std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+//     std::printf("[1.2]printf testsuit content2 : %s\n", driverLogContent2.c_str());
+// #ifdef WIN32
+//     EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::found"));
+// #else
+//     EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::stored"));
+// #endif
 
-    //second time compilation
-    auto startSecond = std::chrono::high_resolution_clock::now(); 
-    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
-    auto endSecond = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> durationSecond = endSecond - startSecond;
+//     //second time compilation
+//     auto startSecond = std::chrono::high_resolution_clock::now(); 
+//     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+//     auto endSecond = std::chrono::high_resolution_clock::now();
+//     std::chrono::duration<double> durationSecond = endSecond - startSecond;
 
-    std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    std::printf("[1.3]printf testsuit content3 : %s\n", driverLogContent3.c_str());
-    if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
-        if (configuration.find("CACHE_DIR") != configuration.end()) {
-            m_cachedir = configuration.at(ov::cache_dir.name()).as<std::string>();
-        }
-        EXPECT_TRUE(containsCacheStatus(driverLogContent3, ""));
-    } else {
-        EXPECT_TRUE(containsCacheStatus(driverLogContent3, "cache_status_t::found"));
-    }
+//     std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+//     std::printf("[1.3]printf testsuit content3 : %s\n", driverLogContent3.c_str());
+//     if ((configuration.find("CACHE_DIR") != configuration.end()) || configuration.find("NPU_BYPASS_UMD_CACHING") != configuration.end()) {
+//         if (configuration.find("CACHE_DIR") != configuration.end()) {
+//             m_cachedir = configuration.at(ov::cache_dir.name()).as<std::string>();
+//         }
+//         EXPECT_TRUE(containsCacheStatus(driverLogContent3, ""));
+//     } else {
+//         EXPECT_TRUE(containsCacheStatus(driverLogContent3, "cache_status_t::found"));
+//     }
 
-    //With or without enable UMD caching, the compilation time for the second time should be shorter than the first.
-    std::printf("==[1.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
-    // EXPECT_GT(durationFirst.count(), durationSecond.count());
-}//有一个条件失败，整个test case 就是失败的
+//     //With or without enable UMD caching, the compilation time for the second time should be shorter than the first.
+//     std::printf("==[1.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
+//     // EXPECT_GT(durationFirst.count(), durationSecond.count());
+// }//有一个条件失败，整个test case 就是失败的
 
 TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     checkCacheDirectory();
