@@ -402,7 +402,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
 
 TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig2NewOVCore) {
     checkCacheDirectory();
-    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct2 = std::make_shared<::intel_npu::ZeroInitStructsHolder>()
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct2 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct2->getGraphDdiTable();
 
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
@@ -419,7 +419,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig2NewOVCore) {
     std::chrono::duration<double> durationFirst = endFirst - startFirst;
 
 
-    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct3 = std::make_shared<::intel_npu::ZeroInitStructsHolder>()
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct3 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext3 = initStruct3->getGraphDdiTable();
     std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext3);
     std::printf("[5.2]first compile testsuit content2 : #%s#\n", driverLogContent2.c_str());
@@ -433,7 +433,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig2NewOVCore) {
     auto endSecond = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
 
-    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct4 = std::make_shared<::intel_npu::ZeroInitStructsHolder>()
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct4 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext4 = initStruct4->getGraphDdiTable();
     std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext4);
     std::printf("[5.3]second compile testsuit content3 : #%s#\n", driverLogContent3.c_str());
@@ -447,7 +447,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig2NewOVCore) {
     OV_ASSERT_NO_THROW(execNet3 = core3->compile_model(function, target_device, configuration));
     auto endThird = std::chrono::high_resolution_clock::now();
 
-    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct5 = std::make_shared<::intel_npu::ZeroInitStructsHolder>()
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct5 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext5 = initStruct5->getGraphDdiTable();
     std::string driverLogContent4 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext5);
     std::printf("[5.5]second compile testsuit content4 : ##%s##,   time:%f\n", driverLogContent4.c_str(), (endThird - startThird).count());
