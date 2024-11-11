@@ -172,6 +172,7 @@ public:
     }
 
     void SetUp() override {
+        std::printf(" will call how much time setup\n");
         std::tie(function, target_device, configuration) = this->GetParam();
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
 
@@ -217,6 +218,11 @@ TEST_P(CompileAndDriverCaching, CompilationCacheFlag) {
     std::printf("==[1.1]printf testsuit content1 : %s\n", driverLogContent.c_str());//empty, 
     EXPECT_TRUE(containsCacheStatus(driverLogContent, ""));
 
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct2 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext2 = initStruct2->getGraphDdiTable();
+    std::string driverLogContent1_2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[1.1-2]printf testsuit content1_2 : %s\n", driverLogContent1_2.c_str()); // need to check
+
     ov::CompiledModel execNet;
     //first run time will long and will generate the model cache.
     auto startFirst = std::chrono::high_resolution_clock::now(); 
@@ -261,7 +267,12 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[2.1]printf testsuit content1 : %s\n", driverLogContent.c_str());
     EXPECT_TRUE(containsCacheStatus(driverLogContent, ""));
-    
+
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct2 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext2 = initStruct2->getGraphDdiTable();
+    std::string driverLogContent1_2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[2.1-2]printf testsuit content1_2 : %s\n", driverLogContent1_2.c_str()); // need to check
+
     ov::CompiledModel execNet;
     //first run time will long and will generate the model cache.
     auto startFirst = std::chrono::high_resolution_clock::now(); 
@@ -306,6 +317,11 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
     std::printf("==[3.1]printf testsuit content1 : %s\n", driverLogContent.c_str());
     EXPECT_TRUE(containsCacheStatus(driverLogContent, ""));
 
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct2 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext2 = initStruct2->getGraphDdiTable();
+    std::string driverLogContent1_2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[3.1-2]printf testsuit content1_2 : %s\n", driverLogContent1_2.c_str()); // need to check
+
     configuration[ov::cache_dir.name()] = "testCacheDir";
     ov::CompiledModel execNet;
     //first run time will long and will generate the model cache.
@@ -339,6 +355,11 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[4.1]printf testsuit content1 : %s\n", driverLogContent.c_str());
     EXPECT_TRUE(containsCacheStatus(driverLogContent, ""));
+
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct2 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext2 = initStruct2->getGraphDdiTable();
+    std::string driverLogContent1_2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[4.1-2]printf testsuit content1_2 : %s\n", driverLogContent1_2.c_str()); // need to check
 
     configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
     ov::CompiledModel execNet;
