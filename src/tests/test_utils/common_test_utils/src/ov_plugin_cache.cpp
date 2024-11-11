@@ -99,7 +99,7 @@ std::shared_ptr<ov::Core> PluginCache::core(const std::string& target_device) {
     if (disable_plugin_cache) {
         return std::make_shared<ov::Core>(create_core(target_device));
     }
-    if (!ov_core) {
+    if (!ov_core) {//ov_core 空的时候会进来
         ov_core = std::make_shared<ov::Core>(create_core(target_device));
         assert(0 != ov_core.use_count());
     }
@@ -115,6 +115,11 @@ PluginCache::PluginCache() {
     auto& listeners = testing::UnitTest::GetInstance()->listeners();
     listeners.Append(new TestListener);
     disable_plugin_cache = std::getenv("DISABLE_PLUGIN_CACHE") == nullptr ? false : true;
+    if(disable_plugin_cache) {
+        std::printf("  disable_plugin_cache is true\n");
+    } else {
+        std::printf("  disable_plugin_cache is false\n");
+    }
 }
 }  // namespace utils
 }  // namespace test
