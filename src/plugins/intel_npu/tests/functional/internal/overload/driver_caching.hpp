@@ -70,15 +70,16 @@ inline std::shared_ptr<ov::Model> createModel2() {
 }
 
 inline std::shared_ptr<ov::Model> createModel3() {
-    auto param = std::make_shared<ov::opset1::Parameter>(ov::element::f32, ov::Shape{1, 6, 224});
-    auto weights = ov::opset1::Constant::create(ov::element::f16, ov::Shape{1, 6, 224}, { 1 });
-    auto conv = std::make_shared<ov::opset1::GroupConvolution>(param,
-                                        weights,
-                                        ov::Strides{1},
-                                        ov::CoordinateDiff{0},
-                                        ov::CoordinateDiff{0},
-                                        ov::Strides{1});
-    return std::make_shared<ov::Model>(ov::NodeVector{ conv }, ov::ParameterVector{ param });
+    auto data1 = std::make_shared<op::v0::Parameter>(ov::element::f32, ov::Shape{1, 3, 2, 2});
+    data1->set_friendly_name("input1");
+    data1->get_output_tensor(0).set_names({"tensor_input1"});
+    auto op = std::make_shared<op::v0::Relu>(data1);
+    op->set_friendly_name("Relu");
+    op->get_output_tensor(0).set_names({"tensor_Relu"});
+    auto res = std::make_shared<op::v0::Result>(op);
+    res->set_friendly_name("Result1");
+    res->get_output_tensor(0).set_names({"tensor_output1"});
+    return std::make_shared<Model>(ResultVector{res}, ParameterVector{data1});
 }
 
 inline std::shared_ptr<ov::Model> createModel4() {
@@ -137,10 +138,10 @@ void checkCacheDirectory() {
     }
 #endif
 
-    std::printf(">>>>check cache psth: #%s#\n", path.c_str());
+    std::printf(">>>>check cache path: #%s#\n", path.c_str());
     if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
-            std::printf("  >>>>>content: #%s# \n", entry.path().c_str());
+            std::printf("  >>>>> cache content: #%s# \n", entry.path().c_str());
         }
     }
 }
@@ -181,8 +182,6 @@ public:
         std::printf("--------TearDown--------\n");
         if (!m_cachedir.empty()) {
             std::printf("            printf m_cachedir:#%s# \n", m_cachedir.c_str());
-            core->set_property({ov::cache_dir()});
-            core.reset();
             ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
             ov::test::utils::removeDir(m_cachedir);
         }
@@ -247,6 +246,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
     checkCacheDirectory();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
 
+    //do not compare this part maybe can slove this test?
     std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[2.1][OVCacheConfig] driver log content1 : #%s#\n", driverLogContent.c_str());
     EXPECT_TRUE( (!containsCacheStatus(driverLogContent, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent, "cache_status_t::found")));
@@ -351,9 +351,7 @@ public:
     void TearDown() override {
         std::printf("----teardown2----\n");
         if (!m_cachedir.empty()) {
-            std::printf("            printf m_cachedir2:#%s# \n", m_cachedir.c_str());
-            core->set_property({ov::cache_dir()});
-            core.reset();
+            std::printf("            printf m_cachedir:#%s# \n", m_cachedir.c_str());
             ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
             ov::test::utils::removeDir(m_cachedir);
         }
@@ -446,13 +444,6 @@ public:
 
     void TearDown() override {
         std::printf("----teardown3----\n");
-        if (!m_cachedir.empty()) {
-            std::printf("            printf m_cachedir3:#%s# \n", m_cachedir.c_str());
-            core->set_property({ov::cache_dir()});
-            core.reset();
-            ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
-            ov::test::utils::removeDir(m_cachedir);
-        }
         if(core) {
             std::printf("  core is not empty3\n");
         }
