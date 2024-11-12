@@ -22,6 +22,7 @@ ov_add_target(ADD_CPPLINT
               ROOT ${CMAKE_CURRENT_SOURCE_DIR}
               LINK_LIBRARIES
                   PRIVATE
+                      ${OPTIONAL_FUNC_TESTS_LIBS}
                       openvino::runtime
                       gflags
                       Threads::Threads

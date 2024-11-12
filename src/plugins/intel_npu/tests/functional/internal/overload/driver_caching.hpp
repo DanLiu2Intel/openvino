@@ -454,6 +454,248 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig2NewOVCore) {
     EXPECT_TRUE( (!containsCacheStatus(driverLogContent4, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent4, "cache_status_t::found")));
 }
 
+
+
+
+//test class2
+class CompileAndDriverCachingOVcacheDIR : public testing::WithParamInterface<CompileAndModelCachingParams>,
+                                public OVPluginTestBase {
+public:
+    static std::string getTestCaseName(testing::TestParamInfo<CompileAndModelCachingParams> obj) {
+        std::shared_ptr<ov::Model> model;
+        std::string targetDevice;
+        ov::AnyMap configuration;
+        std::tie(model, targetDevice, configuration) = obj.param;
+        std::replace(targetDevice.begin(), targetDevice.end(), ':', '.');
+        std::ostringstream result;
+        result << "targetDevice=" << targetDevice << "_";
+        if (!configuration.empty()) {
+            // using namespace ov::test::utils;
+            for (auto& configItem : configuration) {
+                result << "configItem=" << configItem.first << "_";
+                configItem.second.print(result);
+            }
+        }
+        return result.str();
+    }
+
+    void SetUp() override {
+        std::printf("----setup2\n");
+        std::tie(function, target_device, configuration) = this->GetParam();
+        SKIP_IF_CURRENT_TEST_IS_DISABLED()
+
+        initStruct = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+        if (!initStruct) {
+            GTEST_SKIP() << "ZeroInitStructsHolder init failed, ZeroInitStructsHolder is a nullptr";
+        }
+        APIBaseTest::SetUp();
+        
+        //remove system cache. contain and remove ? to prevent contine build and make failed.
+        checkSystemCacheDirectory();
+    }
+
+    void TearDown() override {
+        std::printf("----teardown2\n");
+        if (!m_cachedir.empty()) {
+            std::printf("            printf m_cachedir2:#%s# \n", m_cachedir.c_str());
+            core->set_property({ov::cache_dir()});
+            core.reset();
+            ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
+            ov::test::utils::removeDir(m_cachedir);
+        }
+        if(core) {
+            std::printf("  core is not empty2\n");
+        } else {
+            std::printf("  core is empty2\n");
+        }
+        ov::test::utils::PluginCache::get().reset();
+        if(core) {
+            std::printf("  core is not empty2\n");
+        } else {
+            std::printf("  core is empty2\n");
+        }
+
+        checkSystemCacheDirectory();
+        APIBaseTest::TearDown();
+    }
+
+protected:
+    std::shared_ptr<ov::Core> core = utils::PluginCache::get().core();
+    ov::AnyMap configuration;
+    std::shared_ptr<ov::Model> function;
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct;
+    std::string m_cachedir;
+};
+
+TEST_P(CompileAndDriverCachingOVcacheDIR, CompilationCacheWithBypassConfig) {
+    checkCacheDirectory();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
+
+    std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[]2[]]printf testsuit content1 : #%s#\n", driverLogContent.c_str());
+    EXPECT_TRUE( (!containsCacheStatus(driverLogContent, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent, "cache_status_t::found")));
+
+    configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
+    ov::CompiledModel execNet;
+    //first run time will long and will generate the model cache.
+    auto startFirst = std::chrono::high_resolution_clock::now(); 
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+    auto endFirst = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationFirst = endFirst - startFirst;
+
+    std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("[]2[]]first compile testsuit content2 : #%s#\n", driverLogContent2.c_str());
+    EXPECT_TRUE( (!containsCacheStatus(driverLogContent2, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent2, "cache_status_t::found")));
+
+    //second time compilation
+    auto startSecond = std::chrono::high_resolution_clock::now();
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+    auto endSecond = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationSecond = endSecond - startSecond;
+
+    std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("[]2[]]second compile testsuit content3 : #%s#\n", driverLogContent3.c_str());
+    EXPECT_TRUE( (!containsCacheStatus(driverLogContent3, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent3, "cache_status_t::found")));
+
+    std::printf("==[]2[]] testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
+
+    std::shared_ptr<ov::Core> core2 = utils::PluginCache::get().core();
+    ov::CompiledModel execNet2;
+    auto startThird = std::chrono::high_resolution_clock::now();
+    OV_ASSERT_NO_THROW(execNet2 = core2->compile_model(function, target_device, configuration));
+    auto endThird = std::chrono::high_resolution_clock::now();
+
+    std::string driverLogContent4 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("[]2[]]second compile testsuit content4 : ##%s##,   time:%f\n", driverLogContent4.c_str(), (endThird - startThird).count());
+    EXPECT_TRUE( (!containsCacheStatus(driverLogContent4, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent4, "cache_status_t::found")));
+}
+
+//test class3
+class CompileAndDriverCachingBypass : public testing::WithParamInterface<CompileAndModelCachingParams>,
+                                public OVPluginTestBase {
+public:
+    static std::string getTestCaseName(testing::TestParamInfo<CompileAndModelCachingParams> obj) {
+        std::shared_ptr<ov::Model> model;
+        std::string targetDevice;
+        ov::AnyMap configuration;
+        std::tie(model, targetDevice, configuration) = obj.param;
+        std::replace(targetDevice.begin(), targetDevice.end(), ':', '.');
+        std::ostringstream result;
+        result << "targetDevice=" << targetDevice << "_";
+        if (!configuration.empty()) {
+            // using namespace ov::test::utils;
+            for (auto& configItem : configuration) {
+                result << "configItem=" << configItem.first << "_";
+                configItem.second.print(result);
+            }
+        }
+        return result.str();
+    }
+
+    void SetUp() override {
+        std::printf("----setup3\n");
+        std::tie(function, target_device, configuration) = this->GetParam();
+        SKIP_IF_CURRENT_TEST_IS_DISABLED()
+
+        initStruct = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+        if (!initStruct) {
+            GTEST_SKIP() << "ZeroInitStructsHolder init failed, ZeroInitStructsHolder is a nullptr";
+        }
+        APIBaseTest::SetUp();
+        
+        //remove system cache. contain and remove ? to prevent contine build and make failed.
+        checkSystemCacheDirectory();
+    }
+
+    void TearDown() override {
+        std::printf("----teardown3\n");
+        if (!m_cachedir.empty()) {
+            std::printf("            printf m_cachedir3:#%s# \n", m_cachedir.c_str());
+            core->set_property({ov::cache_dir()});
+            core.reset();
+            ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
+            ov::test::utils::removeDir(m_cachedir);
+        }
+        if(core) {
+            std::printf("  core is not empty3\n");
+        } else {
+            std::printf("  core is empty3\n");
+        }
+        ov::test::utils::PluginCache::get().reset();
+        if(core) {
+            std::printf("  core is not empty3\n");
+        } else {
+            std::printf("  core is empty3\n");
+        }
+        
+        checkSystemCacheDirectory();
+        APIBaseTest::TearDown();
+    }
+
+protected:
+    std::shared_ptr<ov::Core> core = utils::PluginCache::get().core();
+    ov::AnyMap configuration;
+    std::shared_ptr<ov::Model> function;
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct;
+    std::string m_cachedir;
+};
+
+
+
+TEST_P(CompileAndDriverCachingBypass, CompilationCacheWithBypassConfig2NewOVCore) {
+    checkCacheDirectory();
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct2 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct2->getGraphDdiTable();
+
+    std::string driverLogContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[[3]]]printf testsuit content1 : #%s#\n", driverLogContent.c_str());
+    EXPECT_TRUE( (!containsCacheStatus(driverLogContent, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent, "cache_status_t::found")));
+
+    configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
+    ov::CompiledModel execNet;
+    ov::Core core;
+    //first run time will long and will generate the model cache.
+    auto startFirst = std::chrono::high_resolution_clock::now(); 
+    OV_ASSERT_NO_THROW(execNet = core.compile_model(function, target_device, configuration));
+    auto endFirst = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationFirst = endFirst - startFirst;
+
+
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct3 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext3 = initStruct3->getGraphDdiTable();
+    std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext3);
+    std::printf("[[3]]]first compile testsuit content2 : #%s#\n", driverLogContent2.c_str());
+    EXPECT_TRUE( (!containsCacheStatus(driverLogContent2, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent2, "cache_status_t::found")));
+
+    //second time compilation
+    ov::Core core2;
+    ov::CompiledModel execNet2;
+    auto startSecond = std::chrono::high_resolution_clock::now();
+    OV_ASSERT_NO_THROW(execNet2 = core2.compile_model(function, target_device, configuration));
+    auto endSecond = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> durationSecond = endSecond - startSecond;
+
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct4 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext4 = initStruct4->getGraphDdiTable();
+    std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext4);
+    std::printf("[[3]]]second compile testsuit content3 : #%s#\n", driverLogContent3.c_str());
+    EXPECT_TRUE( (!containsCacheStatus(driverLogContent3, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent3, "cache_status_t::found")));
+
+    std::printf("==[[3]]] testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
+
+    std::shared_ptr<ov::Core> core3 = utils::PluginCache::get().core();
+    ov::CompiledModel execNet3;
+    auto startThird = std::chrono::high_resolution_clock::now();
+    OV_ASSERT_NO_THROW(execNet3 = core3->compile_model(function, target_device, configuration));
+    auto endThird = std::chrono::high_resolution_clock::now();
+
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct5 = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext5 = initStruct5->getGraphDdiTable();
+    std::string driverLogContent4 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext5);
+    std::printf("[[3]]]second compile testsuit content4 : ##%s##,   time:%f\n", driverLogContent4.c_str(), (endThird - startThird).count());
+    EXPECT_TRUE( (!containsCacheStatus(driverLogContent4, "cache_status_t::found")) && (!containsCacheStatus(driverLogContent4, "cache_status_t::found")));
+}
+
 }  // namespace behavior
 }  // namespace test
 }  // namespace ov
