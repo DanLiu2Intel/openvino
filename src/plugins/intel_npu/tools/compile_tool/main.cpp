@@ -21,7 +21,16 @@
 
 #include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/utils/include/intel_npu/utils/zero/zero_init.hpp"
 #include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/utils/include/intel_npu/utils/zero/zero_utils.hpp"
-
+#include <filesystem>
+//mkdir folder
+#ifdef WIN32
+#include "Shlobj.h"
+#include "shlobj_core.h"
+#include "objbase.h"
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -103,6 +112,41 @@ DEFINE_string(shape, "", shape_message);
 DEFINE_uint32(override_model_batch_size, 1, override_model_batch_size);
 
 namespace {
+
+void checkCacheDirectory() {
+    std::filesystem::path path{};
+#ifdef WIN32
+    wchar_t* local = nullptr;
+    auto result = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &local);
+
+    if (SUCCEEDED(result)) {
+        // prepend to enable long path name support
+        path = std::filesystem::path(L"\\\\?\\" + std::wstring(local) + +L"\\Intel\\NPU");
+
+        CoTaskMemFree(local);
+    }
+#else
+    const char *env = getenv("ZE_INTEL_NPU_CACHE_DIR");
+    if (env) {
+        path = std::filesystem::path(env);
+    } else {
+        env = getenv("HOME");
+        if (env) {
+            path = std::filesystem::path(env) / ".cache/ze_intel_npu_cache";
+        } else {
+            path = std::filesystem::current_path() / ".cache/ze_intel_npu_cache";
+        }
+    }
+#endif
+
+    std::printf(">>>>check cache psth: #%s#\n", path.c_str());
+    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
+        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+            std::printf("  >>>>>content: #%s# \n", entry.path().c_str());
+        }
+    }
+}
+
 std::vector<std::string> splitStringList(const std::string& str, char delim) {
     if (str.empty())
         return {};
@@ -479,14 +523,22 @@ int main(int argc, char* argv[]) {
         std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
         std::printf("[!!!] compile_tool after first compile testsuit content : #%s#\n", driverLogContent2.c_str());
         std::printf("-----------------------2-----------------------\n");
+        checkCacheDirectory();
+        std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+        std::printf("[  ] REMOVE CACHE compile_tool after first compile testsuit content : #%s#\n", driverLogContent3.c_str());//stored
+        std::printf("-----------------------2.5-----------------------\n");
 
         std::shared_ptr<intel_npu::ZeroInitStructsHolder> initStruct4 = std::make_shared<intel_npu::ZeroInitStructsHolder>();
         ze_graph_dditable_ext_decorator& graph_ddi_table_ext4 = initStruct4->getGraphDdiTable();
         std::string driverLogContent11 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext4);
         std::printf("[!!!] compile_tool before first compile testsuit content : #%s#\n", driverLogContent11.c_str());
 
+
+        std::map<std::string, std::string> config_bypass;
+        config_bypass["NPU_BYPASS_UMD_CACHING"] = "YES";
+
         std::cout << "Compiling model" << std::endl;
-        auto compiledModel2 = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
+        auto compiledModel2 = core.compile_model(model, FLAGS_d, {config_bypass.begin(), config_bypass.end()});
 
         std::string driverLogContent22 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext4);
         std::printf("[!!!] compile_tool after first compile testsuit content : #%s#\n", driverLogContent22.c_str());
