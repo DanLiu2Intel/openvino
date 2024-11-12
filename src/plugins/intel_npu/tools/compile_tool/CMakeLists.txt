@@ -26,8 +26,7 @@ ov_add_target(ADD_CPPLINT
               TYPE EXECUTABLE
               NAME ${TARGET_NAME}
               ROOT ${CMAKE_CURRENT_SOURCE_DIR}
-              INCLUDES
-              ${OPTIONAL_FUNC_TESTS_INCLUDES}
+              INCLUDES ${OPTIONAL_FUNC_TESTS_INCLUDES}
               LINK_LIBRARIES
                   PRIVATE
                       ${OPTIONAL_FUNC_TESTS_LIBS}
