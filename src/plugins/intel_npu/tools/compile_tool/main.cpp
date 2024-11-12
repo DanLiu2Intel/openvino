@@ -145,6 +145,14 @@ void checkCacheDirectory() {
             std::printf("  >>>>>content: #%s# \n", entry.path().c_str());
         }
     }
+
+    std::printf(">>>>remove cache content:\n");
+    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
+        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+            std::filesystem::remove_all(entry.path());
+            std::printf("  >>>>>remove cache: #%s# \n", entry.path().c_str());
+        }
+    }
 }
 
 std::vector<std::string> splitStringList(const std::string& str, char delim) {
@@ -534,14 +542,16 @@ int main(int argc, char* argv[]) {
         std::printf("[!!!] compile_tool before first compile testsuit content : #%s#\n", driverLogContent11.c_str());
 
 
-        std::map<std::string, std::string> config_bypass;
-        config_bypass["NPU_BYPASS_UMD_CACHING"] = "YES";
+        // std::map<std::string, std::string> config_bypass;
+        // config_bypass["NPU_BYPASS_UMD_CACHING"] = "YES";
 
         std::cout << "Compiling model" << std::endl;
-        auto compiledModel2 = core.compile_model(model, FLAGS_d, {config_bypass.begin(), config_bypass.end()});
+        // auto compiledModel2 = core.compile_model(model, FLAGS_d, {config_bypass.begin(), config_bypass.end()});
+        auto compiledModel2 = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
 
         std::string driverLogContent22 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext4);
         std::printf("[!!!] compile_tool after first compile testsuit content : #%s#\n", driverLogContent22.c_str());
+        std::printf("-----------------------3-----------------------\n");
         std::printf("-----------------------3-----------------------\n");
 
 

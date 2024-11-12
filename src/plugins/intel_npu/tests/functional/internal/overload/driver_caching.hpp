@@ -49,8 +49,8 @@ typedef std::tuple<std::shared_ptr<ov::Model>,  // Model
 inline std::shared_ptr<ov::Model> getConstantGraph() {
     ResultVector results;
     ParameterVector params;
-    auto op = std::make_shared<ov::op::v1::Add>(opset8::Constant::create(ov::element::f32, {1}, {1}),
-                                                opset8::Constant::create(ov::element::f32, {1}, {1}));
+    auto op = std::make_shared<ov::op::v1::Add>(opset8::Constant::create(ov::element::f16, {1}, {1}),
+                                                opset8::Constant::create(ov::element::f16, {1}, {1}));
     op->set_friendly_name("Add");
     auto res = std::make_shared<ov::op::v0::Result>(op);
     res->set_friendly_name("Result");
