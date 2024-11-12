@@ -475,7 +475,7 @@ int main(int argc, char* argv[]) {
         auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
         loadNetworkTimeElapsed =
                 std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
-        
+
         std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
         std::printf("[!!!] compile_tool after first compile testsuit content : #%s#\n", driverLogContent2.c_str());
         std::printf("-----------------------2-----------------------\n");
@@ -487,7 +487,7 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Compiling model" << std::endl;
         auto compiledModel2 = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
-        
+
         std::string driverLogContent22 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext4);
         std::printf("[!!!] compile_tool after first compile testsuit content : #%s#\n", driverLogContent22.c_str());
         std::printf("-----------------------3-----------------------\n");
