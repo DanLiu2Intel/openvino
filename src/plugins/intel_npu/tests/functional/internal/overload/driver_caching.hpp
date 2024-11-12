@@ -487,7 +487,7 @@ TEST_P(CompileAndDriverCachingBypass, CompilationCacheWithBypassConfig) {
 
     //first run time will long and will generate the model cache.
     auto startFirst = std::chrono::high_resolution_clock::now(); 
-    OV_ASSERT_NO_THROW(execNet = core.compile_model(function, target_device, configuration));
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endFirst = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationFirst = endFirst - startFirst;
 
@@ -497,7 +497,7 @@ TEST_P(CompileAndDriverCachingBypass, CompilationCacheWithBypassConfig) {
 
     //second time compilation
     auto startSecond = std::chrono::high_resolution_clock::now();
-    OV_ASSERT_NO_THROW(execNet = core.compile_model(function, target_device, configuration));
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endSecond = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
 
