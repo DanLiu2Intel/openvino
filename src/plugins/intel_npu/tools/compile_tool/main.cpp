@@ -19,8 +19,8 @@
 
 #include "tools_helpers.hpp"
 
-#include "intel_npu/utils/zero/zero_init.hpp"
-#include "intel_npu/utils/zero/zero_utils.hpp"
+#include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/src/utils/include/intel_npu/utils/zero/zero_init.hpp"
+#include "/home/dl5w050/vpux/openvino/src/plugins/intel_npu/tools/compile_tool/CMakeLists.txt"
 
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
