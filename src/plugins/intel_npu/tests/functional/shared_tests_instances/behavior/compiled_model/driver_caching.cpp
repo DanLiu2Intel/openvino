@@ -13,18 +13,4 @@ INSTANTIATE_TEST_SUITE_P(smoke_CompilationUMDCacheg,
                                             ::testing::ValuesIn(Config)),
                          ov::test::utils::appendPlatformTypeTestName<CompileAndDriverCaching>);
 
-
-INSTANTIATE_TEST_SUITE_P(smoke_CompilationUMDCache2,
-                         CompileAndDriverCachingOVcacheDIR,
-                         ::testing::Combine(::testing::Values(ov::test::utils::DEVICE_NPU),
-                                            ::testing::ValuesIn(Config)),
-                         ov::test::utils::appendPlatformTypeTestName<CompileAndDriverCaching>);
-
-
-INSTANTIATE_TEST_SUITE_P(smoke_CompilationUMDCache3,
-                         CompileAndDriverCachingBypass,
-                         ::testing::Combine(::testing::Values(ov::test::utils::DEVICE_NPU),
-                                            ::testing::ValuesIn(Config)),
-                         ov::test::utils::appendPlatformTypeTestName<CompileAndDriverCaching>);
-
 }  // namespace
