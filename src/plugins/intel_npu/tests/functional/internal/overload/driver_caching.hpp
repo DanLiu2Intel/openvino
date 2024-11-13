@@ -192,7 +192,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[1.2][EmptyConfig] driver log content2 : #%s#\n", driverLogContent2.c_str());
     //To avoid problems with repeatedly calling functiontest
-    EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::stored") || containsCacheStatus(driverLogContent2, "cache_status_t::stored"));
+    EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::stored") || containsCacheStatus(driverLogContent2, "cache_status_t::found"));
 
     //second time compilation
     auto startSecond = std::chrono::high_resolution_clock::now(); 
@@ -202,7 +202,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
 
     std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[1.3][EmptyConfig] driver log content3 : #%s#\n", driverLogContent3.c_str());
-    EXPECT_TRUE(containsCacheStatus(driverLogContent3, "cache_status_t::stored") || containsCacheStatus(driverLogContent3, "cache_status_t::stored"));
+    EXPECT_TRUE(containsCacheStatus(driverLogContent3, "cache_status_t::stored") || containsCacheStatus(driverLogContent3, "cache_status_t::found"));
     std::printf("==[1.4][EmptyConfig] time: (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
 }
 
