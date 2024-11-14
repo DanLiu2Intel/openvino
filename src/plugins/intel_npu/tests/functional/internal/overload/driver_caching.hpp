@@ -180,6 +180,13 @@ public:
         if (!initStruct) {
             GTEST_SKIP() << "ZeroInitStructsHolder init failed, ZeroInitStructsHolder is a nullptr";
         }
+        
+        ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
+        uint32_t graphDdiExtVersion = graph_ddi_table_ext.version();
+        if (graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {
+            GTEST_SKIP() << "Skipping test for Driver version less than 1.5, current driver version: " << graphDdiExtVersion;
+        }
+
         APIBaseTest::SetUp();
         
         //remove system cache. contain and remove ? to prevent contine build and make failed.
@@ -194,17 +201,9 @@ public:
             ov::test::utils::removeFilesWithExt(m_cachedir, "blob");
             ov::test::utils::removeDir(m_cachedir);
         }
-        if(core) {
-            std::printf("  core is not empty\n");
-        } else {
-            std::printf("  core is empty\n");
-        }
+
         ov::test::utils::PluginCache::get().reset();
-        if(core) {
-            std::printf("  core is not empty\n");
-        } else {
-            std::printf("  core is empty\n");
-        }
+
         std::printf(">>>how much teardown will be call? TearDown>>>\n");
         if (!configuration.empty()) {
             utils::PluginCache::get().reset();
