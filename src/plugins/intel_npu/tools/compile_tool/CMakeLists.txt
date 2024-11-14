@@ -16,12 +16,20 @@ endif()
 # Define the target
 #
 
+list(APPEND OPTIONAL_FUNC_TESTS_INCLUDES
+      "${OpenVINO_SOURCE_DIR}/src/plugins/intel_npu/src/compiler_adapter/include")
+
+list(APPEND OPTIONAL_FUNC_TESTS_LIBS openvino_npu_driver_compiler_adapter
+      openvino_npu_level_zero_backend openvino_npu_zero_utils)
+
 ov_add_target(ADD_CPPLINT
               TYPE EXECUTABLE
               NAME ${TARGET_NAME}
               ROOT ${CMAKE_CURRENT_SOURCE_DIR}
+              INCLUDES ${OPTIONAL_FUNC_TESTS_INCLUDES}
               LINK_LIBRARIES
                   PRIVATE
+                      ${OPTIONAL_FUNC_TESTS_LIBS}
                       openvino::runtime
                       gflags
                       Threads::Threads

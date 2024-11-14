@@ -720,6 +720,14 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     ++_compiledModelLoadCounter;
     OV_ITT_TASK_SKIP(PLUGIN_COMPILE_MODEL);
 
+     
+    std::printf("=========intel npu end of compile_model==1=====\n");
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> initStruct = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
+    uint32_t graphDdiExtVersion = graph_ddi_table_ext.version();
+    std::string driverLogContent = intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("=========intel npu end of compile_model==2==graphDdiExtVersion:%u==driverlog:%s=\n", graphDdiExtVersion, driverLogContent.c_str());
+
     return compiledModel;
 }
 

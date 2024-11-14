@@ -115,6 +115,11 @@ PluginCache::PluginCache() {
     auto& listeners = testing::UnitTest::GetInstance()->listeners();
     listeners.Append(new TestListener);
     disable_plugin_cache = std::getenv("DISABLE_PLUGIN_CACHE") == nullptr ? false : true;
+    if(disable_plugin_cache) {
+        std::printf("  disable_plugin_cache is true\n");
+    } else {
+        std::printf("  disable_plugin_cache is false\n");
+    }
 }
 }  // namespace utils
 }  // namespace test

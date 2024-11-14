@@ -374,10 +374,16 @@ void ZeGraphExtWrappers<TableExtension>::createGraph(std::pair<size_t, std::shar
 
     _logger.debug("createGraph - performing pfnCreate2");
     // Create querynetwork handle
+    std::printf("======================17=====DriverCompilerAdapter===================\n");
+    std::string driverlog7 = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
+    std::printf("======================18=====DriverCompilerAdapter================driverlog:%s===\n", driverlog7.c_str());
     auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate2(_zeroInitStruct->getContext(),
                                                                  _zeroInitStruct->getDevice(),
                                                                  &desc,
                                                                  graph);
+    std::printf("======================19=====DriverCompilerAdapter===================\n");
+    std::string driverlog19 = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
+    std::printf("======================20=====DriverCompilerAdapter================driverlog:%s===\n", driverlog19.c_str());
     THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate2", result, _zeroInitStruct->getGraphDdiTable());
 }
 
@@ -407,11 +413,10 @@ ze_graph_handle_t ZeGraphExtWrappers<TableExtension>::getGraphHandle(const std::
                             network.size(),
                             network.data(),
                             nullptr};
-
     auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate(_zeroInitStruct->getContext(),
                                                                 _zeroInitStruct->getDevice(),
                                                                 &desc,
-                                                                &graphHandle);
+                                                                &graphHandle);;
     THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate", result, _zeroInitStruct->getGraphDdiTable());
 
     return graphHandle;

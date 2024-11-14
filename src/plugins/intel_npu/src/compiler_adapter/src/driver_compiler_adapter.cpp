@@ -216,6 +216,10 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     ze_graph_handle_t graphHandle = _zeGraphExt->getGraphHandle(std::move(serializedIR), buildFlags, flags);
     _logger.debug("compile end");
 
+    std::printf("===========!!!!1=============\n");
+    std::string testlog = intel_npu::zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
+    std::printf("===========!!!!2=============, testlog:%s\n", testlog.c_str());
+
     OV_ITT_TASK_NEXT(COMPILE_BLOB, "getNetworkMeta");
     auto networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
     networkMeta.name = model->get_friendly_name();
