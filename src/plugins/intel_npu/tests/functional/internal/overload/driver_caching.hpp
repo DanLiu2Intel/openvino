@@ -147,6 +147,7 @@ public:
     }
 
     void SetUp() override {
+        std::printf("## Identification code-3linux\n");
         std::tie(target_device, configuration) = this->GetParam();
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
 
@@ -227,12 +228,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
 
     std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[2.2][OVCacheConfig] driver log content2 : #%s#\n", driverLogContent2.c_str());
-    if (!driverLogContent.empty()) {
-        std::printf("          ---->driverLogContent=%s\n", driverLogContent.c_str());
-        EXPECT_TRUE((containsCacheStatus(driverLogContent2, "cache_status_t::found")));
-    } else {
-        EXPECT_TRUE(driverLogContent2.size() == 0);
-    }
+    EXPECT_TRUE(driverLogContent2 == driverLogContent);
 
     //second time compilation
     auto startSecond = std::chrono::high_resolution_clock::now(); 
@@ -242,12 +238,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
 
     std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[2.3][OVCacheConfig] driver log content3 : #%s#\n", driverLogContent3.c_str());
-    if (!driverLogContent.empty()) {
-        std::printf("          ---->driverLogContent=%s\n", driverLogContent.c_str());
-        EXPECT_TRUE((containsCacheStatus(driverLogContent3, "cache_status_t::found")));
-    } else {
-        EXPECT_TRUE(driverLogContent3.size() == 0);
-    }
+    EXPECT_TRUE(driverLogContent3 == driverLogContent);
     std::printf("==[2.4][ovcacheConfig] time: (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
 }
 
@@ -270,12 +261,9 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
 
     std::string driverLogContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[3.2][bypassConfig] driver log content2 : #%s#\n", driverLogContent2.c_str());
-    if (!driverLogContent2.empty()) {
-        std::printf("          ---->driverLogContent=%s\n", driverLogContent.c_str());
-        EXPECT_TRUE((containsCacheStatus(driverLogContent2, "cache_status_t::found")));
-    } else {
-        EXPECT_TRUE(driverLogContent2.size() == 0);
-    }
+
+    EXPECT_TRUE(driverLogContent2 == driverLogContent);
+
 
     //second time compilation
     auto startSecond = std::chrono::high_resolution_clock::now();
@@ -285,12 +273,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
 
     std::string driverLogContent3 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[3.3][bypassConfig] driver log content3 : #%s#\n", driverLogContent3.c_str());
-    if (!driverLogContent.empty()) {
-        std::printf("          ---->driverLogContent=%s\n", driverLogContent.c_str());
-        EXPECT_TRUE((containsCacheStatus(driverLogContent3, "cache_status_t::found")));
-    } else {
-        EXPECT_TRUE(driverLogContent3.size() == 0);
-    }
+    EXPECT_TRUE(driverLogContent3 == driverLogContent);
 
     std::printf("==[3.4][bypassConfig] time: (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
 }
