@@ -52,7 +52,7 @@ inline std::shared_ptr<ov::Model> createModel1() {
     auto now = std::chrono::system_clock::now();
     std::printf("------------(0)------------\n");
     auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-    std::printf("=========print now timestamp #%s#\n", timestamp);
+    std::printf("=========print now timestamp #%ld#\n", timestamp);
     auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
     std::printf("------------(1)------------\n");
     param->set_friendly_name("input" + std::to_string(timestamp));
@@ -73,7 +73,7 @@ inline std::shared_ptr<ov::Model> createModel2() {
     auto now = std::chrono::system_clock::now();
     std::printf("------------{2}------------\n");
     auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-    std::printf("=========print now timestamp #%s#\n", timestamp);
+    std::printf("=========print now timestamp #%ld#\n", timestamp);
     auto data1 = std::make_shared<op::v0::Parameter>(ov::element::f32, ov::Shape{1, 3, 2, 2});
     std::printf("------------{3}------------\n");
     data1->set_friendly_name("input1" + std::to_string(timestamp));
