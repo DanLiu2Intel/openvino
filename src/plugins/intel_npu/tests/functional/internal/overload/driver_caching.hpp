@@ -48,23 +48,23 @@ typedef std::tuple<std::string,                 // Device name
 
 
 inline std::shared_ptr<ov::Model> createModel1() {
-    std::printf("------------(-1)------------\n");
+    std::printf("------------(-1..2)------------\n");
     auto now = std::chrono::system_clock::now();
-    std::printf("------------(0)------------\n");
+    std::printf("------------(0..2)------------\n");
     auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
     std::printf("=========print now timestamp #%ld#\n", timestamp);
     auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
-    std::printf("------------(1)------------\n");
-    param->set_friendly_name("input" + std::to_string(timestamp));
-    std::printf("------------(2)------------\n");
+    std::printf("------------(1..2)------------\n");
+    param->set_friendly_name("input");
+    std::printf("------------(2..2)------------\n");
     auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
-    std::printf("------------(3)------------\n");
-    const_value->set_friendly_name("const_val" + std::to_string(timestamp));
-    std::printf("------------(4)------------\n");
+    std::printf("------------(3..2)------------\n");
+    const_value->set_friendly_name("const_val");
+    std::printf("------------(4..2)------------\n");
     auto add = std::make_shared<ov::op::v1::Add>(param, const_value);
-    std::printf("------------(5)------------\n");
+    std::printf("------------(5..2)------------\n");
     add->set_friendly_name("add" + std::to_string(timestamp));
-    std::printf("------------(6)------------\n");
+    std::printf("------------(6..2)------------\n");
     return std::make_shared<ov::Model>(ov::OutputVector{add->output(0)}, ov::ParameterVector{param});
 }
 
@@ -78,19 +78,19 @@ inline std::shared_ptr<ov::Model> createModel2() {
     std::printf("------------{3}------------\n");
     data1->set_friendly_name("input1" + std::to_string(timestamp));
     std::printf("------------{4}------------\n");
-    data1->get_output_tensor(0).set_names({"tensor_input1" + std::to_string(timestamp)});
+    data1->get_output_tensor(0).set_names({"tensor_input1"});
     std::printf("------------{5}------------\n");
     auto op = std::make_shared<op::v0::Relu>(data1);
     std::printf("------------{6}------------\n");
-    op->set_friendly_name("Relu" + std::to_string(timestamp));
+    op->set_friendly_name("Relu");
     std::printf("------------{7}------------\n");
-    op->get_output_tensor(0).set_names({"tensor_Relu" + std::to_string(timestamp)});
+    op->get_output_tensor(0).set_names({"tensor_Relu"});
     std::printf("------------{8}------------\n");
     auto res = std::make_shared<op::v0::Result>(op);
     std::printf("------------{9}------------\n");
     res->set_friendly_name("Result1" + std::to_string(timestamp));
     std::printf("------------{10}------------\n");
-    res->get_output_tensor(0).set_names({"tensor_output1" + std::to_string(timestamp)});
+    res->get_output_tensor(0).set_names({"tensor_output1"});
     std::printf("------------{11}------------\n");
     return std::make_shared<Model>(ResultVector{res}, ParameterVector{data1});
 }
