@@ -48,45 +48,51 @@ typedef std::tuple<std::string,                 // Device name
 
 
 inline std::shared_ptr<ov::Model> createModel1() {
+    auto now = std::chrono::system_clock::now();
+    auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    std::printf("=========print now timestamp #%s#\n", timestamp);
     auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
-    param->set_friendly_name("input");
+    param->set_friendly_name("input" + std::to_string(timestamp));
     auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
-    const_value->set_friendly_name("const_val");
+    const_value->set_friendly_name("const_val" + std::to_string(timestamp));
     auto add = std::make_shared<ov::op::v1::Add>(param, const_value);
-    add->set_friendly_name("add");
+    add->set_friendly_name("add" + std::to_string(timestamp));
     return std::make_shared<ov::Model>(ov::OutputVector{add->output(0)}, ov::ParameterVector{param});
 }
 
 inline std::shared_ptr<ov::Model> createModel2() {
+    auto now = std::chrono::system_clock::now();
+    auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    std::printf("=========print now timestamp #%s#\n", timestamp);
     auto data1 = std::make_shared<op::v0::Parameter>(ov::element::f32, ov::Shape{1, 3, 2, 2});
-    data1->set_friendly_name("input1");
-    data1->get_output_tensor(0).set_names({"tensor_input1"});
+    data1->set_friendly_name("input1" + std::to_string(timestamp));
+    data1->get_output_tensor(0).set_names({"tensor_input1" + std::to_string(timestamp)});
     auto op = std::make_shared<op::v0::Relu>(data1);
-    op->set_friendly_name("Relu");
-    op->get_output_tensor(0).set_names({"tensor_Relu"});
+    op->set_friendly_name("Relu" + std::to_string(timestamp));
+    op->get_output_tensor(0).set_names({"tensor_Relu" + std::to_string(timestamp)});
     auto res = std::make_shared<op::v0::Result>(op);
-    res->set_friendly_name("Result1");
-    res->get_output_tensor(0).set_names({"tensor_output1"});
+    res->set_friendly_name("Result1" + std::to_string(timestamp));
+    res->get_output_tensor(0).set_names({"tensor_output1" + std::to_string(timestamp)});
     return std::make_shared<Model>(ResultVector{res}, ParameterVector{data1});
 }
 
-inline std::shared_ptr<ov::Model> createModel3() {
-    auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
-    param->set_friendly_name("input");
-    auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
-    const_value->set_friendly_name("const_val");
-    auto add = std::make_shared<ov::op::v1::Add>(param, const_value);
-    add->set_friendly_name("add");
-    auto subtract = std::make_shared<ov::op::v1::Subtract>(add, const_value);
-    subtract->set_friendly_name("sub");
-    auto reshape_val = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1}, {-1});
-    reshape_val->set_friendly_name("reshape_val");
-    auto reshape = std::make_shared<ov::op::v1::Reshape>(subtract, reshape_val, true);
-    reshape->set_friendly_name("reshape");
-    auto result = std::make_shared<ov::op::v0::Result>(reshape);
-    result->set_friendly_name("res");
-    return std::make_shared<ov::Model>(ov::ResultVector{result}, ov::ParameterVector{param});
-}
+// inline std::shared_ptr<ov::Model> createModel3() {
+//     auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
+//     param->set_friendly_name("input");
+//     auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
+//     const_value->set_friendly_name("const_val");
+//     auto add = std::make_shared<ov::op::v1::Add>(param, const_value);
+//     add->set_friendly_name("add");
+//     auto subtract = std::make_shared<ov::op::v1::Subtract>(add, const_value);
+//     subtract->set_friendly_name("sub");
+//     auto reshape_val = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1}, {-1});
+//     reshape_val->set_friendly_name("reshape_val");
+//     auto reshape = std::make_shared<ov::op::v1::Reshape>(subtract, reshape_val, true);
+//     reshape->set_friendly_name("reshape");
+//     auto result = std::make_shared<ov::op::v0::Result>(reshape);
+//     result->set_friendly_name("res");
+//     return std::make_shared<ov::Model>(ov::ResultVector{result}, ov::ParameterVector{param});
+// }
 
 bool containsCacheStatus(const std::string& str, const std::string cmpstr) {  
     return str.find(cmpstr) != std::string::npos;  
@@ -205,6 +211,21 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::printf("==[1.3][EmptyConfig] driver log content3 : #%s#\n", driverLogContent3.c_str());
     EXPECT_TRUE(containsCacheStatus(driverLogContent3, "cache_status_t::stored") || containsCacheStatus(driverLogContent3, "cache_status_t::found"));
     std::printf("==[1.4][EmptyConfig] time: (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
+
+    
+    //final check log and model
+    std::printf("----------------------------------------\n");
+    checkCacheDirectory();
+    std::shared_ptr<ov::Model> function2 = createModel1();
+    ov::CompiledModel execNet2;
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function2, target_device, configuration));
+
+    checkCacheDirectory();
+    std::shared_ptr<ov::Model> function3 = createModel1();
+    ov::CompiledModel execNet3;
+    OV_ASSERT_NO_THROW(execNet = core->compile_model(function3, target_device, configuration));
+    checkCacheDirectory();
+    std::printf("----------------------------------------\n");
 }
 
 TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
@@ -218,7 +239,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
     configuration[ov::cache_dir.name()] = "./testCacheDir";
     m_cachedir = configuration[ov::cache_dir.name()].as<std::string>();
     ov::CompiledModel execNet;
-    function = createModel2();
+    function = createModel1();
 
     //first run time will long and will generate the model cache.
     auto startFirst = std::chrono::high_resolution_clock::now(); 
@@ -251,7 +272,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
 
     configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
     ov::CompiledModel execNet;
-    function = createModel3();
+    function = createModel1();
 
     //first run time will long and will generate the model cache.
     auto startFirst = std::chrono::high_resolution_clock::now(); 
