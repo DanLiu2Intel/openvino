@@ -48,31 +48,50 @@ typedef std::tuple<std::string,                 // Device name
 
 
 inline std::shared_ptr<ov::Model> createModel1() {
+    std::printf("------------(-1)------------\n");
     auto now = std::chrono::system_clock::now();
+    std::printf("------------(0)------------\n");
     auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
     std::printf("=========print now timestamp #%s#\n", timestamp);
     auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
+    std::printf("------------(1)------------\n");
     param->set_friendly_name("input" + std::to_string(timestamp));
+    std::printf("------------(2)------------\n");
     auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
+    std::printf("------------(3)------------\n");
     const_value->set_friendly_name("const_val" + std::to_string(timestamp));
+    std::printf("------------(4)------------\n");
     auto add = std::make_shared<ov::op::v1::Add>(param, const_value);
+    std::printf("------------(5)------------\n");
     add->set_friendly_name("add" + std::to_string(timestamp));
+    std::printf("------------(6)------------\n");
     return std::make_shared<ov::Model>(ov::OutputVector{add->output(0)}, ov::ParameterVector{param});
 }
 
 inline std::shared_ptr<ov::Model> createModel2() {
+    std::printf("------------{1}------------\n");
     auto now = std::chrono::system_clock::now();
+    std::printf("------------{2}------------\n");
     auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
     std::printf("=========print now timestamp #%s#\n", timestamp);
     auto data1 = std::make_shared<op::v0::Parameter>(ov::element::f32, ov::Shape{1, 3, 2, 2});
+    std::printf("------------{3}------------\n");
     data1->set_friendly_name("input1" + std::to_string(timestamp));
+    std::printf("------------{4}------------\n");
     data1->get_output_tensor(0).set_names({"tensor_input1" + std::to_string(timestamp)});
+    std::printf("------------{5}------------\n");
     auto op = std::make_shared<op::v0::Relu>(data1);
+    std::printf("------------{6}------------\n");
     op->set_friendly_name("Relu" + std::to_string(timestamp));
+    std::printf("------------{7}------------\n");
     op->get_output_tensor(0).set_names({"tensor_Relu" + std::to_string(timestamp)});
+    std::printf("------------{8}------------\n");
     auto res = std::make_shared<op::v0::Result>(op);
+    std::printf("------------{9}------------\n");
     res->set_friendly_name("Result1" + std::to_string(timestamp));
+    std::printf("------------{10}------------\n");
     res->get_output_tensor(0).set_names({"tensor_output1" + std::to_string(timestamp)});
+    std::printf("------------{11}------------\n");
     return std::make_shared<Model>(ResultVector{res}, ParameterVector{data1});
 }
 
@@ -188,7 +207,9 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", driverLogContent.c_str());
 
     ov::CompiledModel execNet;
+    std::printf("------------[1]-------------\n");
     function = createModel1();
+    std::printf("-----------[2]--------------\n");
 
     //first run time will long and will generate the model cache.
     auto startFirst = std::chrono::high_resolution_clock::now(); 
@@ -200,6 +221,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::printf("==[1.2][EmptyConfig] driver log content2 : #%s#\n", driverLogContent2.c_str());
     //To avoid problems with repeatedly calling functiontest
     EXPECT_TRUE(containsCacheStatus(driverLogContent2, "cache_status_t::stored") || containsCacheStatus(driverLogContent2, "cache_status_t::found"));
+    checkCacheDirectory();
 
     //second time compilation
     auto startSecond = std::chrono::high_resolution_clock::now(); 
@@ -215,16 +237,19 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     
     //final check log and model
     std::printf("----------------------------------------\n");
+    std::printf("------------[3]-------------\n");
     checkCacheDirectory();
-    std::shared_ptr<ov::Model> function2 = createModel1();
+    std::shared_ptr<ov::Model> function2 = createModel2();
     ov::CompiledModel execNet2;
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function2, target_device, configuration));
 
     checkCacheDirectory();
-    std::shared_ptr<ov::Model> function3 = createModel1();
+    std::printf("------------[4]-------------\n");
+    std::shared_ptr<ov::Model> function3 = createModel2();
     ov::CompiledModel execNet3;
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function3, target_device, configuration));
     checkCacheDirectory();
+    std::printf("------------[5]-------------\n");
     std::printf("----------------------------------------\n");
 }
 
