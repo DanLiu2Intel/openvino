@@ -166,7 +166,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
 
     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     //To avoid problems with repeatedly calling functiontest
-    EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") || containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+    EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored"));
 
     checkCacheDirectory();
     //second compilation
@@ -176,7 +176,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
 
     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    EXPECT_TRUE(containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") || containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
+    EXPECT_TRUE(containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
 
     std::printf("==[1.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
     checkCacheDirectory();
