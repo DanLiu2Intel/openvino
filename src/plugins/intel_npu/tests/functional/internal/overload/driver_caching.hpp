@@ -153,8 +153,9 @@ protected:
 TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     checkCacheDirectory();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
-    std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-
+    std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);//this line not used.
+    std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", driverLogInitContent.c_str());
+    
     ov::CompiledModel execNet;
     function = getConstantGraph();
 
@@ -166,6 +167,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
 
     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     //To avoid problems with repeatedly calling functiontest
+    std::printf("==[1.2][EmptyConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
     EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored"));
 
     checkCacheDirectory();
@@ -176,6 +178,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
 
     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[1.3][EmptyConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
     EXPECT_TRUE(containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
 
     std::printf("==[1.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
@@ -188,6 +191,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
     
     //Check the initial state if this testp is called separately
     std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[2.1][OVCacheConfig] driver log content : #%s#\n", driverLogInitContent.c_str());
 
     configuration[ov::cache_dir.name()] = "./testCacheDir";
     m_cachedir = configuration[ov::cache_dir.name()].as<std::string>();
@@ -201,6 +205,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
     std::chrono::duration<double> durationFirst = endFirst - startFirst;
 
     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[2.2][OVCacheConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
     EXPECT_TRUE(firstCompilationDriverLog == driverLogInitContent);
 
     checkCacheDirectory();
@@ -211,6 +216,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
 
     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[2.3][OVCacheConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
     EXPECT_TRUE(secondCompilationDriverLog == driverLogInitContent);
 
     std::printf("==[2.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
@@ -222,6 +228,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
     //Check the initial state if this testp is called separately
     std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[3.1][bypassConfig] driver log content1 : #%s#\n", driverLogInitContent.c_str());
 
     configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
     ov::CompiledModel execNet;
@@ -234,6 +241,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
     std::chrono::duration<double> durationFirst = endFirst - startFirst;
 
     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[3.2][bypassConfig] driver log content1 : #%s#\n", firstCompilationDriverLog.c_str());
     EXPECT_TRUE(firstCompilationDriverLog == driverLogInitContent);
 
     checkCacheDirectory();
@@ -244,6 +252,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
     std::chrono::duration<double> durationSecond = endSecond - startSecond;
 
     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("==[3.3][bypassConfig] driver log content1 : #%s#\n", secondCompilationDriverLog.c_str());
     EXPECT_TRUE(secondCompilationDriverLog == driverLogInitContent);
 
     std::printf("==[3.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
