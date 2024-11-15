@@ -38,52 +38,67 @@ namespace ov {
 namespace test {
 namespace behavior {
 
-typedef std::tuple<std::string,                 // Device name
-                   ov::AnyMap                   // Config
-                   >
-    CompileAndModelCachingParams;
 
+
+
+    //getConstantGraph(ov::element::f32)
+
+inline std::shared_ptr<ov::Model> getConstantGraph(element::Type type) {
+    ResultVector results;
+    ParameterVector params;
+    auto op = std::make_shared<ov::op::v1::Add>(opset8::Constant::create(type, {1}, {1}),
+                                                opset8::Constant::create(type, {1}, {1}));
+    op->set_friendly_name("Add");
+    auto res = std::make_shared<ov::op::v0::Result>(op);
+    res->set_friendly_name("Result");
+    res->get_output_tensor(0).set_names({"tensor_output"});
+    results.push_back(res);
+    return std::make_shared<Model>(results, params);
+}
 
 inline std::shared_ptr<ov::Model> createModel1() {
+    auto now = std::chrono::system_clock::now();
+    auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    std::printf("=========print now timestamp #%s#\n", timestamp);
     auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
-    param->set_friendly_name("input");
+    param->set_friendly_name("input" + std::to_string(timestamp));
     auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
-    const_value->set_friendly_name("const_val");
+    const_value->set_friendly_name("const_val" + std::to_string(timestamp));
     auto add = std::make_shared<ov::op::v1::Add>(param, const_value);
-    add->set_friendly_name("add");
+    add->set_friendly_name("add" + std::to_string(timestamp));
     return std::make_shared<ov::Model>(ov::OutputVector{add->output(0)}, ov::ParameterVector{param});
 }
 
-inline std::shared_ptr<ov::Model> createModel2() {
-    auto data1 = std::make_shared<op::v0::Parameter>(ov::element::f32, ov::Shape{1, 3, 2, 2});
-    data1->set_friendly_name("input1");
-    data1->get_output_tensor(0).set_names({"tensor_input1"});
-    auto op = std::make_shared<op::v0::Relu>(data1);
-    op->set_friendly_name("Relu");
-    op->get_output_tensor(0).set_names({"tensor_Relu"});
-    auto res = std::make_shared<op::v0::Result>(op);
-    res->set_friendly_name("Result1");
-    res->get_output_tensor(0).set_names({"tensor_output1"});
-    return std::make_shared<Model>(ResultVector{res}, ParameterVector{data1});
-}
+// inline std::shared_ptr<ov::Model> createModel2() {
+//     auto data1 = std::make_shared<op::v0::Parameter>(ov::element::f32, ov::Shape{1, 3, 2, 2});
+//     data1->set_friendly_name("input1");
+//     data1->get_output_tensor(0).set_names({"tensor_input1"});
+//     auto op = std::make_shared<op::v0::Relu>(data1);
+//     op->set_friendly_name("Relu");
+//     op->get_output_tensor(0).set_names({"tensor_Relu"});
+//     auto res = std::make_shared<op::v0::Result>(op);
+//     res->set_friendly_name("Result1");
+//     res->get_output_tensor(0).set_names({"tensor_output1"});
+//     return std::make_shared<Model>(ResultVector{res}, ParameterVector{data1});
+// }
 
-inline std::shared_ptr<ov::Model> createModel3() {
-    auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
-    param->set_friendly_name("input");
-    auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
-    const_value->set_friendly_name("const_val");
-    auto add = std::make_shared<ov::op::v1::Add>(param, const_value);
-    add->set_friendly_name("add");
-    auto subtract = std::make_shared<ov::op::v1::Subtract>(add, const_value);
-    subtract->set_friendly_name("sub");
-    auto reshape_val = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1}, {-1});
-    reshape_val->set_friendly_name("reshape_val");
-    auto reshape = std::make_shared<ov::op::v1::Reshape>(subtract, reshape_val, true);
-    reshape->set_friendly_name("reshape");
-    auto result = std::make_shared<ov::op::v0::Result>(reshape);
-    result->set_friendly_name("res");
-    return std::make_shared<ov::Model>(ov::ResultVector{result}, ov::ParameterVector{param});
-}
+// inline std::shared_ptr<ov::Model> createModel3() {
+//     auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
+//     param->set_friendly_name("input");
+//     auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
+//     const_value->set_friendly_name("const_val");
+//     auto add = std::make_shared<ov::op::v1::Add>(param, const_value);
+//     add->set_friendly_name("add");
+//     auto subtract = std::make_shared<ov::op::v1::Subtract>(add, const_value);
+//     subtract->set_friendly_name("sub");
+//     auto reshape_val = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1}, {-1});
+//     reshape_val->set_friendly_name("reshape_val");
+//     auto reshape = std::make_shared<ov::op::v1::Reshape>(subtract, reshape_val, true);
+//     reshape->set_friendly_name("reshape");
+//     auto result = std::make_shared<ov::op::v0::Result>(reshape);
+//     result->set_friendly_name("res");
+//     return std::make_shared<ov::Model>(ov::ResultVector{result}, ov::ParameterVector{param});
+// }
 
 bool containsCacheStatus(const std::string& str, const std::string cmpstr) {  
     return str.find(cmpstr) != std::string::npos;  
@@ -120,6 +135,11 @@ void checkCacheDirectory() {
         }
     }
 }
+
+typedef std::tuple<std::string,                 // Device name
+                   ov::AnyMap                   // Config
+                   >
+    CompileAndModelCachingParams;
 
 class CompileAndDriverCaching : public testing::WithParamInterface<CompileAndModelCachingParams>,
                                 public OVPluginTestBase {
