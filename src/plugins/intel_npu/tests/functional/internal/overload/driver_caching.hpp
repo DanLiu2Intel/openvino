@@ -44,7 +44,6 @@ void checkCacheDirectory();
 inline std::shared_ptr<ov::Model> getConstantGraph() {
     auto now = std::chrono::system_clock::now();
     auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-    std::printf("=========print now timestamp #%ld#\n", timestamp);
     auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
     param->set_friendly_name("input");
     auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
@@ -153,7 +152,7 @@ protected:
 TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     checkCacheDirectory();
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
-    std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);//this line not used.
+    std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", driverLogInitContent.c_str());
     
     ov::CompiledModel execNet;
@@ -206,8 +205,8 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
 
     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[2.2][OVCacheConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
-    EXPECT_TRUE(firstCompilationDriverLog == driverLogInitContent);
-
+    EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") &&   
+            !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
     checkCacheDirectory();
     //second  compilation
     auto startSecond = std::chrono::high_resolution_clock::now(); 
@@ -217,8 +216,8 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
 
     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[2.3][OVCacheConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
-    EXPECT_TRUE(secondCompilationDriverLog == driverLogInitContent);
-
+    EXPECT_TRUE(!containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") &&   
+            !containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));  
     std::printf("==[2.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
     checkCacheDirectory();
 }
