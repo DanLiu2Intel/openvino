@@ -80,12 +80,14 @@ void checkCacheDirectory() {
         }
     }
 #endif
-
+    int cacheSize = 0;
     std::printf("======check cache path: #%s#\n", path.string().c_str());
     if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
-            std::printf("  ====cache content: #%s# \n", entry.path().string().c_str());
+            // std::printf("  ====cache content: #%s# \n", entry.path().string().c_str());
+            cacheSize++;
         }
+        std::printf("  ====cache content's size is : #%d# \n", cacheSize);
     }
 }
 
