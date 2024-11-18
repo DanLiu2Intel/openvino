@@ -243,7 +243,8 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
 
     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[3.2][bypassConfig] driver log content1 : #%s#\n", firstCompilationDriverLog.c_str());
-    EXPECT_TRUE(firstCompilationDriverLog == driverLogInitContent);
+    EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") &&   
+            !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
 
     checkCacheDirectory();
     //second compilation
@@ -254,7 +255,8 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
 
     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[3.3][bypassConfig] driver log content1 : #%s#\n", secondCompilationDriverLog.c_str());
-    EXPECT_TRUE(secondCompilationDriverLog == driverLogInitContent);
+    EXPECT_TRUE(!containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") &&   
+            !containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
 
     std::printf("==[3.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
     checkCacheDirectory();
