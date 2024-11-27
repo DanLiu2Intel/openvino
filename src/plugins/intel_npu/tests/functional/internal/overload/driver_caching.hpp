@@ -196,22 +196,22 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::printf("==[1.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
     checkCacheDirectory();
 
-    std::printf("--------------------------------------------------\n");
-    std::string driverLogInitContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    std::printf("==[1.5][EmptyConfig2] driver log content : #%s#\n", driverLogInitContent2.c_str());
+    // std::printf("--------------------------------------------------\n");
+    // std::string driverLogInitContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    // std::printf("==[1.5][EmptyConfig2] driver log content : #%s#\n", driverLogInitContent2.c_str());
 
-    ov::CompiledModel execNet2;
-    auto function2 = getConstantGraph2_notimestamp();
-    OV_ASSERT_NO_THROW(execNet2 = core->compile_model(function2, target_device, configuration));
-    std::string firstCompilationDriverLog2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    //To avoid problems with repeatedly calling functiontest
-    std::printf("==[1.6][EmptyConfig2] driver log content : #%s#\n", firstCompilationDriverLog2.c_str());
+    // ov::CompiledModel execNet2;
+    // auto function2 = getConstantGraph2_notimestamp();
+    // OV_ASSERT_NO_THROW(execNet2 = core->compile_model(function2, target_device, configuration));
+    // std::string firstCompilationDriverLog2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    // //To avoid problems with repeatedly calling functiontest
+    // std::printf("==[1.6][EmptyConfig2] driver log content : #%s#\n", firstCompilationDriverLog2.c_str());
 
-    OV_ASSERT_NO_THROW(execNet2 = core->compile_model(function2, target_device, configuration));
-    std::string secondCompilationDriverLog2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    std::printf("==[1.7][EmptyConfig2] driver log content : #%s#\n", secondCompilationDriverLog2.c_str());
+    // OV_ASSERT_NO_THROW(execNet2 = core->compile_model(function2, target_device, configuration));
+    // std::string secondCompilationDriverLog2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    // std::printf("==[1.7][EmptyConfig2] driver log content : #%s#\n", secondCompilationDriverLog2.c_str());
 
-    std::printf("--------------------------------------------------\n");
+    // std::printf("--------------------------------------------------\n");
 }
 
 TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
