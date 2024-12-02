@@ -157,7 +157,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", driverLogInitContent.c_str());
     //ZE DynamicCaching cache_status_t or empty
-    if (driverLogInitContent.empty() || containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
+    if (!driverLogInitContent.empty() && !containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
             GTEST_SKIP() << "Due TO NOW UMD CACHE LOG ";
     }
     
