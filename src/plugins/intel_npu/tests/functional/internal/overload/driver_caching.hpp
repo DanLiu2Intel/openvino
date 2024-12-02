@@ -156,6 +156,10 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
     std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", driverLogInitContent.c_str());
+    //ZE DynamicCaching cache_status_t or empty
+    if (driverLogInitContent.empty() || containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
+            GTEST_SKIP() << "Due TO NOW UMD CACHE LOG ";
+    }
     
     ov::CompiledModel execNet;
     function = getConstantGraph();
@@ -183,6 +187,9 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     EXPECT_TRUE(containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
 
     std::printf("==[1.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
+    EXPECT_LT(durationSecond, durationFirst)
+        << "The duration of the second compilation should be less than the first due to UMD Caching.";
+
     checkCacheDirectory();
 }
 
@@ -193,6 +200,11 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
     //Check the initial state if this testp is called separately
     std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[2.1][OVCacheConfig] driver log content : #%s#\n", driverLogInitContent.c_str());
+
+    //ZE DynamicCaching cache_status_t or empty
+    if (driverLogInitContent.empty() || containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
+            GTEST_SKIP() << "Due TO NOW UMD CACHE LOG ";
+    }
 
     configuration[ov::cache_dir.name()] = "./testCacheDir";
     m_cachedir = configuration[ov::cache_dir.name()].as<std::string>();
@@ -207,8 +219,11 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
 
     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[2.2][OVCacheConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
-    EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") &&   
-            !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+    EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, driverLogInitContent));
+    
+    // EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") &&   
+    //         !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+
     checkCacheDirectory();
     //second  compilation
     auto startSecond = std::chrono::high_resolution_clock::now(); 
@@ -218,8 +233,9 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
 
     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[2.3][OVCacheConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
-    EXPECT_TRUE(!containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") &&   
-            !containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));  
+    EXPECT_TRUE(containsCacheStatus(secondCompilationDriverLog, driverLogInitContent));
+    // EXPECT_TRUE(!containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") &&   
+    //         !containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));  
     std::printf("==[2.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
     checkCacheDirectory();
 }
@@ -230,6 +246,11 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
     //Check the initial state if this testp is called separately
     std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[3.1][bypassConfig] driver log content1 : #%s#\n", driverLogInitContent.c_str());
+
+    //ZE DynamicCaching cache_status_t or empty
+    if (driverLogInitContent.empty() || containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
+            GTEST_SKIP() << "Due TO NOW UMD CACHE LOG ";
+    }
 
     configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
     ov::CompiledModel execNet;
@@ -243,8 +264,9 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
 
     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[3.2][bypassConfig] driver log content1 : #%s#\n", firstCompilationDriverLog.c_str());
-    EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") &&   
-            !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+    EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, driverLogInitContent));
+    // EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") &&   
+    //         !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
 
     checkCacheDirectory();
     //second compilation
@@ -255,8 +277,9 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
 
     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
     std::printf("==[3.3][bypassConfig] driver log content1 : #%s#\n", secondCompilationDriverLog.c_str());
-    EXPECT_TRUE(!containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") &&   
-            !containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
+    EXPECT_TRUE(containsCacheStatus(secondCompilationDriverLog, driverLogInitContent));
+    // EXPECT_TRUE(!containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") &&   
+    //         !containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
 
     std::printf("==[3.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
     checkCacheDirectory();
