@@ -202,7 +202,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
     std::printf("==[2.1][OVCacheConfig] driver log content : #%s#\n", driverLogInitContent.c_str());
 
     //ZE DynamicCaching cache_status_t or empty
-    if (driverLogInitContent.empty() || containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
+    if (!driverLogInitContent.empty() && !containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
             GTEST_SKIP() << "Due TO NOW UMD CACHE LOG ";
     }
 
@@ -248,7 +248,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
     std::printf("==[3.1][bypassConfig] driver log content1 : #%s#\n", driverLogInitContent.c_str());
 
     //ZE DynamicCaching cache_status_t or empty
-    if (driverLogInitContent.empty() || containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
+    if (!driverLogInitContent.empty() && !containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
             GTEST_SKIP() << "Due TO NOW UMD CACHE LOG ";
     }
 
