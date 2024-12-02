@@ -158,7 +158,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", driverLogInitContent.c_str());
     //ZE DynamicCaching cache_status_t or empty
     if (!driverLogInitContent.empty() && !containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
-            GTEST_SKIP() << "Due TO NOW UMD CACHE LOG ";
+            FAIL() << "Due TO NOW UMD CACHE LOG ";
     }
     
     ov::CompiledModel execNet;
@@ -203,7 +203,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
 
     //ZE DynamicCaching cache_status_t or empty
     if (!driverLogInitContent.empty() && !containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
-            GTEST_SKIP() << "Due TO NOW UMD CACHE LOG ";
+            FAIL() << "Due TO NOW UMD CACHE LOG ";
     }
 
     configuration[ov::cache_dir.name()] = "./testCacheDir";
@@ -249,7 +249,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
 
     //ZE DynamicCaching cache_status_t or empty
     if (!driverLogInitContent.empty() && !containsCacheStatus(driverLogInitContent, "ZE DynamicCaching cache_status_t")) {
-            GTEST_SKIP() << "Due TO NOW UMD CACHE LOG ";
+            FAIL() << "Due TO NOW UMD CACHE LOG ";
     }
 
     configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
