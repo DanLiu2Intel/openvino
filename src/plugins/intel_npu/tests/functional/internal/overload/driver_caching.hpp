@@ -53,16 +53,6 @@ inline std::shared_ptr<ov::Model> getConstantGraph() {
     return std::make_shared<ov::Model>(ov::OutputVector{add->output(0)}, ov::ParameterVector{param});
 }
 
-inline std::shared_ptr<ov::Model> getConstantGraph2_notimestamp() {
-    auto param = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 3, 2, 2});
-    param->set_friendly_name("input");
-    auto const_value = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{1, 1, 1, 1}, {1});
-    const_value->set_friendly_name("const_val");
-    auto add = std::make_shared<ov::op::v1::Add>(param, const_value);
-    add->set_friendly_name("add");
-    return std::make_shared<ov::Model>(ov::OutputVector{add->output(0)}, ov::ParameterVector{param});
-}
-
 bool containsCacheStatus(const std::string& str, const std::string cmpstr) {  
     return str.find(cmpstr) != std::string::npos;  
 }
@@ -171,7 +161,6 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
     function = getConstantGraph();
 
     //first compilation.
-    configuration[ov::log::level.name()] = ov::log::Level::INFO;
     auto startFirst = std::chrono::high_resolution_clock::now(); 
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     auto endFirst = std::chrono::high_resolution_clock::now();
@@ -195,23 +184,6 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
 
     std::printf("==[1.4]testsuit time (1): %f, (2): %f\n", durationFirst.count(), durationSecond.count());
     checkCacheDirectory();
-
-    // std::printf("--------------------------------------------------\n");
-    // std::string driverLogInitContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    // std::printf("==[1.5][EmptyConfig2] driver log content : #%s#\n", driverLogInitContent2.c_str());
-
-    // ov::CompiledModel execNet2;
-    // auto function2 = getConstantGraph2_notimestamp();
-    // OV_ASSERT_NO_THROW(execNet2 = core->compile_model(function2, target_device, configuration));
-    // std::string firstCompilationDriverLog2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    // //To avoid problems with repeatedly calling functiontest
-    // std::printf("==[1.6][EmptyConfig2] driver log content : #%s#\n", firstCompilationDriverLog2.c_str());
-
-    // OV_ASSERT_NO_THROW(execNet2 = core->compile_model(function2, target_device, configuration));
-    // std::string secondCompilationDriverLog2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    // std::printf("==[1.7][EmptyConfig2] driver log content : #%s#\n", secondCompilationDriverLog2.c_str());
-
-    // std::printf("--------------------------------------------------\n");
 }
 
 TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
@@ -224,7 +196,6 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
 
     configuration[ov::cache_dir.name()] = "./testCacheDir";
     m_cachedir = configuration[ov::cache_dir.name()].as<std::string>();
-    configuration[ov::log::level.name()] = ov::log::Level::INFO;
     ov::CompiledModel execNet;
     function = getConstantGraph();
 
@@ -261,7 +232,6 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
     std::printf("==[3.1][bypassConfig] driver log content1 : #%s#\n", driverLogInitContent.c_str());
 
     configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
-    configuration[ov::log::level.name()] = ov::log::Level::INFO;
     ov::CompiledModel execNet;
     function = getConstantGraph();
 
