@@ -28,6 +28,7 @@ void intel_npu::registerRunTimeOptions(OptionsDesc& desc) {
     desc.add<TURBO>();
     desc.add<BYPASS_UMD_CACHING>();
     desc.add<RUN_INFERENCES_SEQUENTIALLY>();
+    desc.add<ENABLE_DRY_ON_EXECUTION>();
 }
 
 // Heuristically obtained number. Varies depending on the values of PLATFORM and PERFORMANCE_HINT

@@ -209,7 +209,15 @@ Plugin::Plugin()
     std::vector<AvailableBackends> backendRegistry;
 
 #if defined(OPENVINO_STATIC_LIBRARY)
-    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+    const auto* envVar = std::getenv("IE_NPU_ENABLE_DRY_ON_EXECUTION")
+    if (envVar) {
+        std::printf("getenv(IE_NPU_ENABLE_DRY_ON_EXECUTION) is %s\n", envVar);
+        OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "create empty Zero NPUBackends");
+        _logger.info("initialize Plugin without backend. Only compilation can be performed!");
+    } else {
+        backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+    }
+
 #else
 #    if defined(ENABLE_IMD_BACKEND)
     if (const auto* envVar = std::getenv("IE_NPU_USE_IMD_BACKEND")) {
@@ -220,7 +228,13 @@ Plugin::Plugin()
 #    endif
 
 #    if defined(_WIN32) || defined(_WIN64) || (defined(__linux__) && defined(__x86_64__))
-    backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+    const auto* envVar2 = std::getenv("IE_NPU_ENABLE_DRY_ON_EXECUTION")
+    if (envVar2) {
+        std::printf("2getenv(IE_NPU_ENABLE_DRY_ON_EXECUTION) is %s\n", envVar);
+        _logger.info("initialize Plugin without backend2. Only compilation can be performed!");
+    } else {
+        backendRegistry.push_back(AvailableBackends::LEVEL_ZERO);
+    }
 #    endif
 #endif
 
@@ -577,6 +591,11 @@ Plugin::Plugin()
         {ov::intel_npu::batch_mode.name(), {false, ov::PropertyMutability::RW, [](const Config& config) {
                                                 return config.getString<BATCH_MODE>();
                                             }}}};
+
+    //need to update config?
+    // if (const auto* envVar = std::getenv("IE_NPU_ENABLE_DRY_ON_EXECUTION")) {
+    // }
+
 
     for (auto& property : _properties) {
         if (std::get<0>(property.second)) {
