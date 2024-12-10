@@ -31,44 +31,48 @@ void print_any_value(const ov::Any& value) {
 }
 
 int main(int argc, char* argv[]) {
-    try {
-        // -------- Get OpenVINO runtime version --------
-        slog::info << ov::get_openvino_version() << slog::endl;
+    std::printf("-----change ov::core to a local var in program-----\n");
+    {
+        try {
+            // -------- Get OpenVINO runtime version --------
+            slog::info << ov::get_openvino_version() << slog::endl;
 
-        // -------- Parsing and validation of input arguments --------
-        if (argc != 1) {
-            std::cout << "Usage : " << argv[0] << std::endl;
+            // -------- Parsing and validation of input arguments --------
+            if (argc != 1) {
+                std::cout << "Usage : " << argv[0] << std::endl;
+                return EXIT_FAILURE;
+            }
+            // -------- Step 1. Initialize OpenVINO Runtime Core --------
+            ov::Core core;
+
+            // -------- Step 2. Get list of available devices --------
+            std::vector<std::string> availableDevices = core.get_available_devices();
+
+            // -------- Step 3. Query and print supported metrics and config keys --------
+            slog::info << "Available devices: " << slog::endl;
+            for (auto&& device : availableDevices) {
+                slog::info << device << slog::endl;
+
+                // Query supported properties and print all of them
+                slog::info << "\tSUPPORTED_PROPERTIES: " << slog::endl;
+                auto supported_properties = core.get_property(device, ov::supported_properties);
+                for (auto&& property : supported_properties) {
+                    if (property != ov::supported_properties.name()) {
+                        slog::info << "\t\t" << (property.is_mutable() ? "Mutable: " : "Immutable: ") << property << " : "
+                                << slog::flush;
+                        print_any_value(core.get_property(device, property));
+                    }
+                }
+
+                slog::info << slog::endl;
+            }
+        } catch (const std::exception& ex) {
+            std::cerr << std::endl << "Exception occurred: " << ex.what() << std::endl << std::flush;
             return EXIT_FAILURE;
         }
 
-        // -------- Step 1. Initialize OpenVINO Runtime Core --------
-        ov::Core core;
-
-        // -------- Step 2. Get list of available devices --------
-        std::vector<std::string> availableDevices = core.get_available_devices();
-
-        // -------- Step 3. Query and print supported metrics and config keys --------
-        slog::info << "Available devices: " << slog::endl;
-        for (auto&& device : availableDevices) {
-            slog::info << device << slog::endl;
-
-            // Query supported properties and print all of them
-            slog::info << "\tSUPPORTED_PROPERTIES: " << slog::endl;
-            auto supported_properties = core.get_property(device, ov::supported_properties);
-            for (auto&& property : supported_properties) {
-                if (property != ov::supported_properties.name()) {
-                    slog::info << "\t\t" << (property.is_mutable() ? "Mutable: " : "Immutable: ") << property << " : "
-                               << slog::flush;
-                    print_any_value(core.get_property(device, property));
-                }
-            }
-
-            slog::info << slog::endl;
-        }
-    } catch (const std::exception& ex) {
-        std::cerr << std::endl << "Exception occurred: " << ex.what() << std::endl << std::flush;
-        return EXIT_FAILURE;
     }
+    std::printf("-----wait for exit program-----\n");
 
     return EXIT_SUCCESS;
 }
