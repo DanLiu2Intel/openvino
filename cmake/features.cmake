@@ -8,13 +8,15 @@
 
 ov_option (ENABLE_PROXY "Proxy plugin for OpenVINO Runtime" ON)
 
+ov_option (ENABLE_PYTHON "DISENABLE PYTHON to pass build" OFF)
+
 if(WIN32 AND AARCH64 AND NOT CMAKE_CL_64)
     set(ENABLE_INTEL_CPU_DEFAULT OFF)
 else()
     set(ENABLE_INTEL_CPU_DEFAULT ON)
 endif()
 
-ov_dependent_option (ENABLE_INTEL_CPU "CPU plugin for OpenVINO Runtime" ${ENABLE_INTEL_CPU_DEFAULT}
+ov_dependent_option (ENABLE_INTEL_CPU "CPU plugin for OpenVINO Runtime" OFF
     "RISCV64 OR X86 OR X86_64 OR AARCH64 OR ARM" OFF)
 
 ov_dependent_option (ENABLE_ARM_COMPUTE_CMAKE "Enable ARM Compute build via cmake" OFF "ENABLE_INTEL_CPU" OFF)
@@ -32,7 +34,7 @@ else()
     set(ENABLE_INTEL_GPU_DEFAULT OFF)
 endif()
 
-ov_dependent_option (ENABLE_INTEL_GPU "GPU OpenCL-based plugin for OpenVINO Runtime" ${ENABLE_INTEL_GPU_DEFAULT} "X86_64 OR AARCH64;NOT APPLE;NOT WINDOWS_STORE;NOT WINDOWS_PHONE" OFF)
+ov_dependent_option (ENABLE_INTEL_GPU "GPU OpenCL-based plugin for OpenVINO Runtime" OFF "X86_64 OR AARCH64;NOT APPLE;NOT WINDOWS_STORE;NOT WINDOWS_PHONE" OFF)
 
 if (ANDROID OR MINGW OR (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0))
     # oneDNN doesn't support old compilers and Android builds for now, so we'll build GPU plugin without oneDNN
