@@ -39,7 +39,7 @@ constexpr std::string_view VALUES_SEPARATOR = " ";
 // Constants indicating the order indices needed to be applied as to perform conversions between legacy layout values
 const std::vector<size_t> NC_TO_CN_LAYOUT_DIMENSIONS_ORDER = {1, 0};
 const std::vector<size_t> NCHW_TO_NHWC_LAYOUT_DIMENSIONS_ORDER = {0, 2, 3, 1};
-const std::vector<size_t> NCDHW_TO_NDHWC_LAYOUT_DIMENSIONS_ORDER = {0, 2, 3, 4, 1};
+const std::vector<size_t> NCDHW_TO_NDHWC_LAYOUT_DIMENSIONS_ORDER = {0, 2, 3, 4, 1};///这部分不多于？
 
 /**
  * @brief A standard copy function concerning memory segments. Additional checks on the given arguments are performed
@@ -159,10 +159,102 @@ DriverCompilerAdapter::DriverCompilerAdapter(const std::shared_ptr<ZeroInitStruc
                  ZE_MINOR_VERSION(graphExtVersion));
 }
 
+void printInputAndOutputsInfoShort_b(const ov::Model& network) {
+    std::cout << "=======from benchmark=========Network inputs:" << std::endl;
+    for (auto&& input : network.inputs()) {
+        std::string in_name;
+        std::string node_name;
+
+        // Workaround for "tensor has no name" issue
+        try {
+            for (const auto& name : input.get_names()) {
+                in_name += name + " , ";
+                std::printf("==1=> in name: %s\n", in_name.c_str());
+            }
+            in_name = in_name.substr(0, in_name.size() - 3);
+            std::printf("==2=> in name: %s\n", in_name.c_str());
+        } catch (const ov::Exception&) {
+        }
+
+        try {
+            node_name = input.get_node()->get_friendly_name();
+            std::printf("==3=> node_name: %s\n", node_name.c_str());
+        } catch (const ov::Exception&) {
+        }
+
+        if (in_name == "") {
+            in_name = "***NO_NAME***";
+        }
+        if (node_name == "") {
+            node_name = "***NO_NAME***";
+        }
+
+        std::cout << "   =========== " << in_name << " (node: " << node_name << ") : " << input.get_element_type() << " / "
+                   << ov::layout::get_layout(input).to_string() << " / " << input.get_partial_shape() << std::endl;
+    }
+
+    std::cout << "=====================Network outputs:" << std::endl;
+    for (auto&& output : network.outputs()) {
+        std::string out_name;
+        std::string node_name;
+
+        // Workaround for "tensor has no name" issue
+        try {
+            for (const auto& name : output.get_names()) {
+                out_name += name + " , ";
+                std::printf("==1=> out name: %s\n", out_name.c_str());
+            }
+            out_name = out_name.substr(0, out_name.size() - 3);
+            std::printf("==2=> out name: %s\n", out_name.c_str());
+        } catch (const ov::Exception&) {
+        }
+        try {
+            node_name = output.get_node()->get_input_node_ptr(0)->get_friendly_name();
+            // for (int i = 0; i < output.get_node()->get_input_size(); i++) {
+            //     std::printf("========3====>out node name[%d]: %s\n", i, output.get_node()->get_input_node_ptr(i)->get_friendly_name());
+            // }
+            std::printf("======3====>out node name: %s\n", node_name.c_str());
+        } catch (const ov::Exception&) {
+        }
+
+        if (out_name == "") {
+            out_name = "***NO_NAME***";
+        }
+        if (node_name == "") {
+            node_name = "***NO_NAME***";
+        }
+
+        std::cout << "    ===========" << out_name << " (node: " << node_name << ") : " << output.get_element_type() << " / "
+                   << ov::layout::get_layout(output).to_string() << " / " << output.get_partial_shape() << std::endl;
+    }
+}
+
+void printInputAndOutputsInfoShort(const ov::Model& network) {
+    std::cout << "===from compile_tool=====Network inputs:" << std::endl;
+    for (auto&& param : network.get_parameters()) {
+        auto l = param->get_layout();
+        std::cout << "    " << param->get_friendly_name() << " : " << param->get_element_type() << " / "
+                  << param->get_layout().to_string() << " / " << param->get_partial_shape().to_string() << std::endl;
+    }
+    std::cout << "Network outputs:" << std::endl;
+    for (auto&& result : network.get_results()) {
+        std::cout << "    " << result->get_friendly_name() << " : " << result->get_element_type() << " / "
+                  << result->get_layout().to_string() << " / " << result->get_output_partial_shape(0).to_string()
+                  << std::endl;
+    }
+}
+
+
 std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<const ov::Model>& model,
                                                        const Config& config) const {
     OV_ITT_TASK_CHAIN(COMPILE_BLOB, itt::domains::NPUPlugin, "DriverCompilerAdapter", "compile");
-
+    
+    std::cout << "-----------DriverCompilerAdapter::compile1--------------" << std::endl;
+    printInputAndOutputsInfoShort(*model);
+    std::cout << "-----------DriverCompilerAdapter::compile2--------------" << std::endl;
+    printInputAndOutputsInfoShort_b(*model);
+    std::cout << "-----------DriverCompilerAdapter::compile3--------------" << std::endl;
+    
     const ze_graph_compiler_version_info_t& compilerVersion = _deviceGraphProperties.compilerVersion;
     const auto maxOpsetVersion = _deviceGraphProperties.maxOVOpsetVersionSupported;
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
@@ -171,7 +263,8 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     auto serializedIR = serializeIR(model, compilerVersion, maxOpsetVersion);
 
     std::string buildFlags;
-    const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
+    // const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
+    const bool useIndices = false;
 
     _logger.debug("build flags");
     buildFlags += serializeIOInfo(model, useIndices);
@@ -401,6 +494,9 @@ std::string DriverCompilerAdapter::serializeIOInfo(const std::shared_ptr<const o
     outputsPrecisionSS << VALUE_DELIMITER;
     outputsLayoutSS << VALUE_DELIMITER;
 
+    //add new result:
+    std::cout << "--------- DriverCompilerAdapter::serializeIOInfo flag is " << inputsPrecisionSS.str() + VALUES_SEPARATOR.data() + inputsLayoutSS.str() + VALUES_SEPARATOR.data() +
+    outputsPrecisionSS.str() + VALUES_SEPARATOR.data() + outputsLayoutSS.str() << std::endl;
     // One line without spaces to avoid parsing as config option inside CID
     return inputsPrecisionSS.str() + VALUES_SEPARATOR.data() + inputsLayoutSS.str() + VALUES_SEPARATOR.data() +
            outputsPrecisionSS.str() + VALUES_SEPARATOR.data() + outputsLayoutSS.str();

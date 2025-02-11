@@ -169,6 +169,76 @@ bool isFP32(const ov::element::Type& type) {
     return type == ov::element::f32;
 }
 
+void printInputAndOutputsInfoShort_b(const ov::Model& network) {
+    std::cout << "================Network inputs:" << std::endl;
+    for (auto&& input : network.inputs()) {
+        std::string in_name;
+        std::string node_name;
+
+        // Workaround for "tensor has no name" issue
+        try {
+            for (const auto& name : input.get_names()) {
+                in_name += name + " , ";
+                std::printf("==1=> in name: %s\n", in_name.c_str());
+            }
+            in_name = in_name.substr(0, in_name.size() - 3);
+            std::printf("==2=> in name: %s\n", in_name.c_str());
+        } catch (const ov::Exception&) {
+        }
+
+        try {
+            node_name = input.get_node()->get_friendly_name();
+            std::printf("==3=> node_name: %s\n", node_name.c_str());
+        } catch (const ov::Exception&) {
+        }
+
+        if (in_name == "") {
+            in_name = "***NO_NAME***";
+        }
+        if (node_name == "") {
+            node_name = "***NO_NAME***";
+        }
+
+        std::cout << "   =========== " << in_name << " (node: " << node_name << ") : " << input.get_element_type() << " / "
+                   << ov::layout::get_layout(input).to_string() << " / " << input.get_partial_shape() << std::endl;
+    }
+
+    std::cout << "=====================Network outputs:" << std::endl;
+    for (auto&& output : network.outputs()) {
+        std::string out_name;
+        std::string node_name;
+
+        // Workaround for "tensor has no name" issue
+        try {
+            for (const auto& name : output.get_names()) {
+                out_name += name + " , ";
+                std::printf("==1=> out name: %s\n", out_name.c_str());
+            }
+            out_name = out_name.substr(0, out_name.size() - 3);
+            std::printf("==2=> out name: %s\n", out_name.c_str());
+        } catch (const ov::Exception&) {
+        }
+        try {
+            node_name = output.get_node()->get_input_node_ptr(0)->get_friendly_name();
+            // for (int i = 0; i < output.get_node()->get_input_size(); i++) {
+            //     std::printf("========3====>out node name[%d]: %s\n", i, output.get_node()->get_input_node_ptr(i)->get_friendly_name());
+            // }
+            std::printf("======3====>out node name: %s\n", node_name.c_str());
+        } catch (const ov::Exception&) {
+        }
+
+        if (out_name == "") {
+            out_name = "***NO_NAME***";
+        }
+        if (node_name == "") {
+            node_name = "***NO_NAME***";
+        }
+
+        std::cout << "    ===========" << out_name << " (node: " << node_name << ") : " << output.get_element_type() << " / "
+                   << ov::layout::get_layout(output).to_string() << " / " << output.get_partial_shape() << std::endl;
+    }
+}
+
 void configurePrePostProcessing(std::shared_ptr<ov::Model>& model, const std::string& ip, const std::string& op,
                                 const std::string& iop, const std::string& il, const std::string& ol,
                                 const std::string& iol, const std::string& iml, const std::string& oml,
@@ -293,7 +363,11 @@ void configurePrePostProcessing(std::shared_ptr<ov::Model>& model, const std::st
         }
     }
 
+    printf("%s_%d\n", __func__, __LINE__);
+    printInputAndOutputsInfoShort_b(*model);
     model = preprocessor.build();
+    printf("%s_%d\n", __func__, __LINE__);
+    printInputAndOutputsInfoShort_b(*model);
 }
 
 inline std::string fileNameNoExt(const std::string& filepath) {

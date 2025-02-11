@@ -61,7 +61,8 @@ void IRSerializer::serializeModelToStream(std::ostream& xml, std::ostream& weigh
         std::lock_guard<std::mutex> lock(rtInfoMutex);
 
         _model->set_rt_info(true, newAPIKey);
-        _model->set_rt_info(true, useIndicesForIOMetadata);
+        // _model->set_rt_info(true, useIndicesForIOMetadata);
+        _model->set_rt_info(false, useIndicesForIOMetadata);
 
         manager.run_passes(_model);
 

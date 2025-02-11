@@ -1850,10 +1850,11 @@ TEST(pre_post_process, postprocess_keep_friendly_names_compatibility_implicit) {
     p.output().model().set_layout("NCHW");
     p.output().tensor().set_layout("NHWC");
     f = p.build();
-    EXPECT_EQ(f->get_results()[0]->get_friendly_name(), result_fr_name);
+    EXPECT_EQ(f->get_results()[0]->get_friendly_name(), result_fr_name);//调用方式完全一样
+    // auto node_before_result_old = f->get_results()[0]->get_input_source_output(0).get_node_shared_ptr();
     auto node_before_result_new = f->get_results()[0]->get_input_source_output(0).get_node_shared_ptr();
     // Compatibility check: verify that old name is assigned to new 'output' node
-    EXPECT_EQ(node_before_result_new->get_friendly_name(), node_name);
+    EXPECT_EQ(node_before_result_new->get_friendly_name(), node_name);//更新model之后，对应的get_friendly_name名字比较
     // Compatibility check: Verify that old name is not set for old 'output' node anymore
     EXPECT_NE(node_before_result_old->get_friendly_name(), node_name);
 }
