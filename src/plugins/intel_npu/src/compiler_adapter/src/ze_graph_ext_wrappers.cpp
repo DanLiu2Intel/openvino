@@ -394,22 +394,24 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         _logger.warning("  6 getLatestBuildError2's log: %s", log2.c_str());
 
         ///save log content
-        std::ofstream outFile("output_getLatestBuildError2.txt");
+        std::ofstream outFile("output_getLatestBuildError1.txt");
         if (!outFile) {
             std::cerr << "Error: Could not open the file for writing." << std::endl;
-            return 1;
+            throw std::runtime_error("E1rror: Could not open the file for writing.");
+            return nullptr;
         }
         outFile << log1;
         outFile.close();
         _logger.warning("       getLatestBuildError2 has been written to the file successfully.");
 
-        std::ofstream outFile("output_getLatestBuildError2.txt");
-        if (!outFile) {
+        std::ofstream outFile2("output_getLatestBuildError2.txt");
+        if (!outFile2) {
             std::cerr << "Error: Could not open the file for writing." << std::endl;
-            return 1;
+            throw std::runtime_error("E2rror: Could not open the file for writing.");
+            return nullptr;
         }
-        outFile << log2;
-        outFile.close();
+        outFile2 << log2;
+        outFile2.close();
         _logger.warning("       getLatestBuildError has been written to the file successfully.");
 
         _logger.warning("------end----getGraphHandle - perform pfnCreate3");
