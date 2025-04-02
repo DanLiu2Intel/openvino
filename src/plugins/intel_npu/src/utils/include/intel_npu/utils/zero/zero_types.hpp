@@ -129,9 +129,10 @@ public:
     ze_result_t ZE_APICALL pfnCreate3(ze_context_handle_t hContext,
                                       ze_device_handle_t hDevice,
                                       const ze_graph_desc_2_t* desc,
-                                      ze_graph_handle_t* phGraph) {
+                                      ze_graph_handle_t* phGraph,
+                                      ze_graph_build_log_handle_t* phGraphBuildLog) {
         throwWhenUnsupported("pfnCreate3", ZE_GRAPH_EXT_VERSION_1_5);
-        return _impl->pfnCreate3(hContext, hDevice, desc, phGraph);
+        return _impl->pfnCreate3(hContext, hDevice, desc, phGraph, phGraphBuildLog);
     }
 
     ze_result_t ZE_APICALL pfnQueryNetworkCreate2(ze_context_handle_t hContext,
