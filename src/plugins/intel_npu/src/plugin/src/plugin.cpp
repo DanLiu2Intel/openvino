@@ -717,7 +717,6 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     }
 
     const std::map<std::string, std::string> localPropertiesMap = any_copy(localProperties);
-    localPropertiesMap["STORE_LOGGER_LOG"] = "1";
     auto localConfig = merge_configs(_globalConfig, localPropertiesMap);
     update_log_level(localPropertiesMap);
 
