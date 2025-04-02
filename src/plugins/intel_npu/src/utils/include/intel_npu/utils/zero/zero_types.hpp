@@ -106,6 +106,7 @@ public:
         return _impl->pfnQueryNetworkDestroy(hGraphQueryNetworkk);
     }
 
+
     ze_result_t ZE_APICALL pfnQueryNetworkGetSupportedLayers(ze_graph_query_network_handle_t hGraphQueryNetwork,
                                                              size_t* pSize,
                                                              char* pSupportedLayers) {
@@ -120,19 +121,13 @@ public:
         return _impl->pfnBuildLogGetString(hGraph, pSize, pBuildLog);
     }
 
-    ze_result_t ZE_APICALL pfnBuildLogGetString2(ze_graph_build_log_handle_t buildLogHandle, uint32_t* pSize, char* pBuildLog) {
-        throwWhenUnsupported("pfnBuildLogGetString2", ZE_GRAPH_EXT_VERSION_1_4);
-        return _impl->pfnBuildLogGetString2(buildLogHandle, pSize, pBuildLog);
-    }
-
     // version 1.5
-    ze_result_t ZE_APICALL pfnCreate3(ze_context_handle_t hContext,
+    ze_result_t ZE_APICALL pfnCreate2(ze_context_handle_t hContext,
                                       ze_device_handle_t hDevice,
                                       const ze_graph_desc_2_t* desc,
-                                      ze_graph_handle_t* phGraph,
-                                      ze_graph_build_log_handle_t* phGraphBuildLog) {
-        throwWhenUnsupported("pfnCreate3", ZE_GRAPH_EXT_VERSION_1_5);
-        return _impl->pfnCreate3(hContext, hDevice, desc, phGraph, phGraphBuildLog);
+                                      ze_graph_handle_t* phGraph) {
+        throwWhenUnsupported("pfnCreate2", ZE_GRAPH_EXT_VERSION_1_5);
+        return _impl->pfnCreate2(hContext, hDevice, desc, phGraph);
     }
 
     ze_result_t ZE_APICALL pfnQueryNetworkCreate2(ze_context_handle_t hContext,
@@ -166,14 +161,35 @@ public:
     }
 
     // version 1.8
-    ze_result_t ZE_APICALL pfnGetProperties3(ze_graph_handle_t hGraph, ze_graph_properties_3_t* pGraphProperties) {
+    ze_result_t ZE_APICALL pfnGetProperties2(ze_graph_handle_t hGraph, ze_graph_properties_2_t* pGraphProperties) {
         throwWhenUnsupported("ze_pfnGraphGetProperties_ext_2_t", ZE_GRAPH_EXT_VERSION_1_8);
-        return _impl->pfnGetProperties3(hGraph, pGraphProperties);
+        return _impl->pfnGetProperties2(hGraph, pGraphProperties);
     }
 
     ze_result_t ZE_APICALL pfnGraphInitialize(ze_graph_handle_t hGraph) {
         throwWhenUnsupported("ze_pfnGraphGetProperties_ext_2_t", ZE_GRAPH_EXT_VERSION_1_8);
         return _impl->pfnGraphInitialize(hGraph);
+    }
+
+    // version 1.12
+    ze_result_t ZE_APICALL pfnGetProperties3(ze_graph_handle_t hGraph, ze_graph_properties_3_t* pGraphProperties) {
+        throwWhenUnsupported("ze_pfnGraphGetProperties_ext_2_t", ZE_GRAPH_EXT_VERSION_1_12);
+        return _impl->pfnGetProperties3(hGraph, pGraphProperties);
+    }
+
+    ze_result_t ZE_APICALL pfnBuildLogGetString2(ze_graph_build_log_handle_t buildLogHandle, uint32_t* pSize, char* pBuildLog) {
+        throwWhenUnsupported("pfnBuildLogGetString2", ZE_GRAPH_EXT_VERSION_1_12);
+        return _impl->pfnBuildLogGetString2(buildLogHandle, pSize, pBuildLog);
+    }
+
+
+    ze_result_t ZE_APICALL pfnCreate3(ze_context_handle_t hContext,
+                                        ze_device_handle_t hDevice,
+                                        const ze_graph_desc_2_t* desc,
+                                        ze_graph_handle_t* phGraph,
+                                        ze_graph_build_log_handle_t* phGraphBuildLog) {
+        throwWhenUnsupported("pfnCreate3", ZE_GRAPH_EXT_VERSION_1_12);
+        return _impl->pfnCreate3(hContext, hDevice, desc, phGraph, phGraphBuildLog);
     }
 };
 
