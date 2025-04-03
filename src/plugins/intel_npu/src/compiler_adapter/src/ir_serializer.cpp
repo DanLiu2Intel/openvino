@@ -68,6 +68,7 @@ void IRSerializer::serializeModelToStream(std::ostream& xml, std::ostream& weigh
         auto& rtInfo = _model->get_rt_info();
         rtInfo.erase(newAPIKey);
         rtInfo.erase(useIndicesForIOMetadata);
+        _logger.error("in serializeModelToStream model name %s", _model->get_name());
     }
     _logger.debug("serializeModelToStream end");
 }

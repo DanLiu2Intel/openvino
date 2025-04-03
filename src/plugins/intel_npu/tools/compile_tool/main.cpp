@@ -480,6 +480,7 @@ int main(int argc, char* argv[]) {
                 const auto& filename = entry.path().filename().string();
                 std::cout << "[ INFO ] Read model: " << filename << std::endl;
                 auto model = core.read_model(entry.path());
+                std::cout << "[ INFO ] check model name: " << model->get_name() << std::endl;
                 ov::preprocess::PrePostProcessor ppp(model);
                 for (const auto& input : model->inputs()) {
                     const auto& name = input.get_any_name();
@@ -495,6 +496,10 @@ int main(int argc, char* argv[]) {
                 models.push_back(std::move(model));
             }
         }
+        std::cout << "[ INFO ] check the model name" << std::endl;
+        for (int i = 0; i < models.size(); i++) {
+            std::cout << "[ INFO ] model[" << i << "]" << models[i]->get_name() << std::endl;
+        }
         ////
         // std::cout << "======srtart=====ov::parallel_for()" << std::endl;
         // // /home/dl5w050/vpux/openvino/src/core/include/openvino/core/parallel.hpp:42:14: fatal error: tbb/blocked_range.h: No such file or directory
@@ -509,9 +514,10 @@ int main(int argc, char* argv[]) {
         std::cout << "======srtart=====thread1" << std::endl;
         std::vector<std::thread> threads;
         std::string device = FLAGS_d;
-        for (auto model : models) {
-            threads.emplace_back([&core, &model, device, &configs] {
-                auto compiledModel2 = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
+        for (auto modelt : models) {
+            threads.emplace_back([&core, &modelt, device, &configs] {
+                std::cout << "[ INFO ] thread : model name is" << modelt->get_name() << std::endl;
+                auto compiledModel2 = core.compile_model(modelt, device, {configs.begin(), configs.end()});
             });
         }
         for (auto& thread : threads) {
@@ -519,20 +525,20 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "=====end======thread1" << std::endl;
 
-        std::cout << "======srtart=====thread2" << std::endl;
-        std::vector<std::thread> threads2;
-        for (auto model : models) {
-            threads2.emplace_back([&core, &model, device, &configs] {
-                auto compiledModel2 = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
-            });
-        }
-        for (auto& thread : threads2) {
-            thread.join();
-        }
-        std::cout << "=====end======thread2" << std::endl;
+        // std::cout << "======srtart=====thread2" << std::endl;
+        // std::vector<std::thread> threads2;
+        // for (auto modelw : models) {
+        //     threads2.emplace_back([&core, &modelw, device, &configs] {
+        //         auto compiledModel2 = core.compile_model(modelw, device, {configs.begin(), configs.end()});
+        //     });
+        // }
+        // for (auto& thread : threads2) {
+        //     thread.join();
+        // }
+        // std::cout << "=====end======thread2" << std::endl;
 
         std::cout << "Compiling model" << std::endl;
-        auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
+        // auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
         loadNetworkTimeElapsed =
             std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
         std::string outputName = FLAGS_o;
@@ -546,7 +552,7 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         } else {
             std::cout << "Writing into file - " << outputName << std::endl;
-            compiledModel.export_model(outputFile);
+            // compiledModel.export_model(outputFile);
         }
         std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
     } catch (const std::exception& error) {
