@@ -397,10 +397,10 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
             _logger.warning("  4) graphProperties.flags & ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is flase...");
         }
 
-        std::string log1 = zeroUtils::getLatestBuildError2(_zeroInitStruct->getGraphDdiTable(), graphBuildLogHandle);
+        std::string log1 = zeroUtils::getLatestBuildError2(_zeroInitStruct->getGraphDdiTable(), graphBuildLogHandle);//pfnBuildLogGetString2
         _logger.warning("  5) getLatestBuildError2's log: %s", log1.c_str());
         _logger.warning("------------------------------------------------------");
-        std::string log2 = zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());
+        std::string log2 = zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());//pfnBuildLogGetString
         _logger.warning("  6 getLatestBuildError's log: %s", log2.c_str());
 
         ///save log content
