@@ -514,10 +514,10 @@ int main(int argc, char* argv[]) {
         std::cout << "======srtart=====thread1" << std::endl;
         std::vector<std::thread> threads;
         std::string device = FLAGS_d;
-        for (auto modelt : models) {
-            threads.emplace_back([&core, &modelt, device, &configs] {
-                std::cout << "[ INFO ] thread : model name is" << modelt->get_name() << std::endl;
-                auto compiledModel2 = core.compile_model(modelt, device, {configs.begin(), configs.end()});
+        for (auto mo : models) {
+            threads.emplace_back([&core, &mo, device, &configs] {
+                std::cout << "[ INFO ] thread1 : model name is" << mo->get_name() << std::endl;
+                auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
             });
         }
         for (auto& thread : threads) {
@@ -525,17 +525,20 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "=====end======thread1" << std::endl;
 
-        // std::cout << "======srtart=====thread2" << std::endl;
-        // std::vector<std::thread> threads2;
-        // for (auto modelw : models) {
-        //     threads2.emplace_back([&core, &modelw, device, &configs] {
-        //         auto compiledModel2 = core.compile_model(modelw, device, {configs.begin(), configs.end()});
-        //     });
-        // }
-        // for (auto& thread : threads2) {
-        //     thread.join();
-        // }
-        // std::cout << "=====end======thread2" << std::endl;
+        if (const auto env = std::getenv("SET_THREAD2")) {
+            std::cout << "======srtart=====thread2" << std::endl;
+            std::vector<std::thread> threads2;
+            for (auto mo : models) {
+                threads2.emplace_back([&core, &mo, device, &configs] {
+                    std::cout << "[ INFO ] thread2 : model name is" << mo->get_name() << std::endl;
+                    auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
+                });
+            }
+            for (auto& thread : threads2) {
+                thread.join();
+            }
+            std::cout << "=====end======thread2" << std::endl;
+        }
 
         std::cout << "Compiling model" << std::endl;
         // auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});

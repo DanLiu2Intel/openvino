@@ -30,7 +30,7 @@
 // For ext version >= 1.5, pfnCreate2 api is avaible
 #define NotSupportGraph2(T) (T < ZE_GRAPH_EXT_VERSION_1_5)
 
-// For ext version >= 1.5, pfnCreate2 api is avaible
+// For ext version >= 1.12, pfnCreate3 api is avaible
 #define NotSupportGraph3(T) (T < ZE_GRAPH_EXT_VERSION_1_12)
 
 // A bug inside the driver makes the "pfnGraphGetArgumentMetadata" call not safe for use prior to
@@ -102,7 +102,8 @@ ZeGraphExtWrappers::ZeGraphExtWrappers(const std::shared_ptr<ZeroInitStructsHold
     _logger.debug("-SupportQuery: %d", !NotSupportQuery(_graphExtVersion));
     _logger.debug("-SupportAPIGraphQueryNetworkV1: %d", SupportAPIGraphQueryNetworkV1(_graphExtVersion));
     _logger.debug("-SupportAPIGraphQueryNetworkV2 :%d", SupportAPIGraphQueryNetworkV2(_graphExtVersion));
-    _logger.debug("-SupportpfnCreate2 :%d", !NotSupportGraph2(_graphExtVersion));
+    _logger.debug("-!!!SupportpfnCreate2 :%d", !NotSupportGraph2(_graphExtVersion));
+    _logger.debug("-!!!ssSupportpfnCreate3 :%d", !NotSupportGraph3(_graphExtVersion));
     _logger.debug("-SupportArgumentMetadata :%d", !NotSupportArgumentMetadata(_graphExtVersion));
     _logger.debug("-UseCopyForNativeBinary :%d", UseCopyForNativeBinary(_graphExtVersion));
 }
@@ -332,40 +333,46 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                                      const std::string& buildFlags,
                                                      const uint32_t& flags) const {
     ze_graph_handle_t graphHandle;
-    if (NotSupportGraph2(_graphExtVersion)) {
-        // For ext version <1.5, calling pfnCreate api in _zeroInitStruct->getGraphDdiTable()
-        ze_graph_desc_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
-                                nullptr,
-                                ZE_GRAPH_FORMAT_NGRAPH_LITE,
-                                serializedIR.first,
-                                serializedIR.second.get(),
-                                buildFlags.c_str()};
+    if (NotSupportGraph3(_graphExtVersion)) {
+        _logger.error("  =====NotSupportGraph3=====");
+        if (NotSupportGraph2(_graphExtVersion)) {
+            // For ext version <1.5, calling pfnCreate api in _zeroInitStruct->getGraphDdiTable()
+            ze_graph_desc_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
+                                    nullptr,
+                                    ZE_GRAPH_FORMAT_NGRAPH_LITE,
+                                    serializedIR.first,
+                                    serializedIR.second.get(),
+                                    buildFlags.c_str()};
+    
+            
+            // Create querynetwork handle
+            auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate(_zeroInitStruct->getContext(),
+                                                                        _zeroInitStruct->getDevice(),
+                                                                        &desc,
+                                                                        &graphHandle);
+            THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate", result, _zeroInitStruct->getGraphDdiTable());
+        } else {
+            _logger.error("  0)---call pfnCreate2");
+            // For ext 1.12 > version >= 1.5, calling pfnCreate2 api in _zeroInitStruct->getGraphDdiTable()
+            ze_graph_desc_2_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
+                                    nullptr,
+                                    ZE_GRAPH_FORMAT_NGRAPH_LITE,
+                                    serializedIR.first,
+                                    serializedIR.second.get(),
+                                    buildFlags.c_str(),
+                                    flags};
 
-        _logger.debug("getGraphHandle - perform pfnCreate");
-        // Create querynetwork handle
-        auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate(_zeroInitStruct->getContext(),
-                                                                    _zeroInitStruct->getDevice(),
-                                                                    &desc,
-                                                                    &graphHandle);
-        THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate", result, _zeroInitStruct->getGraphDdiTable());
-    } else if (NotSupportGraph3(_graphExtVersion)) {
-        // For ext 1.12 > version >= 1.5, calling pfnCreate2 api in _zeroInitStruct->getGraphDdiTable()
-        ze_graph_desc_2_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
-                                  nullptr,
-                                  ZE_GRAPH_FORMAT_NGRAPH_LITE,
-                                  serializedIR.first,
-                                  serializedIR.second.get(),
-                                  buildFlags.c_str(),
-                                  flags};
-
-        _logger.debug("getGraphHandle - perform pfnCreate2");
-        // Create querynetwork handle
-        auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate2(_zeroInitStruct->getContext(),
-                                                                     _zeroInitStruct->getDevice(),
-                                                                     &desc,
-                                                                     &graphHandle);
-        THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate2", result, _zeroInitStruct->getGraphDdiTable());
+            _logger.debug("getGraphHandle - perform pfnCreate2");
+            // Create querynetwork handle
+            auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate2(_zeroInitStruct->getContext(),
+                                                                        _zeroInitStruct->getDevice(),
+                                                                        &desc,
+                                                                        &graphHandle);
+            THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate2", result, _zeroInitStruct->getGraphDdiTable());
+        }
     } else {
+        _logger.error("  0)---call pfnCreate3");
+        _logger.error("  1)graphBuildLogHandle is nullptr");
         ze_graph_desc_2_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
                                   nullptr,
                                   ZE_GRAPH_FORMAT_NGRAPH_LITE,
@@ -373,7 +380,9 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                   serializedIR.second.get(),
                                   buildFlags.c_str(),
                                   flags};
-        _logger.warning("-----start----getGraphHandle - perform pfnCreate2");
+        
+        _logger.debug("getGraphHandle - perform pfnCreate3");
+        _logger.warning("-----start----getGraphHandle - perform pfnCreate3");
         ze_graph_build_log_handle_t graphBuildLogHandle = nullptr;
         auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate3(_zeroInitStruct->getContext(),
                                                                 _zeroInitStruct->getDevice(),
@@ -404,7 +413,14 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         _logger.warning("  6 getLatestBuildError's log: %s", log2.c_str());
 
         ///save log content
-        std::ofstream outFile("output_getLatestBuildError1.txt");
+        auto curTime = std::chrono::high_resolution_clock::now();
+        auto nanoSec = curTime.time_since_epoch().count();
+        std::ostringstream outNano;
+        outNano << nanoSec;
+        std::string nanoSecStr = outNano.str();
+        std::string fileLogGetString2 = "output_pfnBuildLogGetString2_" + nanoSecStr + ".txt";
+        std::string fileLogGetString = "output_pfnBuildLogGetString_" + nanoSecStr + ".txt";
+        std::ofstream outFile(fileLogGetString2);
         if (!outFile) {
             std::cerr << "Error: Could not open the file for writing." << std::endl;
             throw std::runtime_error("E1rror: Could not open the file for writing.");
@@ -414,7 +430,7 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         outFile.close();
         _logger.warning("       getLatestBuildError2 has been written to the file successfully.");
 
-        std::ofstream outFile2("output_getLatestBuildError2.txt");
+        std::ofstream outFile2(fileLogGetString);
         if (!outFile2) {
             std::cerr << "Error: Could not open the file for writing." << std::endl;
             throw std::runtime_error("E2rror: Could not open the file for writing.");
