@@ -413,6 +413,25 @@ std::string getFileNameFromPath(const std::string& path,
 }
 
 using TimeDiff = std::chrono::milliseconds;
+std::shared_ptr<ov::Model> readModel(std::string path) {
+    ov::Core core2;
+    auto model = core2.read_model(path);
+    std::cout << "[ INFO ] check model start name: " << model->get_name() << std::endl;
+    ov::preprocess::PrePostProcessor ppp(model);
+    for (const auto& input : model->inputs()) {
+        const auto& name = input.get_any_name();
+        auto& ii = ppp.input(name);
+        ii.tensor().set_element_type(ov::element::f16);
+    }
+    for (const auto& output : model->outputs()) {
+        const auto& name = output.get_any_name();
+        auto& oi = ppp.output(name);
+        oi.tensor().set_element_type(ov::element::f16);
+    }
+    model = ppp.build();
+    std::cout << "[ INFO ] check model end name: " << model->get_name() << std::endl;
+    return model;
+}
 
 int main(int argc, char* argv[]) {
     try {
@@ -472,61 +491,45 @@ int main(int argc, char* argv[]) {
         }
 
         //////////
-        const char* pstr = std::getenv("MODELS_PATH");
-        if (!pstr) {
-            std::cerr << "[ ERROR ] MODELS_PATH environment variable is not set." << std::endl;
-        }
         std::filesystem::path models_path(pstr);
         std::vector<std::shared_ptr<ov::Model>> models;
-        for (const auto& entry : std::filesystem::directory_iterator{models_path}) {
-            if (entry.path().extension() == ".xml") {
-                const auto& filename = entry.path().filename().string();
-                std::cout << "[ INFO ] Read model: " << filename << std::endl;
-                ov::Core core2;
-                auto model = core2.read_model(entry.path());
-                std::cout << "[ INFO ] check model name: " << model->get_name() << std::endl;
-                ov::preprocess::PrePostProcessor ppp(model);
-                for (const auto& input : model->inputs()) {
-                    const auto& name = input.get_any_name();
-                    auto& ii = ppp.input(name);
-                    ii.tensor().set_element_type(ov::element::f16);
-                }
-                for (const auto& output : model->outputs()) {
-                    const auto& name = output.get_any_name();
-                    auto& oi = ppp.output(name);
-                    oi.tensor().set_element_type(ov::element::f16);
-                }
-                model = ppp.build();
-                models.push_back(std::move(model));
-            }
-        }
-        std::cout << "[ INFO ] check the model name" << std::endl;
-        for (int i = 0; i < models.size(); i++) {
-            std::cout << "[ INFO ] model[" << i << "]" << models[i]->get_name() << std::endl;
-        }
-        ////
-        // std::cout << "======srtart=====ov::parallel_for()" << std::endl;
-        // // /home/dl5w050/vpux/openvino/src/core/include/openvino/core/parallel.hpp:42:14: fatal error: tbb/blocked_range.h: No such file or directory
-        // // 42 | #    include "tbb/blocked_range.h"
-        // //     |              ^~~~~~~~~~~~~~~~~~~~~
-        // // compilation terminated.
-        // ov::parallel_for(models.size(), [&](size_t i) {
-        //     core.compile_model(models[i], FLAGS_d, {configs.begin(), configs.end()});
-        // });
-        // std::cout << "=====end======ov::parallel_for()" << std::endl;
+
+        const char* pstr1 = std::getenv("MODELS_1");
+        std::string f1(pstr1);
+        auto model1 = readModel(f1);
+        std::cout << "[ INFO ] model[1]" << model1 << std::endl;
+        const char* pstr2 = std::getenv("MODELS_2");
+        std::string f2(pstr2);
+        auto model2 = readModel(f2);
+        std::cout << "[ INFO ] model[2]" << model2 << std::endl;
+        const char* pstr3 = std::getenv("MODELS_3");
+        std::string f3(pstr3);
+        auto model3 = readModel(f3);
+        std::cout << "[ INFO ] model[3]" << model3 << std::endl;
 
         std::cout << "===!===srtart=====thread1" << std::endl;
         std::vector<std::thread> threads;
         std::string device = FLAGS_d;
         // for (auto mo : models) {
-        for (int i = 0; i < models.size(); i++) {
-            auto mo = models[i];
-            std::cout << "[ INFO ] before(1) : model name is" << mo->get_name() << std::endl;
-            threads.emplace_back([&core, &mo, device, &configs] {
-                std::cout << "[ INFO ] thread1 : model name is" << mo->get_name() << std::endl;
-                auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
-            });
-        }
+
+        std::cout << "[ INFO ] before(1) : model1 name is" << model1->get_name() << std::endl;
+        threads.emplace_back([&core, &model1, device, &configs] {
+            std::cout << "[ INFO ] thread1 : model1 name is" << model1->get_name() << std::endl;
+            auto compiledModel2 = core.compile_model(model1, device, {configs.begin(), configs.end()});
+        });
+
+        std::cout << "[ INFO ] before(1) : model2 name is" << model2->get_name() << std::endl;
+        threads.emplace_back([&core, &model2, device, &configs] {
+            std::cout << "[ INFO ] thread1 : model2 name is" << model2->get_name() << std::endl;
+            auto compiledModel2 = core.compile_model(model2, device, {configs.begin(), configs.end()});
+        });
+
+        std::cout << "[ INFO ] before(1) : model3 name is" << model3->get_name() << std::endl;
+        threads.emplace_back([&core, &model3, device, &configs] {
+            std::cout << "[ INFO ] thread1 : model3 name is" << model3->get_name() << std::endl;
+            auto compiledModel2 = core.compile_model(model3, device, {configs.begin(), configs.end()});
+        });
+
         for (auto& thread : threads) {
             thread.join();
         }
@@ -534,8 +537,12 @@ int main(int argc, char* argv[]) {
 
         if (const auto env = std::getenv("SET_THREAD2")) {
             std::cout << "===!===srtart=====thread2" << std::endl;
+            std::cout << "[ INFO ] models0' size is " <<  models.size() << std::endl;
+            models.push_back(model1);
+            models.push_back(model2);
+            models.push_back(model3);
+            std::cout << "[ INFO ] models1' size is " <<  models.size() << std::endl;
             std::vector<std::thread> threads2;
-            // for (auto mo : models) {
             for (int i = 0; i < models.size(); i++) {
                 auto mo = models[i];
                 std::cout << "[ INFO ] before(2) : model name is" << mo->get_name() << std::endl;
