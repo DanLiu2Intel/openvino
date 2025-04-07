@@ -473,13 +473,17 @@ int main(int argc, char* argv[]) {
 
         //////////
         const char* pstr = std::getenv("MODELS_PATH");
+        if (!pstr) {
+            std::cerr << "[ ERROR ] MODELS_PATH environment variable is not set." << std::endl;
+        }
         std::filesystem::path models_path(pstr);
         std::vector<std::shared_ptr<ov::Model>> models;
         for (const auto& entry : std::filesystem::directory_iterator{models_path}) {
             if (entry.path().extension() == ".xml") {
                 const auto& filename = entry.path().filename().string();
                 std::cout << "[ INFO ] Read model: " << filename << std::endl;
-                auto model = core.read_model(entry.path());
+                ov::Core core2;
+                auto model = core2.read_model(entry.path());
                 std::cout << "[ INFO ] check model name: " << model->get_name() << std::endl;
                 ov::preprocess::PrePostProcessor ppp(model);
                 for (const auto& input : model->inputs()) {
@@ -511,10 +515,13 @@ int main(int argc, char* argv[]) {
         // });
         // std::cout << "=====end======ov::parallel_for()" << std::endl;
 
-        std::cout << "======srtart=====thread1" << std::endl;
+        std::cout << "===!===srtart=====thread1" << std::endl;
         std::vector<std::thread> threads;
         std::string device = FLAGS_d;
-        for (auto mo : models) {
+        // for (auto mo : models) {
+        for (int i = 0; i < models.size(); i++) {
+            auto mo = models[i];
+            std::cout << "[ INFO ] before(1) : model name is" << mo->get_name() << std::endl;
             threads.emplace_back([&core, &mo, device, &configs] {
                 std::cout << "[ INFO ] thread1 : model name is" << mo->get_name() << std::endl;
                 auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
@@ -526,9 +533,12 @@ int main(int argc, char* argv[]) {
         std::cout << "=====end======thread1" << std::endl;
 
         if (const auto env = std::getenv("SET_THREAD2")) {
-            std::cout << "======srtart=====thread2" << std::endl;
+            std::cout << "===!===srtart=====thread2" << std::endl;
             std::vector<std::thread> threads2;
-            for (auto mo : models) {
+            // for (auto mo : models) {
+            for (int i = 0; i < models.size(); i++) {
+                auto mo = models[i];
+                std::cout << "[ INFO ] before(2) : model name is" << mo->get_name() << std::endl;
                 threads2.emplace_back([&core, &mo, device, &configs] {
                     std::cout << "[ INFO ] thread2 : model name is" << mo->get_name() << std::endl;
                     auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});

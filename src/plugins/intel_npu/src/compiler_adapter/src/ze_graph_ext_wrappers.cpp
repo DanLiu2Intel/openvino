@@ -394,10 +394,10 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         } else {
             _logger.warning("  1)graphBuildLogHandle is NOT nullptr");
         }
-        _logger.warning("  2) result of _zeroInitStruct->getGraphDdiTable().pfnCreate2 is %lld...", uint64_t(result));
+        _logger.warning("  2) result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is %lld...", uint64_t(result));
         ze_graph_properties_3_t graphProperties = {};
         auto result2 = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
-        _logger.warning("  3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties2 is %lld...", uint64_t(result2));
+        _logger.warning("  3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is %lld...", uint64_t(result2));
         //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
         //    #define ZE_BIT( _i )  ( 1 << _i )
         if (graphProperties.flags & 1) {
