@@ -491,7 +491,6 @@ int main(int argc, char* argv[]) {
         }
 
         //////////
-        std::filesystem::path models_path(pstr);
         std::vector<std::shared_ptr<ov::Model>> models;
 
         const char* pstr1 = std::getenv("MODELS_1");
