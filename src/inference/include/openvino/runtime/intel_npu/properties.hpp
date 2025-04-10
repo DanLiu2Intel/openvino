@@ -84,7 +84,7 @@ static constexpr ov::Property<bool> compiler_dynamic_quantization{"NPU_COMPILER_
  * using ONNX Runtime
  * @ingroup ov_runtime_npu_prop_cpp_api
  */
-static constexpr ov::Property<bool> qdq_optimization{"NPU_QDQ_OPTIMIZATION"};
+static constexpr ov::Property<bool> qdq_optimization{"NPU_QDQ_OPTIMIZATION"};/////
 
 /**
  * @brief [Only for NPU plugin]
@@ -135,6 +135,13 @@ static constexpr ov::Property<bool> defer_weights_load{"NPU_DEFER_WEIGHTS_LOAD"}
  * @ingroup ov_runtime_npu_prop_cpp_api
  */
 static constexpr ov::Property<bool> run_inferences_sequentially{"NPU_RUN_INFERENCES_SEQUENTIALLY"};
+
+/**
+ * @brief [Only for NPU compiler]
+ * Type: boolean, default is false.
+ * This option allows to store the log during compilation
+ */
+static constexpr ov::Property<bool> store_logger_log{"NPU_STORE_LOGGER_LOG"};
 
 }  // namespace intel_npu
 }  // namespace ov
