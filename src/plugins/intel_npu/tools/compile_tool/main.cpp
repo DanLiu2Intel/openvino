@@ -490,74 +490,74 @@ int main(int argc, char* argv[]) {
             configs["PERF_COUNT"] = "YES";
         }
 
-        //////////
-        std::vector<std::shared_ptr<ov::Model>> models;
+        // //////////
+        // std::vector<std::shared_ptr<ov::Model>> models;
 
-        const char* pstr1 = std::getenv("MODELS_1");
-        std::string f1(pstr1);
-        auto model1 = readModel(f1);
-        std::cout << "[ INFO ] model[1]" << model1 << std::endl;
-        const char* pstr2 = std::getenv("MODELS_2");
-        std::string f2(pstr2);
-        auto model2 = readModel(f2);
-        std::cout << "[ INFO ] model[2]" << model2 << std::endl;
-        const char* pstr3 = std::getenv("MODELS_3");
-        std::string f3(pstr3);
-        auto model3 = readModel(f3);
-        std::cout << "[ INFO ] model[3]" << model3 << std::endl;
+        // const char* pstr1 = std::getenv("MODELS_1");
+        // std::string f1(pstr1);
+        // auto model1 = readModel(f1);
+        // std::cout << "[ INFO ] model[1]" << model1 << std::endl;
+        // const char* pstr2 = std::getenv("MODELS_2");
+        // std::string f2(pstr2);
+        // auto model2 = readModel(f2);
+        // std::cout << "[ INFO ] model[2]" << model2 << std::endl;
+        // const char* pstr3 = std::getenv("MODELS_3");
+        // std::string f3(pstr3);
+        // auto model3 = readModel(f3);
+        // std::cout << "[ INFO ] model[3]" << model3 << std::endl;
 
-        std::cout << "===!===srtart=====thread1" << std::endl;
-        std::vector<std::thread> threads;
-        std::string device = FLAGS_d;
-        // for (auto mo : models) {
+        // std::cout << "===!===srtart=====thread1" << std::endl;
+        // std::vector<std::thread> threads;
+        // std::string device = FLAGS_d;
+        // // for (auto mo : models) {
 
-        std::cout << "[ INFO ] before(1) : model1 name is" << model1->get_name() << std::endl;
-        threads.emplace_back([&core, &model1, device, &configs] {
-            std::cout << "[ INFO ] thread1 : model1 name is" << model1->get_name() << std::endl;
-            auto compiledModel2 = core.compile_model(model1, device, {configs.begin(), configs.end()});
-        });
+        // std::cout << "[ INFO ] before(1) : model1 name is" << model1->get_name() << std::endl;
+        // threads.emplace_back([&core, &model1, device, &configs] {
+        //     std::cout << "[ INFO ] thread1 : model1 name is" << model1->get_name() << std::endl;
+        //     auto compiledModel2 = core.compile_model(model1, device, {configs.begin(), configs.end()});
+        // });
 
-        std::cout << "[ INFO ] before(1) : model2 name is" << model2->get_name() << std::endl;
-        threads.emplace_back([&core, &model2, device, &configs] {
-            std::cout << "[ INFO ] thread1 : model2 name is" << model2->get_name() << std::endl;
-            auto compiledModel2 = core.compile_model(model2, device, {configs.begin(), configs.end()});
-        });
+        // std::cout << "[ INFO ] before(1) : model2 name is" << model2->get_name() << std::endl;
+        // threads.emplace_back([&core, &model2, device, &configs] {
+        //     std::cout << "[ INFO ] thread1 : model2 name is" << model2->get_name() << std::endl;
+        //     auto compiledModel2 = core.compile_model(model2, device, {configs.begin(), configs.end()});
+        // });
 
-        std::cout << "[ INFO ] before(1) : model3 name is" << model3->get_name() << std::endl;
-        threads.emplace_back([&core, &model3, device, &configs] {
-            std::cout << "[ INFO ] thread1 : model3 name is" << model3->get_name() << std::endl;
-            auto compiledModel2 = core.compile_model(model3, device, {configs.begin(), configs.end()});
-        });
+        // std::cout << "[ INFO ] before(1) : model3 name is" << model3->get_name() << std::endl;
+        // threads.emplace_back([&core, &model3, device, &configs] {
+        //     std::cout << "[ INFO ] thread1 : model3 name is" << model3->get_name() << std::endl;
+        //     auto compiledModel2 = core.compile_model(model3, device, {configs.begin(), configs.end()});
+        // });
 
-        for (auto& thread : threads) {
-            thread.join();
-        }
-        std::cout << "=====end======thread1" << std::endl;
+        // for (auto& thread : threads) {
+        //     thread.join();
+        // }
+        // std::cout << "=====end======thread1" << std::endl;
 
-        if (const auto env = std::getenv("SET_THREAD2")) {
-            std::cout << "===!===srtart=====thread2" << std::endl;
-            std::cout << "[ INFO ] models0' size is " <<  models.size() << std::endl;
-            models.push_back(model1);
-            models.push_back(model2);
-            models.push_back(model3);
-            std::cout << "[ INFO ] models1' size is " <<  models.size() << std::endl;
-            std::vector<std::thread> threads2;
-            for (int i = 0; i < models.size(); i++) {
-                auto mo = models[i];
-                std::cout << "[ INFO ] before(2) : model name is" << mo->get_name() << std::endl;
-                threads2.emplace_back([&core, &mo, device, &configs] {
-                    std::cout << "[ INFO ] thread2 : model name is" << mo->get_name() << std::endl;
-                    auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
-                });
-            }
-            for (auto& thread : threads2) {
-                thread.join();
-            }
-            std::cout << "=====end======thread2" << std::endl;
-        }
+        // if (const auto env = std::getenv("SET_THREAD2")) {
+        //     std::cout << "===!===srtart=====thread2" << std::endl;
+        //     std::cout << "[ INFO ] models0' size is " <<  models.size() << std::endl;
+        //     models.push_back(model1);
+        //     models.push_back(model2);
+        //     models.push_back(model3);
+        //     std::cout << "[ INFO ] models1' size is " <<  models.size() << std::endl;
+        //     std::vector<std::thread> threads2;
+        //     for (int i = 0; i < models.size(); i++) {
+        //         auto mo = models[i];
+        //         std::cout << "[ INFO ] before(2) : model name is" << mo->get_name() << std::endl;
+        //         threads2.emplace_back([&core, &mo, device, &configs] {
+        //             std::cout << "[ INFO ] thread2 : model name is" << mo->get_name() << std::endl;
+        //             auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
+        //         });
+        //     }
+        //     for (auto& thread : threads2) {
+        //         thread.join();
+        //     }
+        //     std::cout << "=====end======thread2" << std::endl;
+        // }
 
         std::cout << "Compiling model" << std::endl;
-        // auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
+        auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
         loadNetworkTimeElapsed =
             std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
         std::string outputName = FLAGS_o;
@@ -571,7 +571,7 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         } else {
             std::cout << "Writing into file - " << outputName << std::endl;
-            // compiledModel.export_model(outputFile);
+            compiledModel.export_model(outputFile);
         }
         std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
     } catch (const std::exception& error) {
