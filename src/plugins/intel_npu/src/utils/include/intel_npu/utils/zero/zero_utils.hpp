@@ -275,11 +275,14 @@ static inline std::string getLatestBuildError2(ze_graph_dditable_ext_curr_t& _gr
     _logger.debug("getLatestBuildError2 start");
 
     uint32_t graphDdiExtVersion = _graph_ddi_table_ext.version();
+    _logger.error("--------line trace2------------------------=------------");
     if (graphDdiExtVersion >= ZE_GRAPH_EXT_VERSION_1_4) {
         // Get log size
         uint32_t size = 0;
         // Null graph handle to get error log
+        _logger.error("--------line trace3------------------------=------------");
         auto result = _graph_ddi_table_ext.pfnBuildLogGetString2(graphBuildLogHandle, &size, nullptr);
+        _logger.error("--------line trace4------------------------=------------");
         if (ZE_RESULT_SUCCESS != result) {
             // The failure will not break normal execution, only warning here
             _logger.warning("getLatestBuildError2 Failed to get size of latest error log!");
@@ -297,7 +300,9 @@ static inline std::string getLatestBuildError2(ze_graph_dditable_ext_curr_t& _gr
         // Get log content
         std::string logContent{};
         logContent.resize(size);
+        _logger.error("--------line trace5------------------------------------");
         result = _graph_ddi_table_ext.pfnBuildLogGetString2(graphBuildLogHandle, &size, const_cast<char*>(logContent.data()));
+        _logger.error("--------line trace6------------------------=------------");
         if (ZE_RESULT_SUCCESS != result) {
             // The failure will not break normal execution, only warning here
             _logger.warning("getLatestBuildError2 size of latest error log > 0, failed to get "

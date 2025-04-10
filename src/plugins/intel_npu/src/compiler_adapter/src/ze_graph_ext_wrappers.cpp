@@ -400,12 +400,12 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         _logger.warning("  3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is %lld...", uint64_t(result2));
         //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
         //    #define ZE_BIT( _i )  ( 1 << _i )
-        if (graphProperties.flags & 1) {
-            _logger.warning("  4) graphProperties.flags & ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is true...");
+        if (graphProperties.flags == 1) {
+            _logger.warning("  4) graphProperties.flags == ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is true...");
         } else {
-            _logger.warning("  4) graphProperties.flags & ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is flase...");
+            _logger.warning("  4) graphProperties.flags == ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is flase...");
         }
-
+        _logger.error("--------line trace1------------------------=------------");
         std::string log1 = zeroUtils::getLatestBuildError2(_zeroInitStruct->getGraphDdiTable(), graphBuildLogHandle);//pfnBuildLogGetString2
         _logger.warning("  5) getLatestBuildError2's log: %s", log1.c_str());
         _logger.warning("------------------------------------------------------");
