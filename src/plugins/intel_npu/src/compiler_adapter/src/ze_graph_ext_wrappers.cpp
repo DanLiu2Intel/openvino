@@ -329,6 +329,46 @@ std::unordered_set<std::string> ZeGraphExtWrappers::queryGraph(std::pair<size_t,
     return std::unordered_set<std::string>();
 }
 
+
+// print ze_structure_type_graph_ext_t
+const char* getStructureTypeString(ze_structure_type_graph_ext_t stype)
+{
+    switch (stype)
+    {
+    case ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES: return "ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL: return "ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL";
+    case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA: return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA";
+    case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED";
+    case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC";
+    default: return "Unknown";
+    }
+}
+
+// print ze_graph_init_stage_t
+const char* getInitStageString(ze_graph_init_stage_t stage)
+{
+    switch (stage)
+    {
+    case ZE_GRAPH_STAGE_COMMAND_LIST_INITIALIZE: return "ZE_GRAPH_STAGE_COMMAND_LIST_INITIALIZE";
+    case ZE_GRAPH_STAGE_INITIALIZE: return "ZE_GRAPH_STAGE_INITIALIZE";
+    case ZE_GRAPH_STAGE_FORCE_UINT32: return "ZE_GRAPH_STAGE_FORCE_UINT32";
+    default: return "Unknown";
+    }
+}
+
+// print ze_graph_properties_3_t
+void printGraphProperties(const ze_graph_properties_3_t& graphProperties)
+{
+    std::cout << "stype: " << getStructureTypeString(graphProperties.stype) << std::endl;
+    std::cout << "pNext: " << graphProperties.pNext << std::endl;
+    std::cout << "numGraphArgs: " << graphProperties.numGraphArgs << std::endl;
+    std::cout << "initStageRequired: " << getInitStageString(graphProperties.initStageRequired) << std::endl;
+    std::cout << "flags: " << graphProperties.flags << std::endl;
+}
+
 ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shared_ptr<uint8_t>> serializedIR,
                                                      const std::string& buildFlags,
                                                      const uint32_t& flags) const {
@@ -380,7 +420,9 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                   serializedIR.second.get(),
                                   buildFlags.c_str(),
                                   flags};
-        
+        std::cout << "-N-before pfncreate3 desc.buildFlags: " << desc.pBuildFlags << std::endl;
+        std::cout << "-N-before pfncreate3 desc.flags: " << desc.flags << std::endl;
+
         _logger.debug("getGraphHandle - perform pfnCreate3");
         _logger.warning("-----start----getGraphHandle - perform pfnCreate3");
         ze_graph_build_log_handle_t graphBuildLogHandle = nullptr;
@@ -389,6 +431,10 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                                                 &desc,
                                                                 &graphHandle,
                                                                 &graphBuildLogHandle);
+
+        std::cout << "-N-after pfncreate3 desc.buildFlags: " << desc.pBuildFlags << std::endl;
+        std::cout << "-N-after pfncreate3 desc.flags: " << desc.flags << std::endl;
+
         if (graphBuildLogHandle == nullptr) {
             _logger.error("  1)graphBuildLogHandle is nullptr");
         } else {
@@ -396,7 +442,14 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         }
         _logger.warning("  2) result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is %lld...", uint64_t(result));
         ze_graph_properties_3_t graphProperties = {};
+        std::cout << "-N-before ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+        printGraphProperties(graphProperties);
+        std::cout << "-N-before ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
         auto result2 = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
+        std::cout << "-N-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+        printGraphProperties(graphProperties);
+        std::cout << "-N-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
+
         _logger.warning("  3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is %lld...", uint64_t(result2));
         //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
         //    #define ZE_BIT( _i )  ( 1 << _i )
