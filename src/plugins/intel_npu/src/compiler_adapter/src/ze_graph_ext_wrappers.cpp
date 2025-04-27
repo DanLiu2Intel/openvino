@@ -386,6 +386,7 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                                                 &graphBuildLogHandle);
         THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result, _zeroInitStruct->getGraphDdiTable());
     }
+    return graphHandle;
 }
 
 ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(const uint8_t& blobData, size_t blobSize) const {
