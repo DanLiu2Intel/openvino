@@ -137,7 +137,7 @@ void Logger::addEntryPackedActive(ov::log::Level msgLevel, std::string_view msg)
 
         static std::mutex logMtx;
         std::lock_guard<std::mutex> logMtxLock(logMtx);
-        stream << tempStream.str() << DEFAULT_COLOR;
+        // stream << tempStream.str() << DEFAULT_COLOR;
         stream << std::endl;
         stream.flush();
     } catch (const std::exception& e) {
