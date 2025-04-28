@@ -16,6 +16,8 @@
 #include "openvino/core/model.hpp"
 #include "openvino/core/partial_shape.hpp"
 
+#include <fstream>
+
 #define NotSupportQuery(T) (T <= ZE_GRAPH_EXT_VERSION_1_2)
 
 // ext version == 1.3 && 1.4, support API (pfnQueryNetworkCreate, pfnQueryNetworkDestroy,
@@ -327,10 +329,51 @@ std::unordered_set<std::string> ZeGraphExtWrappers::queryGraph(std::pair<size_t,
     return std::unordered_set<std::string>();
 }
 
+
+// print ze_structure_type_graph_ext_t
+const char* getStructureTypeString(ze_structure_type_graph_ext_t stype)
+{
+    switch (stype)
+    {
+    case ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES: return "ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL: return "ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL";
+    case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA: return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA";
+    case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED";
+    case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC";
+    default: return "Unknown";
+    }
+}
+
+// print ze_graph_init_stage_t
+const char* getInitStageString(ze_graph_init_stage_t stage)
+{
+    switch (stage)
+    {
+    case ZE_GRAPH_STAGE_COMMAND_LIST_INITIALIZE: return "ZE_GRAPH_STAGE_COMMAND_LIST_INITIALIZE";
+    case ZE_GRAPH_STAGE_INITIALIZE: return "ZE_GRAPH_STAGE_INITIALIZE";
+    case ZE_GRAPH_STAGE_FORCE_UINT32: return "ZE_GRAPH_STAGE_FORCE_UINT32";
+    default: return "Unknown";
+    }
+}
+
+// print ze_graph_properties_3_t
+void printGraphProperties(const ze_graph_properties_3_t& graphProperties)
+{
+    std::cout << "stype: " << getStructureTypeString(graphProperties.stype) << std::endl;
+    std::cout << "pNext: " << graphProperties.pNext << std::endl;
+    std::cout << "numGraphArgs: " << graphProperties.numGraphArgs << std::endl;
+    std::cout << "initStageRequired: " << getInitStageString(graphProperties.initStageRequired) << std::endl;
+    std::cout << "flags: " << graphProperties.flags << std::endl;
+}
+
 ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shared_ptr<uint8_t>> serializedIR,
                                                      const std::string& buildFlags,
                                                      const uint32_t& flags) const {
     ze_graph_handle_t graphHandle;
+
     if (NotSupportGraph3(_graphExtVersion)) {
         if (NotSupportGraph2(_graphExtVersion)) {
             // For ext version <1.5, calling pfnCreate api in _zeroInitStruct->getGraphDdiTable()
@@ -367,9 +410,8 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
             THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate2", result, _zeroInitStruct->getGraphDdiTable());
         }
     } else {
-        // check config
-        if (buildFlags.find("NPU_STORE_LOGGER_LOG=\"YES\"")) {
-                    // For ext version >= 1.12, calling pfnCreate3 api in _zeroInitStruct->getGraphDdiTable()
+
+        // For ext version >= 1.12, calling pfnCreate3 api in _zeroInitStruct->getGraphDdiTable()
         ze_graph_desc_2_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
                                   nullptr,
                                   ZE_GRAPH_FORMAT_NGRAPH_LITE,
@@ -387,25 +429,75 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                                                 &graphHandle,
                                                                 &graphBuildLogHandle);
         THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result, _zeroInitStruct->getGraphDdiTable());
-        } else {
-            ze_graph_desc_2_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
-                        nullptr,
-                        ZE_GRAPH_FORMAT_NGRAPH_LITE,
-                        serializedIR.first,
-                        serializedIR.second.get(),
-                        buildFlags.c_str(),
-                        flags};
 
-            _logger.debug("getGraphHandle - perform pfnCreate2");
-            // Create querynetwork handle
-            auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate2(_zeroInitStruct->getContext(),
-                                                                        _zeroInitStruct->getDevice(),
-                                                                        &desc,
-                                                                        &graphHandle);
-            THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate2", result, _zeroInitStruct->getGraphDdiTable());
-        }
 
-        // // For ext version >= 1.12, calling pfnCreate3 api in _zeroInitStruct->getGraphDdiTable()
+        // //// add test content 1
+        // _logger.debug("getGraphHandle - perform pfnCreate3  -----test part");
+        // _logger.warning("-----start----getGraphHandle - perform pfnCreate3");
+        // ze_graph_build_log_handle_t graphBuildLogHandle = nullptr;
+        // auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate3(_zeroInitStruct->getContext(),
+        //                                                         _zeroInitStruct->getDevice(),
+        //                                                         &desc,
+        //                                                         &graphHandle,
+        //                                                         &graphBuildLogHandle);
+        // if (graphBuildLogHandle == nullptr) {
+        //     _logger.error("  1)graphBuildLogHandle is nullptr");
+        // } else {
+        //     _logger.warning("  1)graphBuildLogHandle is NOT nullptr");
+        // }
+        // _logger.warning("  2) result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is %lld...", uint64_t(result));
+        // ze_graph_properties_3_t graphProperties = {};
+        // auto result2 = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
+        // _logger.warning("  3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is %lld...", uint64_t(result2));
+        // //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
+        // //    #define ZE_BIT( _i )  ( 1 << _i )
+        // if (graphProperties.flags & 1) {
+        //     _logger.warning("  4) graphProperties.flags & ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is true...");
+        // } else {
+        //     _logger.warning("  4) graphProperties.flags & ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is flase...");
+        // }
+
+        // std::string log1 = zeroUtils::getLatestBuildError2(_zeroInitStruct->getGraphDdiTable(), graphBuildLogHandle);//pfnBuildLogGetString2
+        // _logger.warning("  5) getLatestBuildError2's log: %s", log1.c_str());
+        // _logger.warning("------------------------------------------------------");
+        // std::string log2 = zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());//pfnBuildLogGetString
+        // _logger.warning("  6 getLatestBuildError's log: %s", log2.c_str());
+
+        // ///save log content
+        // auto curTime = std::chrono::high_resolution_clock::now();
+        // auto nanoSec = curTime.time_since_epoch().count();
+        // std::ostringstream outNano;
+        // outNano << nanoSec;
+        // std::string nanoSecStr = outNano.str();
+        // std::string fileLogGetString2 = "output_pfnBuildLogGetString2_" + nanoSecStr + ".txt";
+        // std::string fileLogGetString = "output_pfnBuildLogGetString_" + nanoSecStr + ".txt";
+        // std::ofstream outFile(fileLogGetString2);
+        // if (!outFile) {
+        //     std::cerr << "Error: Could not open the file for writing." << std::endl;
+        //     throw std::runtime_error("E1rror: Could not open the file for writing.");
+        //     return nullptr;
+        // }
+        // outFile << log1;
+        // outFile.close();
+        // _logger.warning("       getLatestBuildError2 has been written to the file successfully.");
+
+        // std::ofstream outFile2(fileLogGetString);
+        // if (!outFile2) {
+        //     std::cerr << "Error: Could not open the file for writing." << std::endl;
+        //     throw std::runtime_error("E2rror: Could not open the file for writing.");
+        //     return nullptr;
+        // }
+        // outFile2 << log2;
+        // outFile2.close();
+        // _logger.warning("       getLatestBuildError has been written to the file successfully.");
+
+        // _logger.warning("------end----getGraphHandle - perform pfnCreate3");
+        // THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result, _zeroInitStruct->getGraphDdiTable());
+
+
+        // //// test 2: print ze_graph_properties_3_t flag
+        // _logger.error("  0)---call pfnCreate3");
+        // _logger.error("  1)graphBuildLogHandle is nullptr");
         // ze_graph_desc_2_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
         //                           nullptr,
         //                           ZE_GRAPH_FORMAT_NGRAPH_LITE,
@@ -413,17 +505,83 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         //                           serializedIR.second.get(),
         //                           buildFlags.c_str(),
         //                           flags};
-        
+        // std::cout << "-N-before pfncreate3 desc.buildFlags: " << desc.pBuildFlags << std::endl;
+        // std::cout << "-N-before pfncreate3 desc.flags: " << desc.flags << std::endl;
+
         // _logger.debug("getGraphHandle - perform pfnCreate3");
-        // // Create querynetwork handle
+        // _logger.warning("-----start----getGraphHandle - perform pfnCreate3");
         // ze_graph_build_log_handle_t graphBuildLogHandle = nullptr;
         // auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate3(_zeroInitStruct->getContext(),
         //                                                         _zeroInitStruct->getDevice(),
         //                                                         &desc,
         //                                                         &graphHandle,
         //                                                         &graphBuildLogHandle);
+
+        // std::cout << "-N-after pfncreate3 desc.buildFlags: " << desc.pBuildFlags << std::endl;
+        // std::cout << "-N-after pfncreate3 desc.flags: " << desc.flags << std::endl;
+
+        // if (graphBuildLogHandle == nullptr) {
+        //     _logger.error("  1)graphBuildLogHandle is nullptr");
+        // } else {
+        //     _logger.warning("  1)graphBuildLogHandle is NOT nullptr");
+        // }
+        // _logger.warning("  2) result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is %lld...", uint64_t(result));
+        // ze_graph_properties_3_t graphProperties = {};
+        // std::cout << "-N-before ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+        // printGraphProperties(graphProperties);
+        // std::cout << "-N-before ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
+        // auto result2 = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
+        // std::cout << "-N-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+        // printGraphProperties(graphProperties);
+        // std::cout << "-N-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
+
+        // _logger.warning("  3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is %lld...", uint64_t(result2));
+        // //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
+        // //    #define ZE_BIT( _i )  ( 1 << _i )
+        // if (graphProperties.flags == 1) {
+        //     _logger.warning("  4) graphProperties.flags == ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is true...");
+        // } else {
+        //     _logger.warning("  4) graphProperties.flags == ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is flase...");
+        // }
+        // _logger.error("--------line trace1------------------------=------------");
+        // std::string log1 = zeroUtils::getLatestBuildError2(_zeroInitStruct->getGraphDdiTable(), graphBuildLogHandle);//pfnBuildLogGetString2
+        // _logger.warning("  5) getLatestBuildError2's log: %s", log1.c_str());
+        // _logger.warning("------------------------------------------------------");
+        // std::string log2 = zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());//pfnBuildLogGetString
+        // _logger.warning("  6 getLatestBuildError's log: %s", log2.c_str());
+
+        // ///save log content
+        // auto curTime = std::chrono::high_resolution_clock::now();
+        // auto nanoSec = curTime.time_since_epoch().count();
+        // std::ostringstream outNano;
+        // outNano << nanoSec;
+        // std::string nanoSecStr = outNano.str();
+        // std::string fileLogGetString2 = "output_pfnBuildLogGetString2_" + nanoSecStr + ".txt";
+        // std::string fileLogGetString = "output_pfnBuildLogGetString_" + nanoSecStr + ".txt";
+        // std::ofstream outFile(fileLogGetString2);
+        // if (!outFile) {
+        //     std::cerr << "Error: Could not open the file for writing." << std::endl;
+        //     throw std::runtime_error("E1rror: Could not open the file for writing.");
+        //     return nullptr;
+        // }
+        // outFile << log1;
+        // outFile.close();
+        // _logger.warning("       getLatestBuildError2 has been written to the file successfully.");
+
+        // std::ofstream outFile2(fileLogGetString);
+        // if (!outFile2) {
+        //     std::cerr << "Error: Could not open the file for writing." << std::endl;
+        //     throw std::runtime_error("E2rror: Could not open the file for writing.");
+        //     return nullptr;
+        // }
+        // outFile2 << log2;
+        // outFile2.close();
+        // _logger.warning("       getLatestBuildError has been written to the file successfully.");
+
+        // _logger.warning("------end----getGraphHandle - perform pfnCreate3");
         // THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result, _zeroInitStruct->getGraphDdiTable());
     }
+    return graphHandle;
 }
 
 ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(const uint8_t& blobData, size_t blobSize) const {
