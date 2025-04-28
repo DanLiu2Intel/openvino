@@ -780,14 +780,15 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     try {
         _logger.debug("performing compile");
         auto initStruct = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+        ze_graph_build_log_handle_t graphBuildLogHandle = nullptr;
         ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
         std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-        std::string driverLogInitContent_2 = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext);
+        std::string driverLogInitContent_2 = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext, graphBuildLogHandle);
         std::printf("----------in NPU-plugin compiled_model----------(1)getLatestBuildError, log:#%s#\n", driverLogInitContent.c_str());
         std::printf("----------in NPU-plugin compiled_model----------(1)getLatestBuildError2, log:#%s#\n", driverLogInitContent_2.c_str());
         graph = compiler->compile(model, localConfig);
         std::string driverLogInitContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-        std::string driverLogInitContent2_2 = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext);
+        std::string driverLogInitContent2_2 = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext, graphBuildLogHandle);
         std::printf("----------in NPU-plugin compiled_model----------(2)getLatestBuildError, log:#%s#\n", driverLogInitContent2.c_str());
         std::printf("----------in NPU-plugin compiled_model----------(2)getLatestBuildError2, log:#%s#\n", driverLogInitContent2_2.c_str());
     } catch (const std::exception& ex) {
