@@ -430,7 +430,6 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                                                 &graphBuildLogHandle);
         THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result, _zeroInitStruct->getGraphDdiTable());
 
-
         // //// add test content 1
         // _logger.debug("getGraphHandle - perform pfnCreate3  -----test part");
         // _logger.warning("-----start----getGraphHandle - perform pfnCreate3");
@@ -456,13 +455,11 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         // } else {
         //     _logger.warning("  4) graphProperties.flags & ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE is flase...");
         // }
-
         // std::string log1 = zeroUtils::getLatestBuildError2(_zeroInitStruct->getGraphDdiTable(), graphBuildLogHandle);//pfnBuildLogGetString2
         // _logger.warning("  5) getLatestBuildError2's log: %s", log1.c_str());
         // _logger.warning("------------------------------------------------------");
         // std::string log2 = zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());//pfnBuildLogGetString
         // _logger.warning("  6 getLatestBuildError's log: %s", log2.c_str());
-
         // ///save log content
         // auto curTime = std::chrono::high_resolution_clock::now();
         // auto nanoSec = curTime.time_since_epoch().count();
@@ -480,7 +477,6 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         // outFile << log1;
         // outFile.close();
         // _logger.warning("       getLatestBuildError2 has been written to the file successfully.");
-
         // std::ofstream outFile2(fileLogGetString);
         // if (!outFile2) {
         //     std::cerr << "Error: Could not open the file for writing." << std::endl;
@@ -490,7 +486,6 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         // outFile2 << log2;
         // outFile2.close();
         // _logger.warning("       getLatestBuildError has been written to the file successfully.");
-
         // _logger.warning("------end----getGraphHandle - perform pfnCreate3");
         // THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result, _zeroInitStruct->getGraphDdiTable());
 
@@ -507,7 +502,6 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         //                           flags};
         // std::cout << "-N-before pfncreate3 desc.buildFlags: " << desc.pBuildFlags << std::endl;
         // std::cout << "-N-before pfncreate3 desc.flags: " << desc.flags << std::endl;
-
         // _logger.debug("getGraphHandle - perform pfnCreate3");
         // _logger.warning("-----start----getGraphHandle - perform pfnCreate3");
         // ze_graph_build_log_handle_t graphBuildLogHandle = nullptr;
@@ -516,10 +510,8 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         //                                                         &desc,
         //                                                         &graphHandle,
         //                                                         &graphBuildLogHandle);
-
         // std::cout << "-N-after pfncreate3 desc.buildFlags: " << desc.pBuildFlags << std::endl;
         // std::cout << "-N-after pfncreate3 desc.flags: " << desc.flags << std::endl;
-
         // if (graphBuildLogHandle == nullptr) {
         //     _logger.error("  1)graphBuildLogHandle is nullptr");
         // } else {
@@ -534,7 +526,6 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         // std::cout << "-N-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
         // printGraphProperties(graphProperties);
         // std::cout << "-N-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-
         // _logger.warning("  3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is %lld...", uint64_t(result2));
         // //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
         // //    #define ZE_BIT( _i )  ( 1 << _i )
@@ -549,7 +540,6 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         // _logger.warning("------------------------------------------------------");
         // std::string log2 = zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());//pfnBuildLogGetString
         // _logger.warning("  6 getLatestBuildError's log: %s", log2.c_str());
-
         // ///save log content
         // auto curTime = std::chrono::high_resolution_clock::now();
         // auto nanoSec = curTime.time_since_epoch().count();
@@ -567,7 +557,6 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         // outFile << log1;
         // outFile.close();
         // _logger.warning("       getLatestBuildError2 has been written to the file successfully.");
-
         // std::ofstream outFile2(fileLogGetString);
         // if (!outFile2) {
         //     std::cerr << "Error: Could not open the file for writing." << std::endl;
@@ -577,7 +566,6 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         // outFile2 << log2;
         // outFile2.close();
         // _logger.warning("       getLatestBuildError has been written to the file successfully.");
-
         // _logger.warning("------end----getGraphHandle - perform pfnCreate3");
         // THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result, _zeroInitStruct->getGraphDdiTable());
     }

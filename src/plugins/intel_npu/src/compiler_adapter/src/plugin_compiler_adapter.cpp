@@ -62,6 +62,7 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
     _compiler = loadCompiler(libPath);
 
     if (_zeroInitStruct == nullptr) {
+        std::printf("if (_zeroInitStruct == nullptr) {}\n");
         return;
     }
 
