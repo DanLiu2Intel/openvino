@@ -18,6 +18,8 @@
 #include "openvino/util/shared_object.hpp"
 #include "plugin_graph.hpp"
 
+#include "openvino/core/model.hpp"
+
 namespace {
 std::shared_ptr<void> loadLibrary(const std::string& libpath) {
 #if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
@@ -60,6 +62,7 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
     _compiler = loadCompiler(libPath);
 
     if (_zeroInitStruct == nullptr) {
+        std::printf("if (_zeroInitStruct == nullptr) {}\n");
         return;
     }
 
@@ -77,6 +80,8 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
 std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<const ov::Model>& model,
                                                        const Config& config) const {
     OV_ITT_TASK_CHAIN(COMPILE_BLOB, itt::domains::NPUPlugin, "PluginCompilerAdapter", "compile");
+
+    _logger.error("--new--->compile: model name is %s", (model->get_name().c_str()));
 
     _logger.debug("compile start");
     auto networkDesc = _compiler->compile(model, config);

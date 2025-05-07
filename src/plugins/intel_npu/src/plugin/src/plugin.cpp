@@ -176,6 +176,7 @@ Plugin::Plugin()
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
+    std::cout << "----plugin init1: _globalConfig is " <<  _globalConfig.toString() << std::endl;
     set_device_name("NPU");
 
     registerCommonOptions(*_options);
@@ -201,6 +202,7 @@ Plugin::Plugin()
 
     // parse again env_variables after backend is initialized to get backend proprieties
     _globalConfig.parseEnvVars();
+    std::cout << "----plugin init2: _globalConfig is " <<  _globalConfig.toString() << std::endl;
 
     // Map from name to function {Config -> ov::Any}
     // Note that some properties are RW before network is loaded, and become RO after network is loaded
@@ -436,6 +438,7 @@ Plugin::Plugin()
           ov::PropertyMutability::RO,
           [&](const Config& config) {
               /// create dummy compiler
+              std::cout << "----plugin init 2.5 property:  config is " <<  config.toString() << std::endl;
               CompilerAdapterFactory compilerAdapterFactory;
               auto dummyCompiler = compilerAdapterFactory.getCompiler(_backend, config);
               return dummyCompiler->get_version();
@@ -527,6 +530,7 @@ Plugin::Plugin()
          {false,
           ov::PropertyMutability::RW,
           [](const Config& config) {
+              std::cout << "----plugin init 2.5 property(2):  config is " <<  config.toString() << std::endl;
               return config.getString<COMPILER_TYPE>();
           }}},
         {ov::intel_npu::platform.name(),
@@ -565,6 +569,12 @@ Plugin::Plugin()
           [](const Config& config) {
               return config.getString<BACKEND_COMPILATION_PARAMS>();
           }}},
+        {ov::intel_npu::store_logger_log.name(),
+         {false,
+          ov::PropertyMutability::RW,
+          [](const Config& config) {
+              return config.getString<STORE_LOGGER_LOG>();
+          }}},
         {ov::intel_npu::run_inferences_sequentially.name(),
          {false,
           ov::PropertyMutability::RW,
@@ -587,6 +597,8 @@ Plugin::Plugin()
          {false, ov::PropertyMutability::RW, [](const Config& config) {
               return config.get<BATCH_COMPILER_MODE_SETTINGS>();
           }}}};
+
+    std::cout << "----plugin init3: _globalConfig is " <<  _globalConfig.toString() << std::endl;
 }
 
 void Plugin::reset_supported_properties() const {
@@ -595,6 +607,9 @@ void Plugin::reset_supported_properties() const {
     /// populate
     for (auto& property : _properties) {
         if (std::get<0>(property.second)) {
+            if (property.first == ov::intel_npu::compiler_type.name()) {
+                std::cout << "----reset_supported_properties:  key: " <<  property.first << std::endl;
+            }
             _supportedProperties.emplace_back(ov::PropertyName(property.first, std::get<1>(property.second)));
         }
     }
@@ -605,6 +620,7 @@ void Plugin::reset_compiler_dependent_properties() const {
     // get active compiler version
     try {
         CompilerAdapterFactory compilerAdapterFactory;
+        std::cout << "----reset_compiler_dependent_properties: _globalConfig is " <<  _globalConfig.toString() << std::endl;
         auto dummyCompiler = compilerAdapterFactory.getCompiler(_backend, _globalConfig);
         active_compiler_version = dummyCompiler->get_version();
     } catch (...) {
@@ -664,8 +680,8 @@ void Plugin::set_property(const ov::AnyMap& properties) {
     if (compiler_type_change) {
         // if compiler type was changed > need to reset properties to match the new compiler
         // since properties have changed > need to reset supported_properties as well
-        reset_compiler_dependent_properties();
-        reset_supported_properties();
+        // reset_compiler_dependent_properties();
+        // reset_supported_properties();
     }
 }
 
@@ -690,9 +706,12 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    for (auto it : properties) {
+        std::cout << "properties : key :" << it.first << "value : " << it.second.as<std::string>() << std::endl; 
+    }
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "merge_configs");
-
+    
     // Before going any further: if
     // ... 1 - NPUW mode is activated
     // ... 2 - this request is NOT coming from NPUW,
@@ -710,6 +729,8 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     const std::map<std::string, std::string> localPropertiesMap = any_copy(localProperties);
     auto localConfig = merge_configs(_globalConfig, localPropertiesMap);
+    std::cout << "----compile_model: localConfig is " <<  localConfig.toString() << std::endl;
+    
     update_log_level(localPropertiesMap);
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
@@ -773,7 +794,18 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     std::shared_ptr<intel_npu::IGraph> graph;
     try {
         _logger.debug("performing compile");
-        graph = compiler->compile(model->clone(), localConfig);
+        // auto initStruct = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+        // ze_graph_build_log_handle_t graphBuildLogHandle = nullptr;
+        // ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
+        // std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+        // std::string driverLogInitContent_2 = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext, graphBuildLogHandle);
+        // std::printf("----------in NPU-plugin compiled_model----------(1)getLatestBuildError, log:#%s#\n", driverLogInitContent.c_str());
+        // std::printf("----------in NPU-plugin compiled_model----------(1)getLatestBuildError2, log:#%s#\n", driverLogInitContent_2.c_str());
+        graph = compiler->compile(model, localConfig);
+        // std::string driverLogInitContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+        // std::string driverLogInitContent2_2 = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext, graphBuildLogHandle);
+        // std::printf("----------in NPU-plugin compiled_model----------(2)getLatestBuildError, log:#%s#\n", driverLogInitContent2.c_str());
+        // std::printf("----------in NPU-plugin compiled_model----------(2)getLatestBuildError2, log:#%s#\n", driverLogInitContent2_2.c_str());
     } catch (const std::exception& ex) {
         OPENVINO_THROW(ex.what());
     } catch (...) {

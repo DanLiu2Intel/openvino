@@ -16,19 +16,24 @@ class CompilerAdapterFactory final {
 public:
     const std::unique_ptr<ICompilerAdapter> getCompiler(const ov::SoPtr<IEngineBackend>& engineBackend,
                                                         const Config& config) const {
+        std::cout << "----getCompiler: localConfig is " <<  config.toString() << std::endl;
         auto compilerType = config.get<COMPILER_TYPE>();
         switch (compilerType) {
         case ov::intel_npu::CompilerType::MLIR: {
+            std::printf("-------1-------\n");
             if (engineBackend == nullptr || engineBackend->getName() != "LEVEL0") {
+                std::printf("-------2-------\n");
                 return std::make_unique<PluginCompilerAdapter>(nullptr);
             }
+            std::printf("------3--------\n");
             return std::make_unique<PluginCompilerAdapter>(engineBackend->getInitStructs());
         }
         case ov::intel_npu::CompilerType::DRIVER: {
+            std::printf("-------4-------\n");
             if (engineBackend == nullptr || engineBackend->getName() != "LEVEL0") {
                 OPENVINO_THROW("NPU Compiler Adapter must be used with LEVEL0 backend");
             }
-
+            std::printf("--------5------\n");
             return std::make_unique<DriverCompilerAdapter>(engineBackend->getInitStructs());
         }
         default:

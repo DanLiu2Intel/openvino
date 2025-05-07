@@ -92,14 +92,20 @@ private:
         if (!isActive(msgLevel)) {
             return;
         }
-        addEntryPackedActive(msgLevel, printFormattedCStr(format, std::forward<Args>(args)...));
+        char* saveLog = getenv("TEST_SAVE_LOG");
+        if (saveLog == nullptr) {
+            addEntryPackedActive(msgLevel, printFormattedCStr(format, std::forward<Args>(args)...));
+        }
     }
 
     void addEntryPacked(ov::log::Level msgLevel, const char* msg) const {
         if (!isActive(msgLevel)) {
             return;
         }
-        addEntryPackedActive(msgLevel, msg);
+        char* saveLog = getenv("TEST_CLOSE_OV_SAVE_LOG");
+        if (saveLog == nullptr) {
+            addEntryPackedActive(msgLevel, msg);
+        }
     }
 
 private:
