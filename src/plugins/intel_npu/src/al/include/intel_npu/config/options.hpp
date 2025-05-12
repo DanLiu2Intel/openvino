@@ -1414,7 +1414,7 @@ struct STORE_LOGGER_LOG final : OptionBase<STORE_LOGGER_LOG, bool> {
     }
 
     static OptionMode mode() {
-        return OptionMode::RunTime;
+        return OptionMode::CompileTime;
     }
 };
 }  // namespace intel_npu
