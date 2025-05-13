@@ -1409,8 +1409,12 @@ struct STORE_LOGGER_LOG final : OptionBase<STORE_LOGGER_LOG, bool> {
         return true;
     }
 
-    static constexpr std::string_view getTypeName() {
-        return "bool";
+    static OptionMode mode() {
+        return OptionMode::RunTime;
+    }
+
+    static ov::PropertyMutability mutability() {
+        return ov::PropertyMutability::RW;
     }
 };
 }  // namespace intel_npu
