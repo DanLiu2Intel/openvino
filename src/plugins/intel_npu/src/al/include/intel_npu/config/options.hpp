@@ -1289,6 +1289,7 @@ struct RUN_INFERENCES_SEQUENTIALLY final : OptionBase<RUN_INFERENCES_SEQUENTIALL
 
 struct QDQ_OPTIMIZATION final : OptionBase<QDQ_OPTIMIZATION, bool> {
     static std::string_view key() {
+        std::printf(" ----calling QDQ_OPTIMIZATION key()\n");
         return ov::intel_npu::qdq_optimization.name();
     }
 
@@ -1392,11 +1393,13 @@ struct MODEL_PTR final : OptionBase<MODEL_PTR, std::shared_ptr<const ov::Model>>
 //
 struct STORE_LOGGER_LOG final : OptionBase<STORE_LOGGER_LOG, bool> {
     static std::string_view key() {
+        std::printf(" ----calling STORE_LOGGER_LOG key()\n");
         return ov::intel_npu::store_logger_log.name();
     }
 
 #ifdef NPU_PLUGIN_DEVELOPER_BUILD
     static std::string_view envVar() {
+        std::printf(" ----calling STORE_LOGGER_LOG envVar()\n");
         return "OV_NPU_STORE_LOGGER_LOG";
     }
 #endif
@@ -1411,10 +1414,6 @@ struct STORE_LOGGER_LOG final : OptionBase<STORE_LOGGER_LOG, bool> {
 
     static OptionMode mode() {
         return OptionMode::CompileTime;
-    }
-
-    static ov::PropertyMutability mutability() {
-        return ov::PropertyMutability::RW;
     }
 };
 }  // namespace intel_npu
