@@ -155,7 +155,7 @@ details::OptionConcept OptionsDesc::get(std::string_view key, OptionMode mode) c
         log.warning("Deprecated option '%s' was used, '%s' should be used instead", key.data(), searchKey.c_str());
     }
 
-    const auto itMain = _impl.find(searchKey);////_impl  怎么加入的？？？
+    const auto itMain = _impl.find(searchKey);
     OPENVINO_ASSERT(itMain != _impl.end(),
                     "[ NOT_FOUND ] Option '",
                     key.data(),
@@ -230,20 +230,6 @@ std::string OptionsDesc::getSupportedAsString(bool includePrivate) const {
 
     return res;
 }
-
-///传入的匿名函数
-// [&](const details::OptionConcept& opt) {
-//         if (!opt.envVar().empty()) {
-//             if (const auto envVar = std::getenv(opt.envVar().data())) {
-//                 log.trace("Update option '%s' to value '%s' parsed from environment variable '%s'",
-//                           opt.key().data(),
-//                           envVar,
-//                           opt.envVar().data());
-
-//                 _impl[opt.key().data()] = opt.validateAndParse(envVar);
-//             }
-//         }
-//     }
 
 void OptionsDesc::walk(std::function<void(const details::OptionConcept&)> cb) const {
     for (const auto& itr : _impl) {

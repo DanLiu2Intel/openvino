@@ -413,9 +413,9 @@ private:
 };
 
 template <class Opt>
-void OptionsDesc::add() {///// 添加了新的option
+void OptionsDesc::add() {
     OPENVINO_ASSERT(_impl.count(Opt::key().data()) == 0, "Option '", Opt::key().data(), "' was already registered");
-    std::cout << "OptionsDesc::add() add key" << Opt::key().data() << std::endl;
+
     _impl.insert({Opt::key().data(), details::makeOptionModel<Opt>()});
 
     for (const auto& deprecatedKey : Opt::deprecatedKeys()) {
@@ -472,11 +472,6 @@ bool Config::has() const {
 
 template <class Opt>
 typename Opt::ValueType Config::get() const {
-    int i = 0;
-    for (auto it : _impl) {
-        // using ImplMap = std::unordered_map<std::string, std::shared_ptr<details::OptionValue>>;
-        std::cout << "#" << i++ << " _impl is " << it.first << std::endl;
-    }
     using ValueType = typename Opt::ValueType;
 
     auto log = Logger::global().clone("Config");

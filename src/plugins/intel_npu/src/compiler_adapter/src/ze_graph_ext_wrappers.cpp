@@ -391,6 +391,11 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                                                 &graphHandle,
                                                                 &graphBuildLogHandle);
         THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result, _zeroInitStruct->getGraphDdiTable());
+        std::string log1 = zeroUtils::getLatestBuildError2(_zeroInitStruct->getGraphDdiTable(), graphBuildLogHandle);//pfnBuildLogGetString2
+        _logger.warning("  1) getLatestBuildError2's log: %s", log1.c_str());
+        _logger.warning("------------------------------------------------------");
+        std::string log2 = zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());//pfnBuildLogGetString
+        _logger.warning("  2) getLatestBuildError's log: %s", log2.c_str());
     }
     return graphHandle;
 }
