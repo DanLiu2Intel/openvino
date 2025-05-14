@@ -127,5 +127,12 @@ static constexpr ov::Property<bool> bypass_umd_caching{"NPU_BYPASS_UMD_CACHING"}
  */
 static constexpr ov::Property<bool> defer_weights_load{"NPU_DEFER_WEIGHTS_LOAD"};
 
+/**
+ * @brief [Only for NPU compiler]
+ * Type: boolean, default is false.
+ * This option allows to store the log during compilation
+ */
+static constexpr ov::Property<bool> store_logger_log{"NPU_STORE_LOGGER_LOG"};
+
 }  // namespace intel_npu
 }  // namespace ov

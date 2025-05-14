@@ -369,6 +369,5 @@ static constexpr ov::Property<bool> run_inferences_sequentially{"NPU_RUN_INFEREN
  * This option allows to skip the blob version check
  */
 static constexpr ov::Property<bool> disable_version_check{"NPU_DISABLE_VERSION_CHECK"};
-
 }  // namespace intel_npu
 }  // namespace ov
