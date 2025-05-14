@@ -305,7 +305,6 @@ void Properties::registerProperties() {
     TRY_REGISTER_SIMPLE_PROPERTY(ov::intel_npu::store_logger_log, STORE_LOGGER_LOG);
     TRY_REGISTER_SIMPLE_PROPERTY(ov::hint::enable_cpu_pinning, ENABLE_CPU_PINNING);
 
-
     // 1.2. Special cases
     // ==================
     if (_pType == PropertiesType::PLUGIN && _metrics != nullptr) {

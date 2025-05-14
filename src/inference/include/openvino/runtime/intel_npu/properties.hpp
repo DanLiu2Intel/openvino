@@ -84,7 +84,7 @@ static constexpr ov::Property<bool> compiler_dynamic_quantization{"NPU_COMPILER_
  * using ONNX Runtime
  * @ingroup ov_runtime_npu_prop_cpp_api
  */
-static constexpr ov::Property<bool> qdq_optimization{"NPU_QDQ_OPTIMIZATION"};/////
+static constexpr ov::Property<bool> qdq_optimization{"NPU_QDQ_OPTIMIZATION"};
 
 /**
  * @brief [Only for NPU plugin]
