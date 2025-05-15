@@ -21,6 +21,28 @@
 
 #include <thread>
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+void printCurrentCpu() {
+    DWORD cpu = GetCurrentProcessorNumber();
+    std::cout << "      Thread is running on CPU core: " << cpu << std::endl;
+}
+#elif defined(__linux__)
+#include <sched.h>
+#include <unistd.h>
+void printCurrentCpu() {
+    int cpu = sched_getcpu();
+    if (cpu != -1) {
+        std::cout << "      Thread is running on CPU core: " << cpu << std::endl;
+    } else {
+        std::cerr << "      Failed to get CPU core information" << std::endl;
+    }
+}
+#else
+void printCurrentCpu() {
+    std::cerr << "      Unsupported platform" << std::endl;
+}
+#endif
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -513,6 +535,7 @@ int main(int argc, char* argv[]) {
             std::cout << "    [ INFO ] before go into thread : model name is" << mo->get_name() << std::endl;
             threads.emplace_back([&core, &mo, device, &configs, i] {
                 std::cout << "    [ INFO ] in thread[" << i << "], model name is" << mo->get_name() << std::endl;
+                printCurrentCpu();
                 auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
             });
         }
