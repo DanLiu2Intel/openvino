@@ -19,6 +19,8 @@
 
 #include "tools_helpers.hpp"
 
+#include <thread>
+
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -454,100 +456,91 @@ int main(int argc, char* argv[]) {
         if (FLAGS_pc) {
             configs["PERF_COUNT"] = "YES";
         }
-
-        ////////////
-        const char* flag = std::getenv("TEST_MULTI_THREAD");
-        if (flag) {
-            std::cout << " !!!RUN multithread compile_model()" << std::endl;
-            std::vector<std::shared_ptr<ov::Model>> models;
-
-            const char* pstr1 = std::getenv("MODELS_1");
-            std::string f1(pstr1);
-            auto model1 = readModel(f1);
-            std::cout << "[ INFO ] model[1]" << model1 << std::endl;
-            const char* pstr2 = std::getenv("MODELS_2");
-            std::string f2(pstr2);
-            auto model2 = readModel(f2);
-            std::cout << "[ INFO ] model[2]" << model2 << std::endl;
-            const char* pstr3 = std::getenv("MODELS_3");
-            std::string f3(pstr3);
-            auto model3 = readModel(f3);
-            std::cout << "[ INFO ] model[3]" << model3 << std::endl;
-
-            std::cout << "===!===srtart=====thread1" << std::endl;
-            std::vector<std::thread> threads;
-            std::string device = FLAGS_d;
-            // for (auto mo : models) {
-
-            std::cout << "[ INFO ] before(1) : model1 name is" << model1->get_name() << std::endl;
-            threads.emplace_back([&core, &model1, device, &configs] {
-                std::cout << "[ INFO ] thread1 : model1 name is" << model1->get_name() << std::endl;
-                auto compiledModel2 = core.compile_model(model1, device, {configs.begin(), configs.end()});
+        ////////
+        /*
+            test summary:
+                1) model is passed by reference in thread.
+                example:
+                    threads.emplace_back([&core, &mo, device, &configs] {
+                         auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
+                    }
             });
+        */
+        std::cout << "--------------------add test start---------------------------" << std::endl;
 
-            std::cout << "[ INFO ] before(1) : model2 name is" << model2->get_name() << std::endl;
-            threads.emplace_back([&core, &model2, device, &configs] {
-                std::cout << "[ INFO ] thread1 : model2 name is" << model2->get_name() << std::endl;
-                auto compiledModel2 = core.compile_model(model2, device, {configs.begin(), configs.end()});
-            });
-
-            std::cout << "[ INFO ] before(1) : model3 name is" << model3->get_name() << std::endl;
-            threads.emplace_back([&core, &model3, device, &configs] {
-                std::cout << "[ INFO ] thread1 : model3 name is" << model3->get_name() << std::endl;
-                auto compiledModel2 = core.compile_model(model3, device, {configs.begin(), configs.end()});
-            });
-
-            for (auto& thread : threads) {
-                thread.join();
-            }
-            std::cout << "=====end======thread1" << std::endl;
-
-            if (const auto env = std::getenv("SET_THREAD2")) {
-                std::cout << "===!===srtart=====thread2" << std::endl;
-                std::cout << "[ INFO ] models0' size is " << models.size() << std::endl;
-                models.push_back(model1);
-                models.push_back(model2);
-                models.push_back(model3);
-                std::cout << "[ INFO ] models1' size is " << models.size() << std::endl;
-                std::vector<std::thread> threads2;
-                for (int i = 0; i < models.size(); i++) {
-                    auto mo = models[i];
-                    std::cout << "[ INFO ] before(2) : model name is" << mo->get_name() << std::endl;
-                    threads2.emplace_back([&core, &mo, device, &configs] {
-                        std::cout << "[ INFO ] thread2 : model name is" << mo->get_name() << std::endl;
-                        auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
-                    });
+        const char* pstr = std::getenv("MODELS_PATH");
+        /////// need save three models in MODELS_PATH.
+        if (!pstr) {
+            std::cerr << "[ ERROR ] MODELS_PATH environment variable is not set." << std::endl;
+        }
+        // pass absolute path
+        std::filesystem::path models_path(pstr);
+        std::vector<std::shared_ptr<ov::Model>> models;
+        std::cout << "[ STEP1 ] Read model:" << std::endl;
+        for (const auto& entry : std::filesystem::directory_iterator{models_path}) {
+            if (entry.path().extension() == ".xml") {
+                const auto& filename = entry.path().filename().string();
+                std::cout << "   [ INFO ] Read model: " << filename << std::endl;
+                ov::Core core2;
+                auto model = core2.read_model(entry.path().filename().string());
+                std::cout << "   [ INFO ] check model name: " << model->get_name() << std::endl;
+                ov::preprocess::PrePostProcessor ppp(model);
+                for (const auto& input : model->inputs()) {
+                    const auto& name = input.get_any_name();
+                    auto& ii = ppp.input(name);
+                    ii.tensor().set_element_type(ov::element::f16);
                 }
-                for (auto& thread : threads2) {
-                    thread.join();
+                for (const auto& output : model->outputs()) {
+                    const auto& name = output.get_any_name();
+                    auto& oi = ppp.output(name);
+                    oi.tensor().set_element_type(ov::element::f16);
                 }
-                std::cout << "=====end======thread2" << std::endl;
+                model = ppp.build();
+                models.push_back(std::move(model));
             }
         }
-        //////
+
+        std::cout << "[ STEP2 ] Check model name in vector" << std::endl;
+        for (int i = 0; i < models.size(); i++) {
+            std::cout << "    [ INFO ] model[" << i << "]" << models[i]->get_name() << std::endl;
+        }
+
+        std::cout << "[ STEP3 ] Use model to compile in multi_thread" << std::endl;
+        std::vector<std::thread> threads;
+        std::string device = FLAGS_d;
+        for (int i = 0; i < models.size(); i++) {
+            auto mo = models[i];
+            std::cout << "    [ INFO ] before go into thread : model name is" << mo->get_name() << std::endl;
+            threads.emplace_back([&core, &mo, device, &configs, i] {
+                std::cout << "    [ INFO ] in thread[" << i << "], model name is" << mo->get_name() << std::endl;
+                auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
+            });
+        }
+        for (auto& thread : threads) {
+            thread.join();
+        }
+        std::cout << "--------------------add test finish---------------------------" << std::endl;
+        ////////
 
         std::cout << "Compiling model" << std::endl;
-        if (flag == nullptr) {
-            std::cout << " !!!Not run multithread, run core.compile_model()" << std::endl;
-            auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
-
-            loadNetworkTimeElapsed =
+        auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
+        loadNetworkTimeElapsed =
                 std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
-            std::string outputName = FLAGS_o;
-            if (outputName.empty()) {
-                outputName = getFileNameFromPath(fileNameNoExt(FLAGS_m)) + ".blob";
-            }
-
-            std::ofstream outputFile{outputName, std::ios::out | std::ios::binary};
-            if (!outputFile.is_open()) {
-                std::cout << "Outputting file " << outputName << " can't be opened for writing" << std::endl;
-                return EXIT_FAILURE;
-            } else {
-                std::cout << "Writing into file - " << outputName << std::endl;
-                compiledModel.export_model(outputFile);
-            }
-            std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
+        std::string outputName = FLAGS_o;
+        if (outputName.empty()) {
+            outputName = getFileNameFromPath(fileNameNoExt(FLAGS_m)) + ".blob";
         }
+
+        std::ofstream outputFile{outputName, std::ios::out | std::ios::binary};
+        if (!outputFile.is_open()) {
+            std::cout << "Outputting file " << outputName << " can't be opened for writing" << std::endl;
+            return EXIT_FAILURE;
+        } else {
+            std::cout << "Writing into file - " << outputName << std::endl;
+            compiledModel.export_model(outputFile);
+        }
+        std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
+        
     } catch (const std::exception& error) {
         std::cerr << error.what() << std::endl;
         return EXIT_FAILURE;
