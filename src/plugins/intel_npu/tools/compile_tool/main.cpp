@@ -481,14 +481,14 @@ int main(int argc, char* argv[]) {
         ////////
         /*
             test summary:
-                1) model is passed by value in thread.
+                1) model is passed by reference in thread.
                 example:
-                    threads.emplace_back([&core, mo, device, &configs] {
+                    threads.emplace_back([&core, &mo, device, &configs] {
                          auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
                     }
             });
         */
-        std::cout << "--------------------add test start-------model is passed by value in thread.--------------------" << std::endl;
+        std::cout << "--------------------add test start--------model is passed by reference in thread.-------------------" << std::endl;
 
         const char* pstr = std::getenv("MODELS_PATH");
         /////// need save three models in MODELS_PATH.
@@ -504,7 +504,7 @@ int main(int argc, char* argv[]) {
                 const auto& filename = entry.path().filename().string();
                 std::cout << "   [ INFO ] Read model: " << filename << std::endl;
                 ov::Core core2;
-                auto model = core2.read_model(entry.path().filename().string());
+                auto model = core2.read_model(entry.path());
                 std::cout << "   [ INFO ] check model name: " << model->get_name() << std::endl;
                 ov::preprocess::PrePostProcessor ppp(model);
                 for (const auto& input : model->inputs()) {
@@ -533,7 +533,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < models.size(); i++) {
             auto mo = models[i];
             std::cout << "    [ INFO ] before go into thread : model name is" << mo->get_name() << std::endl;
-            threads.emplace_back([&core, mo, device, &configs, i] {
+            threads.emplace_back([&core, &mo, device, &configs, i] {
                 std::cout << "    [ INFO ] in thread[" << i << "], model name is" << mo->get_name() << std::endl;
                 printCurrentCpu();
                 auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
@@ -545,24 +545,24 @@ int main(int argc, char* argv[]) {
         std::cout << "--------------------add test finish---------------------------" << std::endl;
         ////////
 
-        // std::cout << "Compiling model" << std::endl;
-        // auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
-        // loadNetworkTimeElapsed =
-        //         std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
-        // std::string outputName = FLAGS_o;
-        // if (outputName.empty()) {
-        //     outputName = getFileNameFromPath(fileNameNoExt(FLAGS_m)) + ".blob";
-        // }
+        std::cout << "Compiling model" << std::endl;
+        auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
+        loadNetworkTimeElapsed =
+                std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
+        std::string outputName = FLAGS_o;
+        if (outputName.empty()) {
+            outputName = getFileNameFromPath(fileNameNoExt(FLAGS_m)) + ".blob";
+        }
 
-        // std::ofstream outputFile{outputName, std::ios::out | std::ios::binary};
-        // if (!outputFile.is_open()) {
-        //     std::cout << "Outputting file " << outputName << " can't be opened for writing" << std::endl;
-        //     return EXIT_FAILURE;
-        // } else {
-        //     std::cout << "Writing into file - " << outputName << std::endl;
-        //     compiledModel.export_model(outputFile);
-        // }
-        // std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
+        std::ofstream outputFile{outputName, std::ios::out | std::ios::binary};
+        if (!outputFile.is_open()) {
+            std::cout << "Outputting file " << outputName << " can't be opened for writing" << std::endl;
+            return EXIT_FAILURE;
+        } else {
+            std::cout << "Writing into file - " << outputName << std::endl;
+            compiledModel.export_model(outputFile);
+        }
+        std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
     } catch (const std::exception& error) {
         std::cerr << error.what() << std::endl;
         return EXIT_FAILURE;
