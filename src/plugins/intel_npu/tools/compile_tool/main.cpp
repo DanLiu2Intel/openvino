@@ -504,7 +504,7 @@ int main(int argc, char* argv[]) {
                 const auto& filename = entry.path().filename().string();
                 std::cout << "   [ INFO ] Read model: " << filename << std::endl;
                 ov::Core core2;
-                auto model = core2.read_model(entry.path().filename().string());
+                auto model = core2.read_model(entry.path().filename());
                 std::cout << "   [ INFO ] check model name: " << model->get_name() << std::endl;
                 ov::preprocess::PrePostProcessor ppp(model);
                 for (const auto& input : model->inputs()) {
