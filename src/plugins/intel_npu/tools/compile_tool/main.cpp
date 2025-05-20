@@ -488,7 +488,7 @@ int main(int argc, char* argv[]) {
                     }
             });
         */
-        std::cout << "--------------------add test start--------model is passed by reference in thread.-------------------" << std::endl;
+        std::cout << "--------------------add test start--------model is passed by VALUE in thread.-------------------" << std::endl;
 
         const char* pstr = std::getenv("MODELS_PATH");
         /////// need save three models in MODELS_PATH.
