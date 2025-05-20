@@ -481,9 +481,9 @@ int main(int argc, char* argv[]) {
         ////////
         /*
             test summary:
-                1) model is passed by reference in thread.
+                1) model is passed by VALUE in thread.
                 example:
-                    threads.emplace_back([&core, &mo, device, &configs] {
+                    threads.emplace_back([&core, mo, device, &configs] {
                          auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
                     }
             });
@@ -533,7 +533,7 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < models.size(); i++) {
             auto mo = models[i];
             std::cout << "    [ INFO ] before go into thread : model name is" << mo->get_name() << std::endl;
-            threads.emplace_back([&core, &mo, device, &configs, i] {
+            threads.emplace_back([&core, mo, device, &configs, i] {
                 std::cout << "    [ INFO ] in thread[" << i << "], model name is" << mo->get_name() << std::endl;
                 printCurrentCpu();
                 auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
