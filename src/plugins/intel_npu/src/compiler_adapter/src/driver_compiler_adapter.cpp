@@ -26,126 +26,6 @@
 
 namespace {
 
-constexpr std::string_view INPUTS_PRECISIONS_KEY = "--inputs_precisions";
-constexpr std::string_view INPUTS_LAYOUTS_KEY = "--inputs_layouts";
-constexpr std::string_view OUTPUTS_PRECISIONS_KEY = "--outputs_precisions";
-constexpr std::string_view OUTPUTS_LAYOUTS_KEY = "--outputs_layouts";
-
-// <option key>="<option value>"
-constexpr std::string_view KEY_VALUE_SEPARATOR = "=";
-constexpr std::string_view VALUE_DELIMITER = "\"";  // marks beginning and end of value
-
-// Format inside "<option value>"
-// <name1>:<value (precision / layout)> [<name2>:<value>]
-constexpr std::string_view NAME_VALUE_SEPARATOR = ":";
-constexpr std::string_view VALUES_SEPARATOR = " ";
-
-// Constants indicating the order indices needed to be applied as to perform conversions between legacy layout values
-const std::vector<size_t> NC_TO_CN_LAYOUT_DIMENSIONS_ORDER = {1, 0};
-const std::vector<size_t> NCHW_TO_NHWC_LAYOUT_DIMENSIONS_ORDER = {0, 2, 3, 1};
-const std::vector<size_t> NCDHW_TO_NDHWC_LAYOUT_DIMENSIONS_ORDER = {0, 2, 3, 4, 1};
-
-/**
- * @brief A standard copy function concerning memory segments. Additional checks on the given arguments are performed
- * before copying.
- * @details This is meant as a replacement for the legacy "ie_memcpy" function coming from the OpenVINO API.
- */
-void checkedMemcpy(void* destination, size_t destinationSize, const void* source, size_t numberOfBytes) {
-    if (numberOfBytes == 0) {
-        return;
-    }
-
-    OPENVINO_ASSERT(destination != nullptr, "Memcpy: received a null destination address");
-    OPENVINO_ASSERT(source != nullptr, "Memcpy: received a null source address");
-    OPENVINO_ASSERT(numberOfBytes <= destinationSize,
-                    "Memcpy: the source buffer does not fit inside the destination one");
-    OPENVINO_ASSERT(numberOfBytes <= (destination > source ? ((uintptr_t)destination - (uintptr_t)source)
-                                                           : ((uintptr_t)source - (uintptr_t)destination)),
-                    "Memcpy: the offset between the two buffers does not allow a safe execution of the operation");
-
-    memcpy(destination, source, numberOfBytes);
-}
-
-/**
- * @brief For driver backward compatibility reasons, the given value shall be converted to a string corresponding to the
- * adequate legacy precision.
- */
-std::string ovPrecisionToLegacyPrecisionString(const ov::element::Type& precision) {
-    switch (precision) {
-    case ov::element::Type_t::f16:
-        return "FP16";
-    case ov::element::Type_t::f32:
-        return "FP32";
-    case ov::element::Type_t::f64:
-        return "FP64";
-    case ov::element::Type_t::bf16:
-        return "BF16";
-    case ov::element::Type_t::f8e4m3:
-        return "FP8_E4M3";
-    case ov::element::Type_t::f8e5m2:
-        return "FP8_E5M2";
-    case ov::element::Type_t::f8e8m0:
-        return "FP8_E8M0";
-    case ov::element::Type_t::nf4:
-        return "NF4";
-    case ov::element::Type_t::i4:
-        return "I4";
-    case ov::element::Type_t::i8:
-        return "I8";
-    case ov::element::Type_t::i16:
-        return "I16";
-    case ov::element::Type_t::i32:
-        return "I32";
-    case ov::element::Type_t::i64:
-        return "I64";
-    case ov::element::Type_t::u4:
-        return "U4";
-    case ov::element::Type_t::u8:
-        return "U8";
-    case ov::element::Type_t::u16:
-        return "U16";
-    case ov::element::Type_t::u32:
-        return "U32";
-    case ov::element::Type_t::u64:
-        return "U64";
-    case ov::element::Type_t::u1:
-        return "BIN";
-    case ov::element::Type_t::u2:
-        return "U2";
-    case ov::element::Type_t::boolean:
-        return "BOOL";
-    case ov::element::Type_t::dynamic:
-        return "DYNAMIC";
-    default:
-        OPENVINO_THROW("Incorrect precision: ", precision);
-    }
-}
-
-/**
- * @brief Gives the string representation of the default legacy layout value corresponding to the given rank.
- * @details This is done in order to assure the backward compatibility with the driver. Giving a layout different from
- * the default one may lead either to error or to accuracy failures since unwanted transposition layers may be
- * introduced.
- */
-std::string rankToLegacyLayoutString(const size_t rank) {
-    switch (rank) {
-    case 0:
-        return "**SCALAR**";
-    case 1:
-        return "C";
-    case 2:
-        return "NC";
-    case 3:
-        return "CHW";
-    case 4:
-        return "NCHW";
-    case 5:
-        return "NCDHW";
-    default:
-        return "BLOCKED";
-    }
-}
-
 bool isInitMetadata(const intel_npu::NetworkMetadata& networkMetadata) {
     if (networkMetadata.inputs.size() == 0) {
         return false;
@@ -186,7 +66,6 @@ void storeWeightlessCacheAttribute(const std::shared_ptr<ov::Model>& model) {
 }
 
 }  // namespace
-
 namespace intel_npu {
 
 DriverCompilerAdapter::DriverCompilerAdapter(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct)
@@ -216,15 +95,16 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
 
     _logger.debug("serialize IR");
-    auto serializedIR = serializeIR(model, compilerVersion, maxOpsetVersion);
+    auto serializedIR = intel_npu::driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion);
 
     std::string buildFlags;
     const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
 
     _logger.debug("build flags");
-    buildFlags += serializeIOInfo(model, useIndices);
+    buildFlags += intel_npu::driver_compiler_utils::serializeIOInfo(model, useIndices);
     buildFlags += " ";
-    buildFlags += serializeConfig(config, compilerVersion);
+    buildFlags +=
+        intel_npu::driver_compiler_utils::serializeConfig(config, compilerVersion, is_option_supported("NPU_TURBO"));
 
     _logger.debug("compileIR Build flags : %s", buildFlags.c_str());
 
@@ -421,10 +301,10 @@ ov::SupportedOpsMap DriverCompilerAdapter::query(const std::shared_ptr<const ov:
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
 
     _logger.debug("serialize IR");
-    auto serializedIR = serializeIR(model, compilerVersion, maxOpsetVersion);
+    auto serializedIR = intel_npu::driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion);
 
     std::string buildFlags;
-    buildFlags += serializeConfig(config, compilerVersion);
+    buildFlags += intel_npu::driver_compiler_utils::serializeConfig(config, compilerVersion);
     _logger.debug("queryImpl build flags : %s", buildFlags.c_str());
 
     ov::SupportedOpsMap result;
