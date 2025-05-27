@@ -67,15 +67,14 @@ namespace intel_npu {
 
 PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct)
     : _zeroInitStruct(zeroInitStruct),
-      _logger("PluginCompilerAdapter", Logger::global().level()) {
+      _logger("PluginCompilerAdapter", ov::log::Level::DEBUG) {
     _logger.debug("initialize PluginCompilerAdapter start");
 
     _logger.info("MLIR compiler will be used.");
     // std::string baseName = "npu_mlir_compiler";
     // auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
     //_compiler = loadCompiler(libPath);
-    _compiler = ov::SoPtr<intel_npu::ICompiler>(std::make_shared<intel_npu::VCLCompilerImpl>(),
-                                                VCLApi::getInstance()->getLibrary());
+    _compiler = ov::SoPtr<intel_npu::ICompiler>(VCLCompilerImpl::getInstance(), VCLApi::getInstance()->getLibrary());
 
     if (_zeroInitStruct == nullptr) {
         return;

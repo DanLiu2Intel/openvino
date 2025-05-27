@@ -638,30 +638,23 @@ bool ZeGraphExtWrappers::isOptionSupported(std::string optname) const {
     return false;
 }
 
-bool ZeGraphExtWrappers::isTurboOptionSupported(const ze_graph_compiler_version_info_t& compilerVersion) const {
-#ifdef _WIN32
-    // Driver shall return NO_THROW_ON_UNSUPPORTED_FEATURE as supported to go further here
-    if (_zeroInitStruct->getGraphDdiTable().pfnCompilerIsOptionSupported(_zeroInitStruct->getDevice(),
-                                                                         ZE_NPU_DRIVER_OPTIONS,
-                                                                         "NO_THROW_ON_UNSUPPORTED_FEATURE",
-                                                                         nullptr) != ZE_RESULT_SUCCESS) {
-        if ((compilerVersion.major < 7) || (compilerVersion.major == 7 && compilerVersion.minor < 21)) {
-            return false;
+// Parse the result string of query from foramt <name_0><name_1><name_2> to unordered_set of string
+std::unordered_set<std::string> parseQueryResult(std::vector<char>& data) {
+    std::string dataString(data.begin(), data.end());
+    std::unordered_set<std::string> result;
+    size_t i = 0, start = 0;
+    while (i < dataString.length()) {
+        if (dataString[i] == '<') {
+            start = ++i;
+        } else if (dataString[i] == '>') {
+            std::string temp(dataString.begin() + start, dataString.begin() + i);
+            result.insert(std::move(temp));
+            i++;
+        } else {
+            i++;
         }
-
-        return true;
     }
-#endif
-
-    bool is_supported = false;
-    try {
-        is_supported = isOptionSupported("NPU_TURBO");
-    } catch (...) {
-        // mute it, not critical
-        is_supported = false;
-    }
-
-    return is_supported;
+    return result;
 }
 
 }  // namespace intel_npu
