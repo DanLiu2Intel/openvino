@@ -102,26 +102,38 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
     ov::Tensor tensor = make_tensor_from_vector(networkDesc.compiledNetwork);
     GraphDescriptor graphDesc;
 
+    NetworkMetadata networkMeta;
     if (_zeGraphExt) {
         // Depending on the config, we may get an error when trying to get the graph handle from the compiled
         // network
         try {
-            graphDesc = _zeGraphExt->getGraphDescriptor(tensor.data(), tensor.get_byte_size());
+            graphHandle =
+                _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(tensor.data()), tensor.get_byte_size());
+
+            networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
+            networkMeta.name = model->get_friendly_name();
         } catch (...) {
             _logger.info("Failed to obtain the level zero graph handle. Inference requests for this model are not "
                          "allowed. Only exports are available");
         }
     }
+    return std::make_shared<Graph>(_zeGraphExt,
+                                   _zeroInitStruct,
+                                   graphHandle,
+                                   std::move(networkMeta),
+                                   std::move(tensor),
+                                   /* blobAllocatedByPlugin = */ false,
+                                   config,
+                                   _compiler);
 
-    return std::make_shared<Graph>(
-        _zeGraphExt,
-        _zeroInitStruct,
-        graphDesc,
-        std::move(networkDesc.metadata),
-        std::move(tensor),
-        config,
-        /* persistentBlob = */ true,  // exporting the blob shall be available in such a scenario
-        _compiler);
+    // return std::make_shared<Graph>(_zeGraphExt,
+    //                                _zeroInitStruct,
+    //                                graphHandle,
+    //                                std::move(networkDesc.metadata),
+    //                                std::move(tensor),
+    //                                /* blobAllocatedByPlugin = */ false,
+    //                                config,
+    //                                _compiler);
 }
 
 std::shared_ptr<IGraph> PluginCompilerAdapter::compileWS(const std::shared_ptr<ov::Model>& model,
@@ -267,8 +279,10 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
 
     GraphDescriptor mainGraphDesc;
 
+    NetworkMetadata networkMeta;
     if (_zeGraphExt) {
         mainGraphDesc = _zeGraphExt->getGraphDescriptor(mainBlob.data(), mainBlob.get_byte_size());
+        graphHandle = _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(blob.data()), blob.get_byte_size());
     }
 
     _logger.debug("main schedule parse end");
