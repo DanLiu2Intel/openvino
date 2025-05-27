@@ -638,6 +638,7 @@ bool ZeGraphExtWrappers::isOptionSupported(std::string optname) const {
     return false;
 }
 
+
 bool ZeGraphExtWrappers::isTurboOptionSupported(const ze_graph_compiler_version_info_t& compilerVersion) const {
 #ifdef _WIN32
     // Driver shall return NO_THROW_ON_UNSUPPORTED_FEATURE as supported to go further here
@@ -662,6 +663,25 @@ bool ZeGraphExtWrappers::isTurboOptionSupported(const ze_graph_compiler_version_
     }
 
     return is_supported;
+}
+
+// Parse the result string of query from foramt <name_0><name_1><name_2> to unordered_set of string
+std::unordered_set<std::string> parseQueryResult(std::vector<char>& data) {
+    std::string dataString(data.begin(), data.end());
+    std::unordered_set<std::string> result;
+    size_t i = 0, start = 0;
+    while (i < dataString.length()) {
+        if (dataString[i] == '<') {
+            start = ++i;
+        } else if (dataString[i] == '>') {
+            std::string temp(dataString.begin() + start, dataString.begin() + i);
+            result.insert(std::move(temp));
+            i++;
+        } else {
+            i++;
+        }
+    }
+    return result;
 }
 
 }  // namespace intel_npu
