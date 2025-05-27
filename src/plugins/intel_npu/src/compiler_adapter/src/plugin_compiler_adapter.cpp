@@ -101,26 +101,38 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
     ov::Tensor tensor = make_tensor_from_vector(networkDesc.compiledNetwork);
     ze_graph_handle_t graphHandle = nullptr;
 
+    NetworkMetadata networkMeta;
     if (_zeGraphExt) {
         // Depending on the config, we may get an error when trying to get the graph handle from the compiled
         // network
         try {
             graphHandle =
                 _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(tensor.data()), tensor.get_byte_size());
+
+            networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
+            networkMeta.name = model->get_friendly_name();
         } catch (...) {
             _logger.info("Failed to obtain the level zero graph handle. Inference requests for this model are not "
                          "allowed. Only exports are available");
         }
     }
-
     return std::make_shared<Graph>(_zeGraphExt,
                                    _zeroInitStruct,
                                    graphHandle,
-                                   std::move(networkDesc.metadata),
+                                   std::move(networkMeta),
                                    std::move(tensor),
                                    /* blobAllocatedByPlugin = */ false,
                                    config,
                                    _compiler);
+
+    // return std::make_shared<Graph>(_zeGraphExt,
+    //                                _zeroInitStruct,
+    //                                graphHandle,
+    //                                std::move(networkDesc.metadata),
+    //                                std::move(tensor),
+    //                                /* blobAllocatedByPlugin = */ false,
+    //                                config,
+    //                                _compiler);
 }
 
 std::shared_ptr<IGraph> PluginCompilerAdapter::compileWS(const std::shared_ptr<ov::Model>& model,
@@ -268,9 +280,10 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
 
     ze_graph_handle_t graphHandle = nullptr;
 
+    NetworkMetadata networkMeta;
     if (_zeGraphExt) {
-        graphHandle =
-            _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(mainBlob.data()), mainBlob.get_byte_size());
+        graphHandle = _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(blob.data()), blob.get_byte_size());
+        networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
     }
 
     _logger.debug("main schedule parse end");
