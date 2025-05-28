@@ -135,10 +135,12 @@ public:
     }
 
     void SetUp() override {
+        std::cout << "-------SetUp times----------" << std::endl;
         std::tie(target_device, m_configuration) = this->GetParam();
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
 
-        m_initStruct = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+        // m_initStruct = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+        m_initStruct = ::intel_npu::ZeroInitStructsHolder::getInstance();
         if (!m_initStruct) {
             GTEST_SKIP() << "ZeroInitStructsHolder init failed, ZeroInitStructsHolder is a nullptr";
         }
@@ -171,7 +173,7 @@ protected:
     std::shared_ptr<ov::Core> m_core = utils::PluginCache::get().core();
     ov::AnyMap m_configuration;
     std::shared_ptr<ov::Model> m_function;
-    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> m_initStruct;
+    std::shared_ptr<::intel_npu::ZeroInitStructsHolder> m_initStruct;////为什么加了const反而 = 不匹配了呢
     std::string m_cachedir;
 };
 
@@ -256,18 +258,22 @@ SerializedIR CompileAndDriverCaching::serializeIR(const std::shared_ptr<const ov
 
 TEST_P(CompileAndDriverCaching, CompilationCache) {
     // ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();// seems no usful
-
+    /// init config
     auto options = std::make_shared<::intel_npu::OptionsDesc>();
     ::intel_npu::Config ConfigInfo(options);
     const std::map<std::string, std::string> localPropertiesMap = any_copy(m_configuration);
     auto localConfig = merge_configs(ConfigInfo, localPropertiesMap);
 
+
+    /// get flages
     uint32_t flags = ZE_GRAPH_FLAG_NONE;
     const auto set_cache_dir = localConfig.get<::intel_npu::CACHE_DIR>();
     if (!set_cache_dir.empty() || localConfig.get<::intel_npu::BYPASS_UMD_CACHING>()) {
         flags = flags | ZE_GRAPH_FLAG_DISABLE_CACHING;
     }
 
+
+    ///get model
     m_function = getConstantGraph();
     auto compilerProperties = m_initStruct->getCompilerProperties();
     const ze_graph_compiler_version_info_t& compilerVersion = compilerProperties.compilerVersion;
@@ -314,6 +320,8 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
                                                         &desc,
                                                         &graphHandle,
                                                         &graphBuildLogHandle);
+    std::cout << "   ###1) frst compile---result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is " << uint64_t(result) << std::endl;
+
     /// after compile, property check
     std::cout << "-NN1-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
     printGraphProperties(graphProperties);
@@ -322,8 +330,7 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
     std::cout << "-NN3-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
     printGraphProperties(graphProperties);
     std::cout << "-NN4-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-
-    std::cout << "   3) result of _zerom_initStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(result2) << std::endl;
+    std::cout << "   3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(result2) << std::endl;
     //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
     //    #define ZE_BIT( _i )  ( 1 << _i )
 
@@ -339,17 +346,19 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
                                                         &desc,
                                                         &graphHandle,
                                                         &graphBuildLogHandle);
+    std::cout << "   ###3) frst compile---result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is " << uint64_t(result3) << std::endl;
     /// after compile, property check
     std::cout << "-NN1-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
     printGraphProperties(graphProperties);
     std::cout << "-NN2-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
     auto result4 = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
+    std::cout << "   3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(result4) << std::endl;
+
     std::cout << "-NN3-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
     printGraphProperties(graphProperties);
     std::cout << "-NN4-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
 
-    std::cout << "   3) result of _zerom_initStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(result4) << std::endl;
-    //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
+        //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
     //    #define ZE_BIT( _i )  ( 1 << _i )
 
     std::cout << "   4) graphProperties.flags is " << graphProperties.flags << std::endl;

@@ -459,6 +459,36 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         _logger.warning("------------------------------------------------------");
         std::string log2 = zeroUtils::getLatestBuildError(_zeroInitStruct->getGraphDdiTable());//pfnBuildLogGetString
         _logger.warning("  2) getLatestBuildError's log: %s", log2.c_str());
+
+        std::cout << "---------------Run again------------------------" <<std::endl;
+        ze_graph_handle_t graphHandle_2ctemp = nullptr;
+        ze_graph_properties_3_t graphProperties_2c = {};
+        printGraphProperties(graphProperties_2c);
+
+        // Create querynetwork handle
+        ze_graph_build_log_handle_t graphBuildLogHandle_2c = nullptr;
+        auto result2c = _zeroInitStruct->getGraphDdiTable().pfnCreate3(_zeroInitStruct->getContext(),
+                                                                _zeroInitStruct->getDevice(),
+                                                                &desc,
+                                                                &graphHandle_2ctemp,
+                                                                &graphBuildLogHandle_2c);
+        THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result2c, _zeroInitStruct->getGraphDdiTable());
+
+
+        auto result2 = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(graphHandle_2ctemp, &graphProperties_2c);
+        std::cout << "-check the status of running pfnGetProperties3" << result2c << std::endl;
+        if (result2 != ZE_RESULT_SUCCESS) {
+            _logger.error("!!!!!!2Failed to get graph properties, pfnGetProperties3 result: %s, code %#X",
+                          ze_result_to_string(result2).c_str(),
+                          uint64_t(result2c));
+
+            std::cout << "!!!!!!2Failed to get graph properties, pfnGetProperties3 result " << ze_result_to_string(result2).c_str() <<  " --- " << uint64_t(result2) << std::endl;
+        } else {
+            std::cout << "-222-printGraphProperties after pfnGetProperties3------start-------------- (desc.flags should be same)" << desc.flags << std::endl;
+            printGraphProperties(graphProperties_2c);
+            std::cout << "-2222-printGraphProperties after pfnGetProperties3-------end-------------- (desc.flags should be same)" << desc.flags << std::endl;
+        }
+
     }
     return graphHandle;
 }
