@@ -475,14 +475,14 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
         THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result2c, _zeroInitStruct->getGraphDdiTable());
 
 
-        auto result2 = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(graphHandle_2ctemp, &graphProperties_2c);
-        std::cout << "-check the status of running pfnGetProperties3" << result2c << std::endl;
-        if (result2 != ZE_RESULT_SUCCESS) {
+        auto result2c2 = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(graphHandle_2ctemp, &graphProperties_2c);
+        std::cout << "-check the status of running pfnGetProperties3" << result2c2 << std::endl;
+        if (result2c2 != ZE_RESULT_SUCCESS) {
             _logger.error("!!!!!!2Failed to get graph properties, pfnGetProperties3 result: %s, code %#X",
-                          ze_result_to_string(result2).c_str(),
-                          uint64_t(result2c));
+                          ze_result_to_string(result2c2).c_str(),
+                          uint64_t(result2c2));
 
-            std::cout << "!!!!!!2Failed to get graph properties, pfnGetProperties3 result " << ze_result_to_string(result2).c_str() <<  " --- " << uint64_t(result2) << std::endl;
+            std::cout << "!!!!!!2Failed to get graph properties, pfnGetProperties3 result " << ze_result_to_string(result2c2).c_str() <<  " --- " << uint64_t(result2c2) << std::endl;
         } else {
             std::cout << "-222-printGraphProperties after pfnGetProperties3------start-------------- (desc.flags should be same)" << desc.flags << std::endl;
             printGraphProperties(graphProperties_2c);
