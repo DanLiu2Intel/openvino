@@ -19,6 +19,10 @@
 #include "ir_serializer.hpp"
 #include "openvino/core/model.hpp"
 
+#include "openvino/opsets/opset8.hpp"
+#include "openvino/core/node_output.hpp"
+#include "openvino/opsets/opset1.hpp"
+
 namespace {
 
 constexpr std::string_view INPUTS_PRECISIONS_KEY = "--inputs_precisions";
@@ -161,6 +165,25 @@ DriverCompilerAdapter::DriverCompilerAdapter(const std::shared_ptr<ZeroInitStruc
                  ZE_MINOR_VERSION(graphExtVersion));
 }
 
+
+using ResultVector = std::vector<std::shared_ptr<ov::op::v0::Result>>;
+using ParameterVector = std::vector<std::shared_ptr<ov::op::v0::Parameter>>;
+std::shared_ptr<ov::Model> getConstantGraph() {
+    ResultVector results;
+    ParameterVector params;
+    auto op = std::make_shared<ov::op::v1::Add>(ov::opset8::Constant::create(ov::element::i64, {1}, {1}),
+                                                ov::opset8::Constant::create(ov::element::i64, {1}, {1}));
+    op->set_friendly_name("Add");
+
+    auto res = std::make_shared<ov::op::v0::Result>(op);
+    auto now = std::chrono::system_clock::now();
+    auto timeStamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+    res->set_friendly_name("Result" + std::to_string(timeStamp));
+    res->get_output_tensor(0).set_names({"tensor_output"});
+    results.push_back(res);
+    return std::make_shared<ov::Model>(results, params);
+}
+
 std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<const ov::Model>& model,
                                                        const Config& config) const {
     OV_ITT_TASK_CHAIN(COMPILE_BLOB, itt::domains::NPUPlugin, "DriverCompilerAdapter", "compile");
@@ -170,13 +193,14 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
 
     _logger.debug("serialize IR");
-    auto serializedIR = serializeIR(model, compilerVersion, maxOpsetVersion);
+    auto model2 = getConstantGraph();
+    auto serializedIR = serializeIR(model2, compilerVersion, maxOpsetVersion);
 
     std::string buildFlags;
     const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
 
     _logger.debug("build flags");
-    buildFlags += serializeIOInfo(model, useIndices);
+    buildFlags += serializeIOInfo(model2, useIndices);
     buildFlags += " ";
     buildFlags += serializeConfig(config, compilerVersion);
 
@@ -195,7 +219,7 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
 
     OV_ITT_TASK_NEXT(COMPILE_BLOB, "getNetworkMeta");
     auto networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
-    networkMeta.name = model->get_friendly_name();
+    networkMeta.name = model2->get_friendly_name();
 
     return std::make_shared<Graph>(_zeGraphExt,
                                    _zeroInitStruct,
@@ -326,6 +350,17 @@ SerializedIR DriverCompilerAdapter::serializeIR(const std::shared_ptr<const ov::
 
 std::string DriverCompilerAdapter::serializeIOInfo(const std::shared_ptr<const ov::Model>& model,
                                                    const bool useIndices) const {
+
+    bool useIndices2 = false;
+    const char* value = std::getenv("SET_UseIndices");
+    if (value != nullptr) {
+            useIndices2 = true;
+            std::cout << "SET_UseIndices2 is set to true" << std::endl;
+    } else {
+       useIndices2 = false;
+       std::cout << "SET_UseIndices2 is not set, using default value false" << std::endl;
+    }
+
     const ov::ParameterVector& parameters = model->get_parameters();
     const ov::ResultVector& results = model->get_results();
 
@@ -355,7 +390,7 @@ std::string DriverCompilerAdapter::serializeIOInfo(const std::shared_ptr<const o
                 inputsLayoutSS << VALUES_SEPARATOR;
             }
 
-            if (useIndices) {
+            if (useIndices && useIndices2) {
                 inputsPrecisionSS << parameterIndex;
                 inputsLayoutSS << parameterIndex;
             } else {
@@ -389,7 +424,7 @@ std::string DriverCompilerAdapter::serializeIOInfo(const std::shared_ptr<const o
             outputsLayoutSS << VALUES_SEPARATOR;
         }
 
-        if (useIndices) {
+        if (useIndices && useIndices2) {
             outputsPrecisionSS << resultIndex;
             outputsLayoutSS << resultIndex;
         } else {

@@ -420,7 +420,7 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                   serializedIR.second.get(),
                                   buildFlags.c_str(),
                                   flags};
-        
+        std::cout << "------------buildFlags: " << buildFlags << std::endl;
         _logger.debug("getGraphHandle - perform pfnCreate3");
 
         ze_graph_properties_3_t graphProperties = {};
