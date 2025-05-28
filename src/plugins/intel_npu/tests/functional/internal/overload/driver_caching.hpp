@@ -251,7 +251,8 @@ SerializedIR CompileAndDriverCaching::serializeIR(const std::shared_ptr<const ov
     return std::make_pair(sizeOfSerializedIR, buffer);
 }
 
-
+///need pass _graphExtVersion 来选择不同的cache 检查 方式
+// need padd _graphExtVersion to choose different cache check method
 
 TEST_P(CompileAndDriverCaching, CompilationCache) {
     // ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();// seems no usful
@@ -287,7 +288,7 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
     // buildFlags += DriverCompilerAdapter::serializeConfig(config, compilerVersion);//可以使用src/plugins/intel_npu/src/compiler_adapter/src/plugin_compiler_adapter.cpp：408中的内容吗
 
 
-    ze_graph_handle_t graphHandle;
+    ze_graph_handle_t graphHandle = nullptr;
     // 这个和 ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();的关系是什么
     ze_graph_desc_2_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
                             nullptr,
@@ -302,13 +303,8 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
     ze_graph_properties_3_t graphProperties = {};
     std::cout << "-N1-before ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
     printGraphProperties(graphProperties);
-    std::cout << "-N2-before ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-    auto result1 = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
-    std::cout << "   0) result of _zerom_initStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(result1) << std::endl;
-    std::cout << "-N3-before ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
-    printGraphProperties(graphProperties);
-    std::cout << "-N4-before ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-    std::cout << "   1) graphProperties.flags is " << graphProperties.flags << std::endl;
+    std::cout << "-N2-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
+    std::cout << "-N3 graphProperties.flags is " << graphProperties.flags << std::endl;
 
     std::cout << "------------------------------------------------------" << std::endl;
 
@@ -319,17 +315,40 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
                                                         &graphHandle,
                                                         &graphBuildLogHandle);
     /// after compile, property check
-    std::cout << "-N1-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+    std::cout << "-NN1-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
     printGraphProperties(graphProperties);
-    std::cout << "-N2-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-    auto result2 = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
-    std::cout << "-N3-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+    std::cout << "-NN2-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
+    auto result2 = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);///fet iss
+    std::cout << "-NN3-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
     printGraphProperties(graphProperties);
-    std::cout << "-N4-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-
-
+    std::cout << "-NN4-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
 
     std::cout << "   3) result of _zerom_initStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(result2) << std::endl;
+    //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
+    //    #define ZE_BIT( _i )  ( 1 << _i )
+
+    std::cout << "   4) graphProperties.flags is " << graphProperties.flags << std::endl;
+
+    std::cout << "--------------------------RUN_AGAIN-------check status---------------------" << std::endl;
+
+
+
+    
+    auto result3 = m_initStruct->getGraphDdiTable().pfnCreate3(m_initStruct->getContext(),
+                                                        m_initStruct->getDevice(),
+                                                        &desc,
+                                                        &graphHandle,
+                                                        &graphBuildLogHandle);
+    /// after compile, property check
+    std::cout << "-NN1-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+    printGraphProperties(graphProperties);
+    std::cout << "-NN2-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
+    auto result4 = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
+    std::cout << "-NN3-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+    printGraphProperties(graphProperties);
+    std::cout << "-NN4-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
+
+    std::cout << "   3) result of _zerom_initStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(result4) << std::endl;
     //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
     //    #define ZE_BIT( _i )  ( 1 << _i )
 

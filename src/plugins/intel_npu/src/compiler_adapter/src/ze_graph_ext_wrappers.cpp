@@ -91,6 +91,45 @@ ov::element::Type_t toOVElementType(const ze_graph_argument_precision_t zeElemen
     }
 }
 
+// print ze_structure_type_graph_ext_t
+const char* getStructureTypeString(ze_structure_type_graph_ext_t stype)
+{
+    switch (stype)
+    {
+    case ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES: return "ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES";
+    case ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL: return "ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL";
+    case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA: return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA";
+    case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED";
+    case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC";
+    default: return "Unknown";
+    }
+}
+
+// print ze_graph_init_stage_t
+const char* getInitStageString(ze_graph_init_stage_t stage)
+{
+    switch (stage)
+    {
+    case ZE_GRAPH_STAGE_COMMAND_LIST_INITIALIZE: return "ZE_GRAPH_STAGE_COMMAND_LIST_INITIALIZE";
+    case ZE_GRAPH_STAGE_INITIALIZE: return "ZE_GRAPH_STAGE_INITIALIZE";
+    case ZE_GRAPH_STAGE_FORCE_UINT32: return "ZE_GRAPH_STAGE_FORCE_UINT32";
+    default: return "Unknown";
+    }
+}
+
+// print ze_graph_properties_3_t
+void printGraphProperties(const ze_graph_properties_3_t& graphProperties)
+{
+    std::cout << "stype: " << getStructureTypeString(graphProperties.stype) << std::endl;
+    std::cout << "pNext: " << graphProperties.pNext << std::endl;
+    std::cout << "numGraphArgs: " << graphProperties.numGraphArgs << std::endl;
+    std::cout << "initStageRequired: " << getInitStageString(graphProperties.initStageRequired) << std::endl;
+    std::cout << "flags: " << graphProperties.flags << std::endl;
+}
+
 }  // namespace
 
 namespace intel_npu {
@@ -383,6 +422,13 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                   flags};
         
         _logger.debug("getGraphHandle - perform pfnCreate3");
+
+        ze_graph_properties_3_t graphProperties = {};
+        std::cout << "-1-printGraphProperties after init------start-------------- (desc.flags should be same)" << desc.flags << std::endl;
+        printGraphProperties(graphProperties);
+        std::cout << "-1-printGraphProperties after init-------end-------------- (desc.flags should be same)" << desc.flags << std::endl;
+
+
         // Create querynetwork handle
         ze_graph_build_log_handle_t graphBuildLogHandle = nullptr;
         auto result = _zeroInitStruct->getGraphDdiTable().pfnCreate3(_zeroInitStruct->getContext(),
@@ -391,6 +437,23 @@ ze_graph_handle_t ZeGraphExtWrappers::getGraphHandle(std::pair<size_t, std::shar
                                                                 &graphHandle,
                                                                 &graphBuildLogHandle);
         THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnCreate3", result, _zeroInitStruct->getGraphDdiTable());
+
+
+        auto result2 = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
+        std::cout << "-check the status of running pfnGetProperties3" << result2 << std::endl;
+        if (result2 != ZE_RESULT_SUCCESS) {
+            _logger.error("!!!!!!Failed to get graph properties, pfnGetProperties3 result: %s, code %#X",
+                          ze_result_to_string(result2).c_str(),
+                          uint64_t(result2));
+
+            std::cout << "!!!!!!Failed to get graph properties, pfnGetProperties3 result " << ze_result_to_string(result2).c_str() <<  " --- " << uint64_t(result2) << std::endl;
+        } else {
+            std::cout << "-2-printGraphProperties after pfnGetProperties3------start-------------- (desc.flags should be same)" << desc.flags << std::endl;
+            printGraphProperties(graphProperties);
+            std::cout << "-2-printGraphProperties after pfnGetProperties3-------end-------------- (desc.flags should be same)" << desc.flags << std::endl;
+        }
+
+
         std::string log1 = zeroUtils::getLatestBuildError2(_zeroInitStruct->getGraphDdiTable(), graphBuildLogHandle);//pfnBuildLogGetString2
         _logger.warning("  1) getLatestBuildError2's log: %s", log1.c_str());
         _logger.warning("------------------------------------------------------");
