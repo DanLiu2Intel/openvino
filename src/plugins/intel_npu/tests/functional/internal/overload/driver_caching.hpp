@@ -85,189 +85,189 @@ void checkedMemcpy(void* destination, size_t destinationSize, void const* source
     memcpy(destination, source, numberOfBytes);
 }
 
-const std::string INPUTS_PRECISIONS_KEY = "--inputs_precisions";
-const std::string INPUTS_LAYOUTS_KEY = "--inputs_layouts";
-const std::string OUTPUTS_PRECISIONS_KEY = "--outputs_precisions";
-const std::string OUTPUTS_LAYOUTS_KEY = "--outputs_layouts";
+// const std::string INPUTS_PRECISIONS_KEY = "--inputs_precisions";
+// const std::string INPUTS_LAYOUTS_KEY = "--inputs_layouts";
+// const std::string OUTPUTS_PRECISIONS_KEY = "--outputs_precisions";
+// const std::string OUTPUTS_LAYOUTS_KEY = "--outputs_layouts";
 
-// <option key>="<option value>"
-const std::string KEY_VALUE_SEPARATOR = "=";
-const std::string VALUE_DELIMITER = "\"";  // marks beginning and end of value
-const std::string NAME_VALUE_SEPARATOR = ":";
-const std::string VALUES_SEPARATOR = " ";
+// // <option key>="<option value>"
+// const std::string KEY_VALUE_SEPARATOR = "=";
+// const std::string VALUE_DELIMITER = "\"";  // marks beginning and end of value
+// const std::string NAME_VALUE_SEPARATOR = ":";
+// const std::string VALUES_SEPARATOR = " ";
 
-std::string ovPrecisionToLegacyPrecisionString(const ov::element::Type& precision) {
-    switch (precision) {
-    case ov::element::Type_t::f16:
-        return "FP16";
-    case ov::element::Type_t::f32:
-        return "FP32";
-    case ov::element::Type_t::f64:
-        return "FP64";
-    case ov::element::Type_t::bf16:
-        return "BF16";
-    case ov::element::Type_t::i4:
-        return "I4";
-    case ov::element::Type_t::i8:
-        return "I8";
-    case ov::element::Type_t::i16:
-        return "I16";
-    case ov::element::Type_t::i32:
-        return "I32";
-    case ov::element::Type_t::i64:
-        return "I64";
-    case ov::element::Type_t::u4:
-        return "U4";
-    case ov::element::Type_t::u8:
-        return "U8";
-    case ov::element::Type_t::u16:
-        return "U16";
-    case ov::element::Type_t::u32:
-        return "U32";
-    case ov::element::Type_t::u64:
-        return "U64";
-    case ov::element::Type_t::u1:
-        return "BIN";
-    case ov::element::Type_t::boolean:
-        return "BOOL";
-    case ov::element::Type_t::dynamic:
-        return "DYNAMIC";
-    default:
-        OPENVINO_THROW("Incorrect precision: ", precision);
-    }
-}
+// std::string ovPrecisionToLegacyPrecisionString(const ov::element::Type& precision) {
+//     switch (precision) {
+//     case ov::element::Type_t::f16:
+//         return "FP16";
+//     case ov::element::Type_t::f32:
+//         return "FP32";
+//     case ov::element::Type_t::f64:
+//         return "FP64";
+//     case ov::element::Type_t::bf16:
+//         return "BF16";
+//     case ov::element::Type_t::i4:
+//         return "I4";
+//     case ov::element::Type_t::i8:
+//         return "I8";
+//     case ov::element::Type_t::i16:
+//         return "I16";
+//     case ov::element::Type_t::i32:
+//         return "I32";
+//     case ov::element::Type_t::i64:
+//         return "I64";
+//     case ov::element::Type_t::u4:
+//         return "U4";
+//     case ov::element::Type_t::u8:
+//         return "U8";
+//     case ov::element::Type_t::u16:
+//         return "U16";
+//     case ov::element::Type_t::u32:
+//         return "U32";
+//     case ov::element::Type_t::u64:
+//         return "U64";
+//     case ov::element::Type_t::u1:
+//         return "BIN";
+//     case ov::element::Type_t::boolean:
+//         return "BOOL";
+//     case ov::element::Type_t::dynamic:
+//         return "DYNAMIC";
+//     default:
+//         OPENVINO_THROW("Incorrect precision: ", precision);
+//     }
+// }
 
-std::string rankToLegacyLayoutString(const size_t rank) {
-    switch (rank) {
-    case 0:
-        return "**SCALAR**";
-    case 1:
-        return "C";
-    case 2:
-        return "NC";
-    case 3:
-        return "CHW";
-    case 4:
-        return "NCHW";
-    case 5:
-        return "NCDHW";
-    default:
-        return "BLOCKED";
-    }
-}
+// std::string rankToLegacyLayoutString(const size_t rank) {
+//     switch (rank) {
+//     case 0:
+//         return "**SCALAR**";
+//     case 1:
+//         return "C";
+//     case 2:
+//         return "NC";
+//     case 3:
+//         return "CHW";
+//     case 4:
+//         return "NCHW";
+//     case 5:
+//         return "NCDHW";
+//     default:
+//         return "BLOCKED";
+//     }
+// }
 
-std::string serializeIOInfo(const std::shared_ptr<const ov::Model>& model, const bool useIndices = false) {
-    const ov::ParameterVector& parameters = model->get_parameters();
-    const ov::ResultVector& results = model->get_results();
+// std::string serializeIOInfo(const std::shared_ptr<const ov::Model>& model, const bool useIndices = false) {
+//     const ov::ParameterVector& parameters = model->get_parameters();
+//     const ov::ResultVector& results = model->get_results();
 
-    std::printf("Inputs count: %zu, Outputs count: %zu\n", parameters.size(), results.size());
+//     std::printf("Inputs count: %zu, Outputs count: %zu\n", parameters.size(), results.size());
 
-    std::stringstream inputsPrecisionSS;
-    std::stringstream inputsLayoutSS;
-    std::stringstream outputsPrecisionSS;
-    std::stringstream outputsLayoutSS;
+//     std::stringstream inputsPrecisionSS;
+//     std::stringstream inputsLayoutSS;
+//     std::stringstream outputsPrecisionSS;
+//     std::stringstream outputsLayoutSS;
 
-    inputsPrecisionSS << INPUTS_PRECISIONS_KEY << KEY_VALUE_SEPARATOR << VALUE_DELIMITER;
-    inputsLayoutSS << INPUTS_LAYOUTS_KEY << KEY_VALUE_SEPARATOR << VALUE_DELIMITER;
+//     inputsPrecisionSS << INPUTS_PRECISIONS_KEY << KEY_VALUE_SEPARATOR << VALUE_DELIMITER;
+//     inputsLayoutSS << INPUTS_LAYOUTS_KEY << KEY_VALUE_SEPARATOR << VALUE_DELIMITER;
 
-    if (!parameters.empty()) {
-        size_t parameterIndex = 0;
+//     if (!parameters.empty()) {
+//         size_t parameterIndex = 0;
 
-        for (const std::shared_ptr<ov::op::v0::Parameter>& parameter : parameters) {
-            const auto precision = parameter->get_element_type();
-            const auto rank = parameter->get_partial_shape().rank().get_length();
-            std::cout << "Parameter: " << parameter->get_friendly_name()
-                      << ", Precision: " << ovPrecisionToLegacyPrecisionString(precision)
-                      << ", Rank: " << rankToLegacyLayoutString(rank) << std::endl;
+//         for (const std::shared_ptr<ov::op::v0::Parameter>& parameter : parameters) {
+//             const auto precision = parameter->get_element_type();
+//             const auto rank = parameter->get_partial_shape().rank().get_length();
+//             std::cout << "Parameter: " << parameter->get_friendly_name()
+//                       << ", Precision: " << ovPrecisionToLegacyPrecisionString(precision)
+//                       << ", Rank: " << rankToLegacyLayoutString(rank) << std::endl;
 
-            if (parameterIndex != 0) {
-                inputsPrecisionSS << VALUES_SEPARATOR;
-                inputsLayoutSS << VALUES_SEPARATOR;
-            }
+//             if (parameterIndex != 0) {
+//                 inputsPrecisionSS << VALUES_SEPARATOR;
+//                 inputsLayoutSS << VALUES_SEPARATOR;
+//             }
 
-            if (useIndices) {
-                inputsPrecisionSS << parameterIndex;
-                inputsLayoutSS << parameterIndex;
-            } else {
-                const std::string& name = parameter->get_friendly_name();
-                std::cout << "Parameter name: " << name << std::endl;
+//             if (useIndices) {
+//                 inputsPrecisionSS << parameterIndex;
+//                 inputsLayoutSS << parameterIndex;
+//             } else {
+//                 const std::string& name = parameter->get_friendly_name();
+//                 std::cout << "Parameter name: " << name << std::endl;
 
-                inputsPrecisionSS << name;
-                inputsLayoutSS << name;
-            }
+//                 inputsPrecisionSS << name;
+//                 inputsLayoutSS << name;
+//             }
 
-            inputsPrecisionSS << NAME_VALUE_SEPARATOR << ovPrecisionToLegacyPrecisionString(precision);
-            inputsLayoutSS << NAME_VALUE_SEPARATOR << rankToLegacyLayoutString(rank);
+//             inputsPrecisionSS << NAME_VALUE_SEPARATOR << ovPrecisionToLegacyPrecisionString(precision);
+//             inputsLayoutSS << NAME_VALUE_SEPARATOR << rankToLegacyLayoutString(rank);
 
-            ++parameterIndex;
-        }
-    }
+//             ++parameterIndex;
+//         }
+//     }
 
-    inputsPrecisionSS << VALUE_DELIMITER;
-    inputsLayoutSS << VALUE_DELIMITER;
+//     inputsPrecisionSS << VALUE_DELIMITER;
+//     inputsLayoutSS << VALUE_DELIMITER;
 
-    outputsPrecisionSS << OUTPUTS_PRECISIONS_KEY << KEY_VALUE_SEPARATOR << VALUE_DELIMITER;
-    outputsLayoutSS << OUTPUTS_LAYOUTS_KEY << KEY_VALUE_SEPARATOR << VALUE_DELIMITER;
+//     outputsPrecisionSS << OUTPUTS_PRECISIONS_KEY << KEY_VALUE_SEPARATOR << VALUE_DELIMITER;
+//     outputsLayoutSS << OUTPUTS_LAYOUTS_KEY << KEY_VALUE_SEPARATOR << VALUE_DELIMITER;
 
-   std::cout << "----------1------------: " << inputsPrecisionSS.str() + VALUES_SEPARATOR.data() + inputsLayoutSS.str() + VALUES_SEPARATOR.data() +
-           outputsPrecisionSS.str() + VALUES_SEPARATOR.data() + outputsLayoutSS.str() << std::endl;
+//    std::cout << "----------1------------: " << inputsPrecisionSS.str() + VALUES_SEPARATOR.data() + inputsLayoutSS.str() + VALUES_SEPARATOR.data() +
+//            outputsPrecisionSS.str() + VALUES_SEPARATOR.data() + outputsLayoutSS.str() << std::endl;
 
 
-    size_t resultIndex = 0;
-    for (const std::shared_ptr<ov::op::v0::Result>& result : results) {
-        const auto precision = result->get_element_type();
-        const auto rank = result->get_output_partial_shape(0).rank().get_length();
-        std::cout << "Result: " << result->get_friendly_name()
-                  << ", Precision: " << ovPrecisionToLegacyPrecisionString(precision)
-                  << ", Rank: " << rankToLegacyLayoutString(rank) << std::endl;
+//     size_t resultIndex = 0;
+//     for (const std::shared_ptr<ov::op::v0::Result>& result : results) {
+//         const auto precision = result->get_element_type();
+//         const auto rank = result->get_output_partial_shape(0).rank().get_length();
+//         std::cout << "Result: " << result->get_friendly_name()
+//                   << ", Precision: " << ovPrecisionToLegacyPrecisionString(precision)
+//                   << ", Rank: " << rankToLegacyLayoutString(rank) << std::endl;
 
-        if (resultIndex != 0) {
-            outputsPrecisionSS << VALUES_SEPARATOR;
-            outputsLayoutSS << VALUES_SEPARATOR;
-        }
+//         if (resultIndex != 0) {
+//             outputsPrecisionSS << VALUES_SEPARATOR;
+//             outputsLayoutSS << VALUES_SEPARATOR;
+//         }
 
-        if (useIndices) {
-            outputsPrecisionSS << resultIndex;
-            outputsLayoutSS << resultIndex;
-        } else {
-            const std::string& name = result->get_input_node_ptr(0)->get_friendly_name();
-            std::cout << "Result name: " << name << std::endl;
+//         if (useIndices) {
+//             outputsPrecisionSS << resultIndex;
+//             outputsLayoutSS << resultIndex;
+//         } else {
+//             const std::string& name = result->get_input_node_ptr(0)->get_friendly_name();
+//             std::cout << "Result name: " << name << std::endl;
 
-            outputsPrecisionSS << name;
-            outputsLayoutSS << name;
-        }
+//             outputsPrecisionSS << name;
+//             outputsLayoutSS << name;
+//         }
 
-        outputsPrecisionSS << NAME_VALUE_SEPARATOR << ovPrecisionToLegacyPrecisionString(precision);
-        outputsLayoutSS << NAME_VALUE_SEPARATOR << rankToLegacyLayoutString(rank);
+//         outputsPrecisionSS << NAME_VALUE_SEPARATOR << ovPrecisionToLegacyPrecisionString(precision);
+//         outputsLayoutSS << NAME_VALUE_SEPARATOR << rankToLegacyLayoutString(rank);
 
-        ++resultIndex;
-    }
+//         ++resultIndex;
+//     }
 
-    outputsPrecisionSS << VALUE_DELIMITER;
-    outputsLayoutSS << VALUE_DELIMITER;
+//     outputsPrecisionSS << VALUE_DELIMITER;
+//     outputsLayoutSS << VALUE_DELIMITER;
 
-    std::cout << "----------2------------: " << inputsPrecisionSS.str() + VALUES_SEPARATOR.data() + inputsLayoutSS.str() + VALUES_SEPARATOR.data() +
-           outputsPrecisionSS.str() + VALUES_SEPARATOR.data() + outputsLayoutSS.str() << std::endl;
-    // One line without spaces to avoid parsing as config option inside CID
-    return inputsPrecisionSS.str() + VALUES_SEPARATOR.data() + inputsLayoutSS.str() + VALUES_SEPARATOR.data() +
-           outputsPrecisionSS.str() + VALUES_SEPARATOR.data() + outputsLayoutSS.str();
-}
+//     std::cout << "----------2------------: " << inputsPrecisionSS.str() + VALUES_SEPARATOR.data() + inputsLayoutSS.str() + VALUES_SEPARATOR.data() +
+//            outputsPrecisionSS.str() + VALUES_SEPARATOR.data() + outputsLayoutSS.str() << std::endl;
+//     // One line without spaces to avoid parsing as config option inside CID
+//     return inputsPrecisionSS.str() + VALUES_SEPARATOR.data() + inputsLayoutSS.str() + VALUES_SEPARATOR.data() +
+//            outputsPrecisionSS.str() + VALUES_SEPARATOR.data() + outputsLayoutSS.str();
+// }
 
-std::string configMapToString(const std::map<std::string, Any>& config) {
-    std::cout << "Config map size: " << config.size() << std::endl;
-    if (config.empty()) {
-        return "";
-    }
+// std::string configMapToString(const std::map<std::string, Any>& config) {
+//     std::cout << "Config map size: " << config.size() << std::endl;
+//     if (config.empty()) {
+//         return "";
+//     }
 
-    std::ostringstream oss;
-    oss << "--config ";
+//     std::ostringstream oss;
+//     oss << "--config ";
 
-    for (const auto& pair : config) {
-        oss << pair.first << "=\"" << pair.second.as<std::string>() << "\" ";
-    }
+//     for (const auto& pair : config) {
+//         oss << pair.first << "=\"" << pair.second.as<std::string>() << "\" ";
+//     }
 
-    return oss.str();
-}
+//     return oss.str();
+// }
 
 // print ze_structure_type_graph_ext_t
 const char* getStructureTypeString(ze_structure_type_graph_ext_t stype)
@@ -454,12 +454,26 @@ SerializedIR CompileAndDriverCaching::serializeIR(const std::shared_ptr<const ov
     return std::make_pair(sizeOfSerializedIR, buffer);
 }
 
-///need pass _graphExtVersion 来选择不同的cache 检查 方式
 // need padd _graphExtVersion to choose different cache check method
+//driver version how to check?
+//linux driver version > 1.5 using status string, > 1.13 using property
+// windows driver version > 1.13  using property
+
+bool checkCacheStatus(const ze_graph_properties_flags_t flag) {
+    // return 0 is compiled
+    // return 1 is cached.  pass value is 1(windows) or 2(linux)
+    return (flag && 1);
+}
 
 TEST_P(CompileAndDriverCaching, CompilationCache) {
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();
+    uint32_t graphDdiExtVersion = graph_ddi_table_ext.version();
+    if (graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_12) {
+        GTEST_SKIP() << "Skipping test for Driver version less than 1.12, current driver version: "
+                        << graphDdiExtVersion;
+    }
     // ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();// seems no usful
-    /// init config
+    /// init config to init flags
     auto options = std::make_shared<::intel_npu::OptionsDesc>();
     options->add<::intel_npu::CACHE_DIR>();
     options->add<::intel_npu::BYPASS_UMD_CACHING>();
@@ -468,7 +482,7 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
     auto localConfig = merge_configs(ConfigInfo, localPropertiesMap);
 
 
-    /// get flages  可以直接根据config来传递
+    /// get flages  just setting true or false by config
     uint32_t flags = ZE_GRAPH_FLAG_NONE;
     const auto set_cache_dir = localConfig.get<::intel_npu::CACHE_DIR>();
     if (!set_cache_dir.empty() || localConfig.get<::intel_npu::BYPASS_UMD_CACHING>()) {
@@ -486,8 +500,7 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
     // auto serializedIR = DriverCompilerAdapter::serializeIR(m_function, compilerVersion, maxOpsetVersion);
 
     // std::string buildFlags = "--inputs_precisions=\"A:fp16 B:fp16 C:fp16\" --inputs_layouts=\"A:C B:C C:C\" --outputs_precisions=\"Y:fp16\" --outputs_layouts=\"Y:C\" --config NPU_PLATFORM=\"4000\" DEVICE_ID=\"NPU.4000\" NPU_COMPILATION_MODE=\"DefaultHW\"";
-    
-    bool useIndices = false;
+    bool useIndices = false;  ///default is true in plugin.
     const char* value = std::getenv("SET_UseIndices");
     if (value != nullptr) {
         useIndices = true;
@@ -497,28 +510,29 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
        std::cout << "SET_UseIndices is not set, using default value false" << std::endl;
     }
 
-
     std::string buildFlags = "--inputs_precisions=\"\" --inputs_layouts=\"\" --outputs_precisions=\"0:I64\" --outputs_layouts=\"0:C\"";
     // std::string buildFlags;
+    /// using api to porcess seem not nessary, just use string
+    // //(0)
     // buildFlags += serializeIOInfo(m_function, useIndices);
     // buildFlags += " "; 
-    // buildFlags = configMapToString(m_configuration);
-    std::cout << "  v is " << serializeIOInfo(m_function, useIndices) << std::endl;
-    std::cout << "  configMapToString(m_configuration) is " << configMapToString(m_configuration) << std::endl;
-    std::cout << "<><>buildFlags is " << buildFlags << std::endl;
+    // buildFlags = configMapToString(m_configuration); //config pass by map
+
+    // //(1)
     // const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
-    // buildFlags += serializeIOInfo(m_function, useIndices);  //可以使用src/plugins/intel_npu/src/compiler_adapter/src/plugin_compiler_adapter.cpp：319中的内容吗
-    // buildFlags += " ";
-    // buildFlags += serializeConfig(config, compilerVersion);//可以使用src/plugins/intel_npu/src/compiler_adapter/src/plugin_compiler_adapter.cpp：408中的内容吗
+    // buildFlags += serializeIOInfo(m_function, useIndices); 
+    // buildFlags += " "; 
+    // buildFlags += serializeConfig(config, compilerVersion);
     
-    
-    // buildFlags += DriverCompilerAdapter::serializeIOInfo(m_function, useIndices);  //可以使用src/plugins/intel_npu/src/compiler_adapter/src/plugin_compiler_adapter.cpp：319中的内容吗
+    // //(2)
+    // const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
+    // buildFlags += DriverCompilerAdapter::serializeIOInfo(m_function, useIndices);
     // buildFlags += " ";
-    // buildFlags += DriverCompilerAdapter::serializeConfig(config, compilerVersion);//可以使用src/plugins/intel_npu/src/compiler_adapter/src/plugin_compiler_adapter.cpp：408中的内容吗
+    // buildFlags += DriverCompilerAdapter::serializeConfig(config, compilerVersion);
+    std::cout << "  (functiontest) buildFlags is " << buildFlags << std::endl;
 
 
     ze_graph_handle_t graphHandle = nullptr;
-    // 这个和 ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();的关系是什么
     ze_graph_desc_2_t desc = {ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES,
                             nullptr,
                             ZE_GRAPH_FORMAT_NGRAPH_LITE,
@@ -530,12 +544,12 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
 
     /// before compile, property check
     ze_graph_properties_3_t graphProperties = {};
-    std::cout << "-N1-before ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+    std::cout << " (functiontest) print ze_graph_properties_3_t init empty start--------------" << std::endl;
     printGraphProperties(graphProperties);
-    std::cout << "-N2-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-    std::cout << "-N3 graphProperties.flags is " << graphProperties.flags << std::endl;
+    std::cout << " (functiontest) print ze_graph_properties_3_t init empty, graphProperties.flags is " << graphProperties.flags << std::endl;
+    std::cout << " (functiontest) print ze_graph_properties_3_t init empty end-------------" << std::endl;
 
-    std::cout << "------------------------------------------------------" << std::endl;
+    std::cout << "-----------------------compile 1-------------------------------" << std::endl;
 
 
     auto result = m_initStruct->getGraphDdiTable().pfnCreate3(m_initStruct->getContext(),
@@ -543,149 +557,134 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
                                                         &desc,
                                                         &graphHandle,
                                                         &graphBuildLogHandle);
-    std::cout << "   ###1) frst compile---result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is " << uint64_t(result) << std::endl;
+    std::cout << "   (functiontest) ---frst compile---result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is " << uint64_t(result) << std::endl;
 
     /// after compile, property check
-    std::cout << "-NN1-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+    auto resultProperty = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
+    std::cout << "   (functiontest) ---getproperty---result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(resultProperty) << std::endl;
+    std::cout << " (functiontest) print ze_graph_properties_3_t after compile start--------------" << std::endl;
     printGraphProperties(graphProperties);
-    std::cout << "-NN2-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-    auto result2 = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);///fet iss
-    std::cout << "-NN3-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
-    printGraphProperties(graphProperties);
-    std::cout << "-NN4-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-    std::cout << "   3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(result2) << std::endl;
-    //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
-    //    #define ZE_BIT( _i )  ( 1 << _i )
+    std::cout << " (functiontest) print ze_graph_properties_3_t after compile, graphProperties.flags is " << graphProperties.flags << std::endl;
+    std::cout << " (functiontest) print ze_graph_properties_3_t after compile start--------------" << std::endl;
+    EXPECT_FALSE(checkCacheStatus(graphProperties.flags));
 
-    std::cout << "   4) graphProperties.flags is " << graphProperties.flags << std::endl;
+
+    //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),      ///< graph object is loaded from driver cache
+    //    #define ZE_BIT( _i )  ( 1 << _i )
 
     std::cout << "--------------------------RUN_AGAIN-------check status---------------------" << std::endl;
 
 
-    auto result3 = m_initStruct->getGraphDdiTable().pfnCreate3(m_initStruct->getContext(),
+    auto resultCompile2 = m_initStruct->getGraphDdiTable().pfnCreate3(m_initStruct->getContext(),
                                                         m_initStruct->getDevice(),
                                                         &desc,
                                                         &graphHandle,
                                                         &graphBuildLogHandle);
-    std::cout << "   ###3) frst compile---result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is " << uint64_t(result3) << std::endl;
+    std::cout << "   (functiontest) ---second compile---result of _zeroInitStruct->getGraphDdiTable().pfnCreate3 is " << uint64_t(resultCompile2) << std::endl;
+
     /// after compile, property check
-    std::cout << "-NN1-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
+    auto resultProperty2 = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
+    std::cout << "   (functiontest) ---getproperty---result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(resultProperty2) << std::endl;
+    std::cout << " (functiontest) print ze_graph_properties_3_t after second compile start--------------" << std::endl;
     printGraphProperties(graphProperties);
-    std::cout << "-NN2-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-    auto result4 = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
-    std::cout << "   3) result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(result4) << std::endl;
-
-    std::cout << "-NN3-after ze_graph_properties_3_t init-------start-------------- " << desc.flags << std::endl;
-    printGraphProperties(graphProperties);
-    std::cout << "-NN4-after ze_graph_properties_3_t init-------end-------------- " << desc.flags << std::endl;
-
-        //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
+    std::cout << " (functiontest) print ze_graph_properties_3_t after second compile, graphProperties.flags is " << graphProperties.flags << std::endl;
+    std::cout << " (functiontest) print ze_graph_properties_3_t after second compile start--------------" << std::endl;
+    EXPECT_TRUE(checkCacheStatus(graphProperties.flags));
+    //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
     //    #define ZE_BIT( _i )  ( 1 << _i )
 
-    std::cout << "   4) graphProperties.flags is " << graphProperties.flags << std::endl;
-
-    std::cout << "------------------------------------------------------" << std::endl;
-
-    // ov::CompiledModel execNet;
-    // m_function = getConstantGraph();
-
-    // // first compilation
-    // auto startFirstCompilationTime = std::chrono::high_resolution_clock::now();
-    // OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
-    // std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    // std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
-    // ;
-    // EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored"));
-    // auto endFirstCompilationTime = std::chrono::high_resolution_clock::now();
-    // std::chrono::duration<double> durationFirstCompilation = endFirstCompilationTime - startFirstCompilationTime;
-
-    // // second compilation
-    // auto startSecondCompilationTime = std::chrono::high_resolution_clock::now();
-    // OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
-    // auto endSecondCompilationTime = std::chrono::high_resolution_clock::now();
-    // std::chrono::duration<double> durationSecondCompilation = startSecondCompilationTime - endSecondCompilationTime;
-    // std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-    // std::printf("==[1.2][EmptyConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
-    // EXPECT_TRUE(containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
-
-    // EXPECT_LT(durationSecondCompilation, durationFirstCompilation)
-    //     << "The duration of the second compilation should be less than the first due to UMD Caching.";
+ 
 }
 
-//extension is lower than https://github.com/intel/level-zero-npu-extensions/commit/d16f5d09fd695c1aac0c29524881fec7ccf7d27e will skip this part.
-// TEST_P(CompileAndDriverCaching, CompilationCacheWithEmptyConfig) {
-//     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();
+#ifdef __linux__
+bool containsKey(const AnyMap& map, const std::string& key) {
+    return map.find(key) != map.end();
 
-//     ov::CompiledModel execNet;
-//     m_function = getConstantGraph();
+bool containsCacheStatus(const std::string& str, const std::string cmpstr) {
+    return str.find(cmpstr) != std::string::npos;
+}
 
-//     // first compilation
-//     auto startFirstCompilationTime = std::chrono::high_resolution_clock::now();
-//     OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
-//     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-//     std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
-//     ;
-//     EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored"));
-//     auto endFirstCompilationTime = std::chrono::high_resolution_clock::now();
-//     std::chrono::duration<double> durationFirstCompilation = endFirstCompilationTime - startFirstCompilationTime;
+TEST_P(CompileAndDriverCaching, CompilationCacheWithStatusString) {
+        ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();
+        uint32_t graphDdiExtVersion = graph_ddi_table_ext.version();
+        if (graphDdiExtVersion > ZE_GRAPH_EXT_VERSION_1_12) {
+                        ov::CompiledModel execNet;
+            m_function = getConstantGraph();
 
-//     // second compilation
-//     auto startSecondCompilationTime = std::chrono::high_resolution_clock::now();
-//     OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
-//     auto endSecondCompilationTime = std::chrono::high_resolution_clock::now();
-//     std::chrono::duration<double> durationSecondCompilation = startSecondCompilationTime - endSecondCompilationTime;
-//     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-//     std::printf("==[1.2][EmptyConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
-//     EXPECT_TRUE(containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
+            // first compilation
+            auto startFirstCompilationTime = std::chrono::high_resolution_clock::now();
+            OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
+            std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext);
+            std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
 
-//     EXPECT_LT(durationSecondCompilation, durationFirstCompilation)
-//         << "The duration of the second compilation should be less than the first due to UMD Caching.";
-// }
+            //根据version的不同，检测的方式可能还不一样
+            //check the config if contain ov::cache_dir.name()  or ov::intel_npu::bypass_umd_caching.name()
+            if(containsKey(m_configuration, ov::cache_dir.name()) || containsKey(m_configuration, ov::intel_npu::bypass_umd_caching.name())) {
+                EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") && !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+            } else {
+                EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored"));
+            }
 
-// TEST_P(CompileAndDriverCaching, CompilationCacheWithOVCacheConfig) {
-//     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();
+            auto endFirstCompilationTime = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> durationFirstCompilation = endFirstCompilationTime - startFirstCompilationTime;
 
-//     m_configuration[ov::cache_dir.name()] = "./testCacheDir";
-//     m_cachedir = m_configuration[ov::cache_dir.name()].as<std::string>();
-//     ov::CompiledModel execNet;
-//     m_function = getConstantGraph();
+            // second compilation
+            auto startSecondCompilationTime = std::chrono::high_resolution_clock::now();
+            OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
+            auto endSecondCompilationTime = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> durationSecondCompilation = startSecondCompilationTime - endSecondCompilationTime;
+            std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext);
+            std::printf("==[1.2][EmptyConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
 
-//     // first compilation
-//     OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
-//     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-//     std::printf("==[2.1][OVCacheConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
-//     EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") &&
-//                 !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+            if(containsKey(m_configuration, ov::cache_dir.name()) || containsKey(m_configuration, ov::intel_npu::bypass_umd_caching.name())) {
+                EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") && !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+            } else {
+                EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+            }
 
-//     // second compilation
-//     OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
-//     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-//     std::printf("==[2.2][OVCacheConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
-//     EXPECT_TRUE(!containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") &&
-//                 !containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
-// }
+            EXPECT_LT(durationSecondCompilation, durationFirstCompilation)
+                << "The duration of the second compilation should be less than the first due to UMD Caching.";
+        } else if (graphDdiExtVersion > ZE_GRAPH_EXT_VERSION_1_5 && graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_12) {
+            ov::CompiledModel execNet;
+            m_function = getConstantGraph();
 
-// TEST_P(CompileAndDriverCaching, CompilationCacheWithBypassConfig) {
-//     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();
+            // first compilation
+            auto startFirstCompilationTime = std::chrono::high_resolution_clock::now();
+            OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
+            std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+            std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
 
-//     m_configuration[ov::intel_npu::bypass_umd_caching.name()] = true;
-//     ov::CompiledModel execNet;
-//     m_function = getConstantGraph();
+            //根据version的不同，检测的方式可能还不一样
+            //check the config if contain ov::cache_dir.name()  or ov::intel_npu::bypass_umd_caching.name()
+            if(containsKey(m_configuration, ov::cache_dir.name()) || containsKey(m_configuration, ov::intel_npu::bypass_umd_caching.name())) {
+                EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") && !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+            } else {
+                EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored"));
+            }
 
-//     // first compilation
-//     OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
-//     std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-//     std::printf("==[3.1][bypassConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
-//     EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") &&
-//                 !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+            auto endFirstCompilationTime = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> durationFirstCompilation = endFirstCompilationTime - startFirstCompilationTime;
 
-//     // second compilation
-//     OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
-//     std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
-//     std::printf("==[3.1][bypassConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
-//     EXPECT_TRUE(!containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") &&
-//                 !containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
-// }
+            // second compilation
+            auto startSecondCompilationTime = std::chrono::high_resolution_clock::now();
+            OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
+            auto endSecondCompilationTime = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> durationSecondCompilation = startSecondCompilationTime - endSecondCompilationTime;
+            std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+            std::printf("==[1.2][EmptyConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
+
+            if(containsKey(m_configuration, ov::cache_dir.name()) || containsKey(m_configuration, ov::intel_npu::bypass_umd_caching.name())) {
+                EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") && !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+            } else {
+                EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+            }
+
+            EXPECT_LT(durationSecondCompilation, durationFirstCompilation)
+                << "The duration of the second compilation should be less than the first due to UMD Caching.";
+        }
+}
+#endif
+
 
 }  // namespace behavior
 }  // namespace test
