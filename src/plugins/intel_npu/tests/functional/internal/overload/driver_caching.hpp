@@ -60,10 +60,6 @@ inline std::shared_ptr<ov::Model> getConstantGraph() {
     return std::make_shared<ov::Model>(results, params);
 }
 
-bool containsCacheStatus(const std::string& str, const std::string cmpstr) {
-    return str.find(cmpstr) != std::string::npos;
-}
-
 /**
  * @brief A standard copy function concerning memory segments. Additional checks on the given arguments are performed
  * before copying.
@@ -459,11 +455,17 @@ SerializedIR CompileAndDriverCaching::serializeIR(const std::shared_ptr<const ov
 //linux driver version > 1.5 using status string, > 1.13 using property
 // windows driver version > 1.13  using property
 
+
+bool containsKey(const AnyMap& map, const std::string& key) {
+    return map.find(key) != map.end();
+}
+
 bool checkCacheStatus(const ze_graph_properties_flags_t flag) {
     // return 0 is compiled
     // return 1 is cached.  pass value is 1(windows) or 2(linux)
     return (flag && 1);
 }
+
 
 TEST_P(CompileAndDriverCaching, CompilationCache) {
     ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();
@@ -567,6 +569,16 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
     std::cout << " (functiontest) print ze_graph_properties_3_t after compile, graphProperties.flags is " << graphProperties.flags << std::endl;
     std::cout << " (functiontest) print ze_graph_properties_3_t after compile start--------------" << std::endl;
     EXPECT_FALSE(checkCacheStatus(graphProperties.flags));
+    #ifdef __linux__
+        std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+        std::printf("==[1][] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
+        if(containsKey(m_configuration, ov::cache_dir.name()) || containsKey(m_configuration, ov::intel_npu::bypass_umd_caching.name())) {
+            EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") && !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
+        } else {
+            EXPECT_TRUE(containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored"));
+        }
+    #endif
+    //add linux check status?
 
 
     //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),      ///< graph object is loaded from driver cache
@@ -592,13 +604,18 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
     EXPECT_TRUE(checkCacheStatus(graphProperties.flags));
     //    ZE_GRAPH_PROPERTIES_FLAG_LOADED_FROM_CACHE = ZE_BIT(0),       ///< graph object is loaded from driver cache
     //    #define ZE_BIT( _i )  ( 1 << _i )
-
- 
+        #ifdef __linux__
+        std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+        std::printf("==[2][] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
+        if(containsKey(m_configuration, ov::cache_dir.name()) || containsKey(m_configuration, ov::intel_npu::bypass_umd_caching.name())) {
+            EXPECT_TRUE(!containsCacheStatus(secondCompilationDriverLog, "cache_status_t::stored") && !containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
+        } else {
+            EXPECT_TRUE(containsCacheStatus(secondCompilationDriverLog, "cache_status_t::found"));
+        }
+    #endif 
 }
 
 #ifdef __linux__
-bool containsKey(const AnyMap& map, const std::string& key) {
-    return map.find(key) != map.end();
 
 bool containsCacheStatus(const std::string& str, const std::string cmpstr) {
     return str.find(cmpstr) != std::string::npos;
@@ -614,7 +631,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithStatusString) {
             // first compilation
             auto startFirstCompilationTime = std::chrono::high_resolution_clock::now();
             OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
-            std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext);
+            std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
             std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
 
             //check the config if contain ov::cache_dir.name()  or ov::intel_npu::bypass_umd_caching.name()
@@ -632,7 +649,7 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithStatusString) {
             OV_ASSERT_NO_THROW(execNet = m_core->compile_model(m_function, target_device, m_configuration));
             auto endSecondCompilationTime = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> durationSecondCompilation = startSecondCompilationTime - endSecondCompilationTime;
-            std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext);
+            std::string secondCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
             std::printf("==[1.2][EmptyConfig] driver log content : #%s#\n", secondCompilationDriverLog.c_str());
 
             if(containsKey(m_configuration, ov::cache_dir.name()) || containsKey(m_configuration, ov::intel_npu::bypass_umd_caching.name())) {
