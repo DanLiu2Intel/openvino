@@ -565,7 +565,7 @@ TEST_P(CompileAndDriverCaching, CompilationCache) {
     auto resultProperty = m_initStruct->getGraphDdiTable().pfnGetProperties3(graphHandle, &graphProperties);
     std::cout << "   (functiontest) ---getproperty---result of _zeroInitStruct->getGraphDdiTable().pfnGetProperties3 is " << uint64_t(resultProperty) << std::endl;
     std::cout << " (functiontest) print ze_graph_properties_3_t after compile start--------------" << std::endl;
-    printGraphProperties(graphProperties);
+    printGraphProperties(graphProperties);////no change, why???
     std::cout << " (functiontest) print ze_graph_properties_3_t after compile, graphProperties.flags is " << graphProperties.flags << std::endl;
     std::cout << " (functiontest) print ze_graph_properties_3_t after compile start--------------" << std::endl;
     EXPECT_FALSE(checkCacheStatus(graphProperties.flags));
