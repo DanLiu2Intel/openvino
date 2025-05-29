@@ -617,7 +617,6 @@ TEST_P(CompileAndDriverCaching, CompilationCacheWithStatusString) {
             std::string firstCompilationDriverLog = ::intel_npu::zeroUtils::getLatestBuildError2(graph_ddi_table_ext);
             std::printf("==[1.1][EmptyConfig] driver log content : #%s#\n", firstCompilationDriverLog.c_str());
 
-            //根据version的不同，检测的方式可能还不一样
             //check the config if contain ov::cache_dir.name()  or ov::intel_npu::bypass_umd_caching.name()
             if(containsKey(m_configuration, ov::cache_dir.name()) || containsKey(m_configuration, ov::intel_npu::bypass_umd_caching.name())) {
                 EXPECT_TRUE(!containsCacheStatus(firstCompilationDriverLog, "cache_status_t::stored") && !containsCacheStatus(firstCompilationDriverLog, "cache_status_t::found"));
