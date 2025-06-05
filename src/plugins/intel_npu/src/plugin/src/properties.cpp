@@ -379,18 +379,27 @@ void Properties::registerPluginProperties() {
     TRY_REGISTER_SIMPLE_PROPERTY(ov::workload_type, WORKLOAD_TYPE);
     TRY_REGISTER_SIMPLE_PROPERTY(ov::hint::store_logger_log, STORE_LOGGER_LOG);
 
-    // 1.2. Special cases
-    // ==================
-    if (_pType == PropertiesType::PLUGIN && _metrics != nullptr) {
-        // These properties require different handling in plugin vs compiled_model
-        TRY_REGISTER_SIMPLE_PROPERTY(ov::workload_type, WORKLOAD_TYPE);
-        // plugin-only
-        TRY_REGISTER_CUSTOMFUNC_PROPERTY(ov::intel_npu::stepping, STEPPING, [&](const Config& config) {
-            if (!config.has<STEPPING>()) {
-                const auto specifiedDeviceName = get_specified_device_name(config);
-                return static_cast<int64_t>(_metrics->GetSteppingNumber(specifiedDeviceName));
-            } else {
-                return config.get<STEPPING>();
+    TRY_REGISTER_CUSTOMFUNC_PROPERTY(ov::intel_npu::stepping, STEPPING, [&](const Config& config) {
+        if (!config.has<STEPPING>()) {
+            const auto specifiedDeviceName = get_specified_device_name(config);
+            return static_cast<int64_t>(_metrics->GetSteppingNumber(specifiedDeviceName));
+        } else {
+            return config.get<STEPPING>();
+        }
+    });
+    TRY_REGISTER_CUSTOMFUNC_PROPERTY(ov::intel_npu::max_tiles, MAX_TILES, [&](const Config& config) {
+        if (!config.has<MAX_TILES>()) {
+            const auto specifiedDeviceName = get_specified_device_name(config);
+            return static_cast<int64_t>(_metrics->GetMaxTiles(specifiedDeviceName));
+        } else {
+            return config.get<MAX_TILES>();
+        }
+    });
+
+    TRY_REGISTER_VARPUB_PROPERTY(ov::intel_npu::run_inferences_sequentially, RUN_INFERENCES_SEQUENTIALLY, [&] {
+        if (_backend && _backend->getInitStructs()) {
+            if (_backend->getInitStructs()->getCommandQueueDdiTable().version() >= ZE_MAKE_VERSION(1, 1)) {
+                return true;
             }
         }
         return false;
