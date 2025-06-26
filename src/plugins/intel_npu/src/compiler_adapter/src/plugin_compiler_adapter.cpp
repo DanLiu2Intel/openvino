@@ -290,12 +290,9 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
     network.shrink_to_fit();
     _logger.debug("parse end");
 
-<<<<<<< HEAD
     GraphDescriptor mainGraphDesc;
 
     NetworkMetadata networkMeta;
-=======
->>>>>>> 22c2f4af7f (Use ENABLE_VCL_FOR_COMPILER as switch and download lib)
     if (_zeGraphExt) {
         mainGraphDesc = _zeGraphExt->getGraphDescriptor(mainBlob.data(), mainBlob.get_byte_size());
         graphHandle = _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(blob.data()), blob.get_byte_size());
@@ -381,14 +378,7 @@ std::vector<std::string> PluginCompilerAdapter::get_supported_options() const {
         _logger.warning("VCLCompilerImpl get_supported_options failed. Returning empty supported options.");
         return {};
     }
-
-    if(options.empty()) {
-        _logger.warning("get_supported_options returned empty options.");
-        return {};
-    }
-
     std::string compilerOptionsStr(options.data(), options.size());
-    _logger.debug("VCLCompilerImpl return supported_options: %s", compilerOptionsStr.c_str());
     // vectorize string
     std::istringstream suppstream(compilerOptionsStr);
     std::vector<std::string> compilerOpts = {};
