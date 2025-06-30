@@ -80,6 +80,8 @@ auto configs = []() {
                                      {"NPU_COMPILATION_MODE", "DefaultHW"}}}};
 };
 
+
+
 auto configs2 = []() {
     return std::vector<ov::AnyMap>{{{ov::intel_npu::compiler_type(ov::intel_npu::CompilerType::MLIR),
                                      ov::intel_npu::platform(ov::intel_npu::Platform::NPU4000),
@@ -89,6 +91,18 @@ auto configs2 = []() {
                                      {"NPU_COMPILATION_MODE", "DefaultHW"}}}};
 };
 
+// /home/dl5w050/vpux/openvino/src/plugins/intel_npu/tests/functional/behavior/work_with_devices.hpp
+// auto configs3 = []() {
+//     return std::vector<ov::AnyMap>{{{ov::intel_npu::compiler_type(ov::intel_npu::CompilerType::MLIR),
+//                                      PlatformEnvironment::PLATFORM,
+//                                      {"NPU_COMPILATION_MODE", "DefaultHW"}}},
+//                                    {{ov::intel_npu::compiler_type(ov::intel_npu::CompilerType::DRIVER),
+//                                      PlatformEnvironment::PLATFORM,
+//                                      {"NPU_COMPILATION_MODE", "DefaultHW"}}}};
+// };
+
+/// 这里面似乎只有3720的platform, 所以这个是为什么呢？
+//IE_NPU_TESTS_PLATFORM  这个环境变量没有使用吗？
 INSTANTIATE_TEST_SUITE_P(
         smoke_BehaviorTests_3720, NPUInferRequestElementTypeTests,
         ::testing::Combine(::testing::Values(getFunction()),

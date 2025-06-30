@@ -32,6 +32,9 @@
 #include <ze_api.h> ///不知道这个什么用
 #include <ze_graph_ext.h>
 
+// get platform
+#include "common/functions.h"
+
 namespace ov {
 namespace test {
 namespace behavior {
@@ -99,9 +102,19 @@ protected:
     }
 
     void SetUp() override {
+        // how to set up the environment
+        const auto& var = ov::test::utils::NpuTestEnvConfig::getInstance().IE_NPU_TESTS_PLATFORM;
+        if (!var.empty()) {
+            std::cout << "---> setup.  This test is supported on the current platform: " << var << std::endl;
+        } else {
+            std::cout << "---> setup.  This test is not supported on the current platform." << std::endl;
+        }
+
+        std::cout << " ---> setUp: PlatformEnvironment::PLATFORM is: " <<  PlatformEnvironment::PLATFORM.c_str() << std::endl;
         m_initStruct = ::intel_npu::ZeroInitStructsHolder::getInstance();
         if (!m_initStruct) {
-            GTEST_SKIP() << "ZeroInitStructsHolder init failed, ZeroInitStructsHolder is a nullptr";
+            // GTEST_SKIP() << "ZeroInitStructsHolder init failed, ZeroInitStructsHolder is a nullptr";
+            std::cout << "---> setup. init zeroinitholder." << std::endl;
         }
 
         ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();
