@@ -37,6 +37,7 @@
 
 //add test
 #include "openvino/pass/serialize.hpp"
+#include "openvino/pass/manager.hpp"
 
 namespace ov {
 namespace test {
@@ -505,6 +506,9 @@ TEST_P(NPUInferRequestElementTypeTests, dumpPass) {
     manager.run_passes(model2);
 
     std::cout << "[ INFO ]read model file2" << std::endl;
+    ov::Core core;
+    std::cout << "-------------[ INFO ]read model file2-------------" << std::endl;
+    std::cout << "xmlName2: " << xmlName2 << std::endl;
     model2 = core.read_model(xmlName2);
     std::cout << "-------------[ INFO ]done2-------------" << std::endl;
 }
