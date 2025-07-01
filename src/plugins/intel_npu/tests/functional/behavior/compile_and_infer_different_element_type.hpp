@@ -177,14 +177,14 @@ protected:
         }
 
         std::cout << " ---> setUp: PlatformEnvironment::PLATFORM is: " <<  PlatformEnvironment::PLATFORM.c_str() << std::endl;
-        m_initStruct = ::intel_npu::ZeroInitStructsHolder::getInstance();
-        if (!m_initStruct) {
-            // GTEST_SKIP() << "ZeroInitStructsHolder init failed, ZeroInitStructsHolder is a nullptr";
-            std::cout << "---> setup. init zeroinitholder." << std::endl;
-        }
+        // m_initStruct = ::intel_npu::ZeroInitStructsHolder::getInstance();
+        // if (!m_initStruct) {
+        //     // GTEST_SKIP() << "ZeroInitStructsHolder init failed, ZeroInitStructsHolder is a nullptr";
+        //     std::cout << "---> setup. init zeroinitholder." << std::endl;
+        // }
 
-        ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();
-        uint32_t m_graphDdiExtVersion = graph_ddi_table_ext.version();
+        // ze_graph_dditable_ext_decorator& graph_ddi_table_ext = m_initStruct->getGraphDdiTable();
+        // uint32_t m_graphDdiExtVersion = graph_ddi_table_ext.version();
 
         SetupFileNames();
         OVInferRequestDynamicTests::SetUp();
@@ -450,7 +450,7 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
 
     //需要配合driver版本来确定，哪些是可以compile, 哪些是不可以compile的,
     //   旧的driver版本可能会报错
-    if (m_graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {}
+    // if (m_graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {}
     auto execNetDynamic = ie->compile_model(expectedDynamic, target_device, configuration);
     ov::InferRequest reqDynamic;
     OV_ASSERT_NO_THROW(reqDynamic = execNetDynamic.create_infer_request());
@@ -464,7 +464,7 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
     ///VPUX: 77701a6bb1cdb3cd4ec16e6d3758e6f7b8a0b719 (1month ago)
 
 
-    if (m_graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {}
+    // if (m_graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {}
     auto execNetUndefined = ie->compile_model(expectedUndefined, target_device, configuration);
     ov::InferRequest reqUndefined;
     OV_ASSERT_NO_THROW(reqUndefined = execNetUndefined.create_infer_request());
@@ -472,41 +472,43 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
     OV_ASSERT_NO_THROW(reqUndefined.infer());
 
     ///在某一个driver版本之间，两个应该都是可以编译的， 并且编译结果相同
-    if (m_graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {}
+    // if (m_graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {}
     OV_ASSERT_NO_THROW(checkTwoTypeOutput(reqDynamic.get_tensor(outputName), reqUndefined.get_tensor(outputName)));
 }
 
 // and the undefined type model are the same
 TEST_P(NPUInferRequestElementTypeTests, dumpPass) {
-    // auto model1 = getFunction2_addabc1();
-    // std::cout << "[ INFO ] serialize mode1" << std::endl;
-    // const auto passConfig = std::make_shared<ov::pass::PassConfig>();
-    // ov::pass::Manager manager(passConfig);
-    // std::string modelName = model1->get_friendly_name();
-    // std::string xmlName = modelName + "_serialized1.xml";
-    // std::string binName = modelName + "_serialized1.bin";
-    // std::cout << "graph size:" << model1->get_graph_size();
-    // manager.register_pass<ov::pass::Serialize>(xmlName, binName);
-    // manager.run_passes(model1);
+    ov::Core core;
 
-    // std::cout << "[ INFO ]read model file1" << std::endl;
-    // model1 = core.read_model(xmlName);
-    // std::cout << "[ INFO ]done1" << std::endl;
+    auto model1 = getFunction();
+    std::cout << "[ INFO ] serialize mode1" << std::endl;
+    const auto passConfig = std::make_shared<ov::pass::PassConfig>();
+    ov::pass::Manager manager(passConfig);
+    std::string modelName = model1->get_friendly_name();
+    std::string xmlName = modelName + "_serialized1.xml";
+    std::string binName = modelName + "_serialized1.bin";
+    std::cout << "graph size:" << model1->get_graph_size();
+    manager.register_pass<ov::pass::Serialize>(xmlName, binName);
+    manager.run_passes(model1);
+
+    std::cout << "[ INFO ]read model file1" << std::endl;
+    model1 = core.read_model(xmlName);
+    std::cout << "[ INFO ]done1" << std::endl;
 
 
     std::cout << "-----------[ INFO ] serialize mode2-------" << std::endl;
     auto model2 = getFunction2_addabc2();
-    const auto passConfig = std::make_shared<ov::pass::PassConfig>();
-    ov::pass::Manager manager(passConfig);
+    const auto passConfig2 = std::make_shared<ov::pass::PassConfig>();
+    ov::pass::Manager manager2(passConfig2);
     std::string modelName2 = model2->get_friendly_name();
     std::string xmlName2 = modelName2 + "_serialized2.xml";
     std::string binName2 = modelName2 + "_serialized2.bin";
     std::cout << "graph size:" << model2->get_graph_size();
-    manager.register_pass<ov::pass::Serialize>(xmlName2, binName2);
-    manager.run_passes(model2);
+    manager2.register_pass<ov::pass::Serialize>(xmlName2, binName2);
+    manager2.run_passes(model2);
 
     std::cout << "[ INFO ]read model file2" << std::endl;
-    ov::Core core;
+
     std::cout << "-------------[ INFO ]read model file2-------------" << std::endl;
     std::cout << "xmlName2: " << xmlName2 << std::endl;
     model2 = core.read_model(xmlName2);
