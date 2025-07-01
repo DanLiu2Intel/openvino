@@ -492,30 +492,33 @@ std::shared_ptr<ov::Model> getFunction2_addabc2() {
     ov::ResultVector res;
     ov::ParameterVector params;
     ov::element::Type type = ov::element::f32;
-    const ov::PartialShape& shape = ov::PartialShape::dynamic();
-    const ov::Layout& layout = ov::Layout("N");;
+    auto shape = ov::Shape{1};
+    // const ov::Layout& layout = ov::Layout("N");;
     auto data1 = std::make_shared<ov::op::v0::Parameter>(type, shape);
     data1->set_friendly_name("inputA");
     data1->get_output_tensor(0).set_names({"tensor_inputA"});
-    data1->set_layout(layout);
+    // data1->set_layout(layout);
+    std::cout << "------0-----" << std::endl;
     auto constant = ov::opset8::Constant::create(type, {1}, {1});
     auto op1 = std::make_shared<ov::op::v1::Add>(data1, constant);
     op1->set_friendly_name("AddOP1");
+    std::cout << "------1-----" << std::endl;
 
     auto data2 = std::make_shared<ov::op::v0::Parameter>(type, shape);
     data2->set_friendly_name("inputC");
     data2->get_output_tensor(0).set_names({"tensor_inputC"});
-    data2->set_layout(layout);
-
+    // data2->set_layout(layout);
+    std::cout << "------2-----" << std::endl;
     auto op2 = std::make_shared<ov::op::v1::Add>(op1, data2);
     op2->set_friendly_name("AddOP2");
+    std::cout << "------3-----" << std::endl;
 
     auto res1 = std::make_shared<ov::op::v0::Result>(op2);
     res1->set_friendly_name("Result1");
     res1->get_output_tensor(0).set_names({"tensor_output1"});
-    params.push_back(data2);
+    params.push_back(data1);
     res.push_back(res1);
-
+    std::cout << "------4-----" << std::endl;
     auto res2 = std::make_shared<ov::op::v0::Result>(op2);
     res2->set_friendly_name("Result2");
     res2->get_output_tensor(0).set_names({"tensor_output2"});
