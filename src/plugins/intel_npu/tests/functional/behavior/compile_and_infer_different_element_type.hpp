@@ -35,6 +35,9 @@
 // get platform
 #include "common/functions.h"
 
+//add test
+#include "openvino/pass/serialize.hpp"
+
 namespace ov {
 namespace test {
 namespace behavior {
@@ -72,6 +75,68 @@ std::shared_ptr<ov::Model> getFunction() {
     return std::make_shared<ov::Model>(ov::ResultVector{result}, params, "custom_model");
 }
 
+// std::shared_ptr<ov::Model> getFunction2_addabc1() {
+//     auto model = std::make_shared<ov::Model>();
+
+//     // 创建输入节点
+//     auto inputA = std::make_shared<ov::op::v0::Parameter>(ov::element::f32, ov::Shape{1});
+//     auto inputB = std::make_shared<ov::op::v0::Parameter>(ov::element::f32, ov::Shape{1});
+//     auto inputC = std::make_shared<ov::op::v0::Parameter>(ov::element::f32, ov::Shape{1});
+
+//     // 创建第一个Add节点
+//     auto add1 = std::make_shared<ov::op::v1::Add>(inputA, inputB);
+
+//     // 创建第二个Add节点
+//     auto add2 = std::make_shared<ov::op::v1::Add>(add1, inputC);
+
+//     // 创建结果节点
+//     auto result1 = std::make_shared<ov::op::v0::Result>(add2);
+//     auto result2 = std::make_shared<ov::op::v0::Result>(add2);
+
+//     // 将结果节点添加到模型中
+//     model->add_results({result1, result2});
+
+//     // 将输入节点添加到模型中
+//     model->add_parameters({inputA, inputB, inputC});
+//     return model;
+// }
+
+std::shared_ptr<ov::Model> getFunction2_addabc2() {
+    ResultVector res;
+    ParameterVector params;
+    element::Type type = element::f32;
+    const PartialShape& shape = PartialShape::dynamic();
+    const ov::Layout& layout = ov::Layout("N");
+    auto data1 = std::make_shared<ov::op::v0::Parameter>(type, shape);
+    data1->set_friendly_name("inputA");
+    data1->get_output_tensor(0).set_names({"tensor_inputA"});
+    data1->set_layout(layout);
+    auto constant = opset8::Constant::create(type, {1}, {1});
+    auto op1 = std::make_shared<ov::op::v1::Add>(data1, constant);
+    op1->set_friendly_name("AddOP1");
+
+    auto data2 = std::make_shared<ov::op::v0::Parameter>(type, shape);
+    data2->set_friendly_name("inputC");
+    data2->get_output_tensor(0).set_names({"tensor_inputC"});
+    data2->set_layout(layout);
+
+    auto op2 = std::make_shared<ov::op::v1::Add>(op1, data2);
+    op2->set_friendly_name("AddOP2");
+
+    auto res1 = std::make_shared<ov::op::v0::Result>(op2);
+    res1->set_friendly_name("Result1");
+    res1->get_output_tensor(0).set_names({"tensor_output1"});
+    params.push_back(data2);
+    res.push_back(res1);
+
+    auto res2 = std::make_shared<ov::op::v0::Result>(op2);
+    res2->set_friendly_name("Result2");
+    res2->get_output_tensor(0).set_names({"tensor_output2"});
+    params.push_back(data2);
+    res.push_back(res2);
+
+    return std::make_shared<Model>(res, params);
+}
 
 class NPUInferRequestElementTypeTests : public OVInferRequestDynamicTests {
 protected:
@@ -408,6 +473,40 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
     ///在某一个driver版本之间，两个应该都是可以编译的， 并且编译结果相同
     if (m_graphDdiExtVersion < ZE_GRAPH_EXT_VERSION_1_5) {}
     OV_ASSERT_NO_THROW(checkTwoTypeOutput(reqDynamic.get_tensor(outputName), reqUndefined.get_tensor(outputName)));
+}
+
+// and the undefined type model are the same
+TEST_P(NPUInferRequestElementTypeTests, dumpPass) {
+    // auto model1 = getFunction2_addabc1();
+    // std::cout << "[ INFO ] serialize mode1" << std::endl;
+    // const auto passConfig = std::make_shared<ov::pass::PassConfig>();
+    // ov::pass::Manager manager(passConfig);
+    // std::string modelName = model1->get_friendly_name();
+    // std::string xmlName = modelName + "_serialized1.xml";
+    // std::string binName = modelName + "_serialized1.bin";
+    // std::cout << "graph size:" << model1->get_graph_size();
+    // manager.register_pass<ov::pass::Serialize>(xmlName, binName);
+    // manager.run_passes(model1);
+
+    // std::cout << "[ INFO ]read model file1" << std::endl;
+    // model1 = core.read_model(xmlName);
+    // std::cout << "[ INFO ]done1" << std::endl;
+
+
+    std::cout << "-----------[ INFO ] serialize mode2-------" << std::endl;
+    auto model2 = getFunction2_addabc2();
+    const auto passConfig = std::make_shared<ov::pass::PassConfig>();
+    ov::pass::Manager manager(passConfig);
+    std::string modelName2 = model2->get_friendly_name();
+    std::string xmlName2 = modelName2 + "_serialized2.xml";
+    std::string binName2 = modelName2 + "_serialized2.bin";
+    std::cout << "graph size:" << model2->get_graph_size();
+    manager.register_pass<ov::pass::Serialize>(xmlName2, binName2);
+    manager.run_passes(model2);
+
+    std::cout << "[ INFO ]read model file2" << std::endl;
+    model2 = core.read_model(xmlName2);
+    std::cout << "-------------[ INFO ]done2-------------" << std::endl;
 }
 
 }  // namespace behavior

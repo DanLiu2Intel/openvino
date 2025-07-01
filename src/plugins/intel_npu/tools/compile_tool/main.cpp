@@ -18,6 +18,10 @@
 
 #include "tools_helpers.hpp"
 
+#include "openvino/opsets/opset11.hpp"
+#include "openvino/opsets/opset6.hpp"
+#include "openvino/opsets/opset8.hpp"
+
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
 static constexpr char model_message[] = "Required. Path to the XML model.";
@@ -422,6 +426,69 @@ std::string getFileNameFromPath(const std::string& path,
 
 using TimeDiff = std::chrono::milliseconds;
 
+// std::shared_ptr<ov::Model> getFunction2_addabc1() {
+//     auto model = std::make_shared<ov::Model>();
+
+//     // 创建输入节点
+//     auto inputA = std::make_shared<ov::op::v0::Parameter>(ov::element::f32, ov::Shape{1});
+//     auto inputB = std::make_shared<ov::op::v0::Parameter>(ov::element::f32, ov::Shape{1});
+//     auto inputC = std::make_shared<ov::op::v0::Parameter>(ov::element::f32, ov::Shape{1});
+
+//     // 创建第一个Add节点
+//     auto add1 = std::make_shared<ov::op::v1::Add>(inputA, inputB);
+
+//     // 创建第二个Add节点
+//     auto add2 = std::make_shared<ov::op::v1::Add>(add1, inputC);
+
+//     // 创建结果节点
+//     auto result1 = std::make_shared<ov::op::v0::Result>(add2);
+//     auto result2 = std::make_shared<ov::op::v0::Result>(add2);
+
+//     // 将结果节点添加到模型中
+//     model->add_results({result1, result2});
+
+//     // 将输入节点添加到模型中
+//     model->add_parameters({inputA, inputB, inputC});
+//     return model;
+// }
+
+std::shared_ptr<ov::Model> getFunction2_addabc2() {
+    ov::ResultVector res;
+    ov::ParameterVector params;
+    ov::element::Type type = ov::element::f32;
+    const ov::PartialShape& shape = ov::PartialShape::dynamic();
+    const ov::Layout& layout = ov::Layout("N");;
+    auto data1 = std::make_shared<ov::op::v0::Parameter>(type, shape);
+    data1->set_friendly_name("inputA");
+    data1->get_output_tensor(0).set_names({"tensor_inputA"});
+    data1->set_layout(layout);
+    auto constant = ov::opset8::Constant::create(type, {1}, {1});
+    auto op1 = std::make_shared<ov::op::v1::Add>(data1, constant);
+    op1->set_friendly_name("AddOP1");
+
+    auto data2 = std::make_shared<ov::op::v0::Parameter>(type, shape);
+    data2->set_friendly_name("inputC");
+    data2->get_output_tensor(0).set_names({"tensor_inputC"});
+    data2->set_layout(layout);
+
+    auto op2 = std::make_shared<ov::op::v1::Add>(op1, data2);
+    op2->set_friendly_name("AddOP2");
+
+    auto res1 = std::make_shared<ov::op::v0::Result>(op2);
+    res1->set_friendly_name("Result1");
+    res1->get_output_tensor(0).set_names({"tensor_output1"});
+    params.push_back(data2);
+    res.push_back(res1);
+
+    auto res2 = std::make_shared<ov::op::v0::Result>(op2);
+    res2->set_friendly_name("Result2");
+    res2->get_output_tensor(0).set_names({"tensor_output2"});
+    params.push_back(data2);
+    res.push_back(res2);
+
+    return std::make_shared<ov::Model>(res, params);
+}
+
 int main(int argc, char* argv[]) {
     try {
         // Steps in compiling
@@ -487,6 +554,11 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Compiling model" << std::endl;
         auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
+        std::cout << "Compiling model1" << std::endl;
+        // auto compiledModel1 = core.compile_model(getFunction2_addabc1(), FLAGS_d, {configs.begin(), configs.end()});
+        std::cout << "Compiling model2" << std::endl;
+        auto compiledMode2 = core.compile_model(getFunction2_addabc2(), FLAGS_d, {configs.begin(), configs.end()});
+        std::cout << "Compiling model Done" << std::endl;
         loadNetworkTimeElapsed =
             std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
         std::string outputName = FLAGS_o;
