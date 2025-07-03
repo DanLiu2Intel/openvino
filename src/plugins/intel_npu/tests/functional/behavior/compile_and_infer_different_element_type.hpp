@@ -392,7 +392,7 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
     }
     auto execNetDynamic = ie->compile_model(expectedDynamic, target_device, configuration);
     ov::InferRequest reqDynamic;
-    OV_ASSERT_NO_THROW(reqDynamic = execNetDynamic.create_infer_request());
+    OV_ASSERT_NO_THROW(reqDynamic = execNetDynamic.create_infer_request()); ///4000报错了
     OV_ASSERT_NO_THROW(reqDynamic.set_tensor(inputName, inTensor));
     OV_ASSERT_NO_THROW(reqDynamic.infer());
 
