@@ -22,6 +22,7 @@
 #include "openvino/util/shared_object.hpp"
 #include "weightless_graph.hpp"
 
+#ifndef VCL_FOR_COMPILER
 namespace {
 
 std::shared_ptr<void> load_library(const std::string& libpath) {
@@ -61,6 +62,7 @@ ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
 }
 
 }  // namespace
+#endif
 
 namespace intel_npu {
 
