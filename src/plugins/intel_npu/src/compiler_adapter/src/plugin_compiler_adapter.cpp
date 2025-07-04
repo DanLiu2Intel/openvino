@@ -380,6 +380,12 @@ std::vector<std::string> PluginCompilerAdapter::get_supported_options() const {
         _logger.warning("VCLCompilerImpl get_supported_options failed. Returning empty supported options.");
         return {};
     }
+
+    if (options.empty()) {
+        _logger.warning("get_supported_options returned empty options.");
+        return {};
+    }
+
     std::string compilerOptionsStr(options.data(), options.size());
     // vectorize string
     std::istringstream suppstream(compilerOptionsStr);
