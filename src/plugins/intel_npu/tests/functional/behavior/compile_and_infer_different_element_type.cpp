@@ -8,10 +8,7 @@
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/npu_private_properties.hpp"
 
-const std::vector<ov::AnyMap> configs = {
-    {{ov::intel_npu::compiler_type(ov::intel_npu::CompilerType::DRIVER)},
-     {ov::intel_npu::platform.name(), ov::test::utils::getTestsPlatformFromEnvironmentOr("NPU3720")},
-     {"NPU_COMPILATION_MODE", "DefaultHW"}}};
+const std::vector<ov::AnyMap> configs = {};
 
 const std::vector<std::pair<std::vector<size_t>, std::vector<size_t>>> inputShapes = {
     {{1, 1, 128}, {1, 1, 128}},

@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <vector>
 
 #include "behavior/ov_infer_request/infer_request_dynamic.hpp"
@@ -52,45 +53,45 @@ std::shared_ptr<ov::Model> getFunction() {
 
 class NPUInferRequestElementTypeTests : public OVInferRequestDynamicTests {
 protected:
-    std::string m_dynamic_type_out_xml_path{};
-    std::string m_dynamic_type_out_bin_path{};
-    std::string m_undefined_type_out_xml_path{};
-    std::string m_undefined_type_out_bin_path{};
-    std::string m_filePrefix{};
+    // std::string m_dynamic_type_out_xml_path{};
+    // std::string m_dynamic_type_out_bin_path{};
+    // std::string m_undefined_type_out_xml_path{};
+    // std::string m_undefined_type_out_bin_path{};
+    // std::string m_filePrefix{};
 
-    void SetupFileNames() {
-        m_filePrefix = ov::test::utils::generateTestFilePrefix();
-        const std::vector<std::pair<std::string*, std::string>> fileInfos = {
-            {&m_dynamic_type_out_xml_path, "dynamic_type.xml"},
-            {&m_dynamic_type_out_bin_path, "dynamic_type.bin"},
-            {&m_undefined_type_out_xml_path, "undefined_type.xml"},
-            {&m_undefined_type_out_bin_path, "undefined_type.bin"},
-        };
-        for (const auto& info : fileInfos) {
-            *(info.first) = m_filePrefix + info.second;
-        }
-    }
+    // void SetupFileNames() {
+    //     m_filePrefix = ov::test::utils::generateTestFilePrefix();
+    //     const std::vector<std::pair<std::string*, std::string>> fileInfos = {
+    //         {&m_dynamic_type_out_xml_path, "dynamic_type.xml"},
+    //         {&m_dynamic_type_out_bin_path, "dynamic_type.bin"},
+    //         {&m_undefined_type_out_xml_path, "undefined_type.xml"},
+    //         {&m_undefined_type_out_bin_path, "undefined_type.bin"},
+    //     };
+    //     for (const auto& info : fileInfos) {
+    //         *(info.first) = m_filePrefix + info.second;
+    //     }
+    // }
 
-    void RemoveFiles() {
-        std::vector<std::string> files = {m_dynamic_type_out_xml_path,
-                                          m_dynamic_type_out_bin_path,
-                                          m_undefined_type_out_xml_path,
-                                          m_undefined_type_out_bin_path};
-        for (const auto& file : files) {
-            std::remove(file.c_str());
-        }
-    }
+    // void RemoveFiles() {
+    //     std::vector<std::string> files = {m_dynamic_type_out_xml_path,
+    //                                       m_dynamic_type_out_bin_path,
+    //                                       m_undefined_type_out_xml_path,
+    //                                       m_undefined_type_out_bin_path};
+    //     for (const auto& file : files) {
+    //         std::remove(file.c_str());
+    //     }
+    // }
 
     void SetUp() override {
         // Skip test according to plugin specific disabledTestPatterns() (if any)
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
 
-        SetupFileNames();
+        //SetupFileNames();
         OVInferRequestDynamicTests::SetUp();
     }
 
     void TearDown() override {
-        RemoveFiles();
+        //RemoveFiles();
         OVInferRequestDynamicTests::TearDown();
     }
 
@@ -129,7 +130,7 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
     SKIP_IF_CURRENT_TEST_IS_DISABLED()
 
     // Customize a model with a dynamic type
-    std::string dynamicTypeModelXmlFile = R"V0G0N(<?xml version="1.0"?>
+    std::string dynamicTypeModelXmlString = R"V0G0N(<?xml version="1.0"?>
 <net name="custom_model" version="11">
     <layers>
         <layer id="0" name="Parameter_1" type="Parameter" version="opset1">
@@ -226,7 +227,7 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
 )V0G0N";
 
     // Customize a model with a undefined type
-    std::string undefinedTypeModelXmlFile = R"V0G0N(<?xml version="1.0"?>
+    std::string undefinedTypeModelXmlString = R"V0G0N(<?xml version="1.0"?>
 <net name="custom_model" version="11">
     <layers>
         <layer id="0" name="Parameter_1" type="Parameter" version="opset1">
@@ -321,17 +322,28 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
     <rt_info />
 </net>
 )V0G0N";
+    std::stringstream dynamicTypeModelXmlStream, undefinedTypeModelXmlStream;
+    dynamicTypeModelXmlStream << dynamicTypeModelXmlString;
+    undefinedTypeModelXmlStream << undefinedTypeModelXmlString;
+    std::stringstream dynamicTypeModelBinStream, undefinedTypeModelBinStream;
 
     // Test whether the serialization results of the two models are the same
-    auto dynamicTypeModel = ie->read_model(dynamicTypeModelXmlFile, ov::Tensor());
-    auto undefinedTypeModel = ie->read_model(undefinedTypeModelXmlFile, ov::Tensor());
+    auto dynamicTypeModel = ie->read_model(dynamicTypeModelXmlString, ov::Tensor());
+    auto undefinedTypeModel = ie->read_model(undefinedTypeModelXmlString, ov::Tensor());
 
-    ov::pass::Serialize(m_dynamic_type_out_xml_path, m_dynamic_type_out_bin_path).run_on_model(dynamicTypeModel);
-    ov::pass::Serialize(m_undefined_type_out_xml_path, m_undefined_type_out_bin_path).run_on_model(undefinedTypeModel);
+    // ov::pass::Serialize(m_dynamic_type_out_xml_path, m_dynamic_type_out_bin_path).run_on_model(dynamicTypeModel);
+    // ov::pass::Serialize(m_undefined_type_out_xml_path, m_undefined_type_out_bin_path).run_on_model(undefinedTypeModel);
 
-    std::ifstream xml_dynamic(m_dynamic_type_out_xml_path, std::ios::in);
-    std::ifstream xml_undefined(m_undefined_type_out_xml_path, std::ios::in);
-    ASSERT_TRUE(files_equal(xml_dynamic, xml_undefined))
+    // std::ifstream xml_dynamic(m_dynamic_type_out_xml_path, std::ios::in);
+    // std::ifstream xml_undefined(m_undefined_type_out_xml_path, std::ios::in);
+    // ASSERT_TRUE(files_equal(xml_dynamic, xml_undefined))
+    //     << "Serialized XML files are different: " << m_dynamic_type_out_xml_path << " vs "
+    //     << m_undefined_type_out_xml_path;
+
+    ov::pass::Serialize(dynamicTypeModelXmlStream, dynamicTypeModelBinStream).run_on_model(dynamicTypeModel);   
+    ov::pass::Serialize(undefinedTypeModelXmlStream, undefinedTypeModelBinStream).run_on_model(undefinedTypeModel);
+
+    ASSERT_TRUE(dynamicTypeModelXmlStream.str() == undefinedTypeModelXmlStream.str())
         << "Serialized XML files are different: " << m_dynamic_type_out_xml_path << " vs "
         << m_undefined_type_out_xml_path;
 
