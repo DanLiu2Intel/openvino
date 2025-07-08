@@ -15,6 +15,8 @@ namespace ov {
 namespace test {
 namespace behavior {
 
+std::shared_ptr<ov::Model> getFunction();
+
 std::shared_ptr<ov::Model> getFunction() {
     const std::vector<size_t> inputShape = {1, 1, 128};
     const ov::element::Type_t inputType = ov::element::Type_t::f32;
@@ -111,7 +113,7 @@ protected:
         if (!std::equal(dynamicShape.cbegin(), dynamicShape.cend(), undefinedShape.cbegin())) {
             return false;
         }
-        for (int i = 0; i < undefinedOutput.get_size(); i++) {
+        for (size_t i = 0; i < undefinedOutput.get_size(); i++) {
             if (fabs(dynamicOutput.data<float>()[i] - undefinedOutput.data<float>()[i]) >
                 std::numeric_limits<float>::epsilon())
                 return false;
