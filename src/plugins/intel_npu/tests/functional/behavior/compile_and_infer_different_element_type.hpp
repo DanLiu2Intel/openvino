@@ -282,11 +282,13 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
     <rt_info />
 </net>
 )V0G0N";
+    std::cout << "----1. create stringstream -----"  << std::endl;
     std::stringstream dynamicTypeModelXmlStream, undefinedTypeModelXmlStream;
     dynamicTypeModelXmlStream << dynamicTypeModelXmlString;
     undefinedTypeModelXmlStream << undefinedTypeModelXmlString;
     std::stringstream dynamicTypeModelBinStream, undefinedTypeModelBinStream;
 
+    std::cout << "----2. read model -----"  << std::endl;
     // Test whether the serialization results of the two models are the same
     auto dynamicTypeModel = ie->read_model(dynamicTypeModelXmlString, ov::Tensor());
     auto undefinedTypeModel = ie->read_model(undefinedTypeModelXmlString, ov::Tensor());
@@ -308,17 +310,21 @@ TEST_P(NPUInferRequestElementTypeTests, CompareDynamicAndUndefinedTypeNetwork) {
     const std::string outputName = "Output_5";
     ov::Shape shape = inOutShapes[0].first;
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(ov::element::f32, shape, 100, 0);
-
+    
+    std::cout << "----3. compile dynamicTypeModel model -----"  << std::endl;
     auto execNetDynamic = ie->compile_model(dynamicTypeModel, target_device, configuration);
     ov::InferRequest reqDynamic;
     OV_ASSERT_NO_THROW(reqDynamic = execNetDynamic.create_infer_request());
     OV_ASSERT_NO_THROW(reqDynamic.set_tensor(inputName, inTensor));
+    std::cout << "----4. infer dynamicTypeModel model -----"  << std::endl;
     OV_ASSERT_NO_THROW(reqDynamic.infer());
 
+    std::cout << "----5. compile undefinedTypeModel model -----"  << std::endl;
     auto execNetUndefined = ie->compile_model(undefinedTypeModel, target_device, configuration);
     ov::InferRequest reqUndefined;
     OV_ASSERT_NO_THROW(reqUndefined = execNetUndefined.create_infer_request());
     OV_ASSERT_NO_THROW(reqUndefined.set_tensor(inputName, inTensor));
+    std::cout << "----6. infer undefinedTypeModel model -----"  << std::endl;
     OV_ASSERT_NO_THROW(reqUndefined.infer());
 
     ASSERT_TRUE(checkTwoTypeOutput(reqDynamic.get_tensor(outputName), reqUndefined.get_tensor(outputName)))
