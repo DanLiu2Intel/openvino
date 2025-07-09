@@ -26,7 +26,7 @@ class NPUInferRequestElementTypeTests : public testing::WithParamInterface<NPUIn
                                    public OVInferRequestTestBase  {
 
 public:
-    static std::string NPUInferRequestElementTypeTests::getTestCaseName(testing::TestParamInfo<NPUInferRequestElementTypeParams> obj) {
+    static std::string getTestCaseName(testing::TestParamInfo<NPUInferRequestElementTypeParams> obj) {
         std::vector<std::pair<std::vector<size_t>, std::vector<size_t>>> inOutShapes;
         std::string target_device;
         ov::AnyMap configuration;
@@ -58,8 +58,6 @@ public:
     }
 
 protected:
-    std::string getTestCaseName(testing::TestParamInfo<NPUInferRequestElementTypeParams> obj);
-    void SetUp() override;
     bool checkTwoTypeOutput(const ov::Tensor& in, const ov::Tensor& actual);
 
     std::shared_ptr<ov::Core> ie = utils::PluginCache::get().core();
