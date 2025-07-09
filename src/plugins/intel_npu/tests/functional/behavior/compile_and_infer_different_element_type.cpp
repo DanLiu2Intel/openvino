@@ -16,8 +16,7 @@ const std::vector<std::pair<std::vector<size_t>, std::vector<size_t>>> inputShap
 
 INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
                          NPUInferRequestElementTypeTests,
-                         ::testing::Combine(::testing::Values(getFunction()),
-                                            ::testing::Values(inputShapes),
+                         ::testing::Combine(::testing::Values(inputShapes),
                                             ::testing::Values(ov::test::utils::DEVICE_NPU),
                                             ::testing::ValuesIn(configs)),
-                         ov::test::utils::appendPlatformTypeTestName<OVInferRequestDynamicTests>);
+                         ov::test::utils::appendPlatformTypeTestName<NPUInferRequestElementTypeTests>);
