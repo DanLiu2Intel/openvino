@@ -25,9 +25,8 @@
 
 #ifndef VCL_FOR_COMPILER
 namespace {
-
-std::shared_ptr<void> load_library(const std::string& libpath) {
-#if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
+std::shared_ptr<void> loadLibrary(const std::string& libpath) {
+#    if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
     return ov::util::load_shared_object(ov::util::string_to_wstring(libpath).c_str());
 #    else
     return ov::util::load_shared_object(libpath.c_str());
