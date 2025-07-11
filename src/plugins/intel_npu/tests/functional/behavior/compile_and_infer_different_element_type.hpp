@@ -6,7 +6,7 @@
 #include <sstream>
 #include <vector>
 
-#include "base/ov_behavior_test_utils.hpp"
+#include "shared_test_classes/base/ov_behavior_test_utils.hpp"
 #include <common_test_utils/ov_tensor_utils.hpp>
 #include "openvino/pass/manager.hpp"
 #include "openvino/pass/serialize.hpp"

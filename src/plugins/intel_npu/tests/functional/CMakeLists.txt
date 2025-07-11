@@ -23,6 +23,10 @@ list(APPEND OPTIONAL_FUNC_TESTS_INCLUDES
 list(APPEND OPTIONAL_FUNC_TESTS_LIBS openvino_npu_driver_compiler_adapter
       openvino_npu_level_zero_backend openvino_npu_zero_utils)
 
+message("===functional test includes: ${OPTIONAL_FUNC_TESTS_INCLUDES}")
+message("=== DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+message("=== excludeed: ${EXCLUDED_FUNC_TESTS_DIR}")
+
 ov_add_test_target(
   NAME
   ${TARGET_NAME}
