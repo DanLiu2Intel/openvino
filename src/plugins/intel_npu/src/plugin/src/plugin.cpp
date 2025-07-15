@@ -530,6 +530,10 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     auto originalModel = model->clone();
 
     OV_ITT_TASK_NEXT(PLUGIN_COMPILE_MODEL, "compile");
+    auto initStruct = std::make_shared<::intel_npu::ZeroInitStructsHolder>();
+    ze_graph_dditable_ext_decorator& graph_ddi_table_ext = initStruct->getGraphDdiTable();
+    std::string driverLogInitContent = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("----------in NPU-plugin compiled_model----------(1), log:#%s#\n", driverLogInitContent.c_str());
     std::shared_ptr<intel_npu::IGraph> graph;
     try {
         _logger.debug("performing compile");
@@ -540,6 +544,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         _logger.error("Unexpected exception");
         OPENVINO_THROW("NPU plugin: got an unexpected exception from compiler");
     }
+
+    std::string driverLogInitContent2 = ::intel_npu::zeroUtils::getLatestBuildError(graph_ddi_table_ext);
+    std::printf("----------in NPU-plugin compiled_model----------(2), log:#%s#\n", driverLogInitContent2.c_str());
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
     try {
