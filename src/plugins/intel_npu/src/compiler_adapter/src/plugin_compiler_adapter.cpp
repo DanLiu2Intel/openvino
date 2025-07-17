@@ -22,8 +22,9 @@
 #include "openvino/util/shared_object.hpp"
 #include "weightless_graph.hpp"
 
-#ifndef VCL_FOR_COMPILER
+
 namespace {
+#ifndef VCL_FOR_COMPILER
 std::shared_ptr<void> load_library(const std::string& libpath) {
 #    if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
     return ov::util::load_shared_object(ov::util::string_to_wstring(libpath).c_str());
@@ -50,7 +51,7 @@ ov::SoPtr<intel_npu::ICompiler> load_compiler(const std::string& libpath) {
 
     return ov::SoPtr<intel_npu::ICompiler>(compiler, compilerSO);
 }
-
+#endif
 ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
     auto tensor = ov::Tensor(ov::element::u8, ov::Shape{vector.size()}, vector.data());
     auto impl = ov::get_tensor_impl(std::move(tensor));
@@ -61,7 +62,7 @@ ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
 }
 
 }  // namespace
-#endif
+
 
 namespace intel_npu {
 
@@ -273,18 +274,18 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
 
     ze_graph_handle_t graphHandle = nullptr;
     NetworkMetadata networkMeta;
+    std::vector<uint8_t> network(mainBlob.get_byte_size());
 
 #ifdef VCL_FOR_COMPILER
     _logger.debug("parse metadata from driver for vcl compiler");
     if (_zeGraphExt) {
         _logger.debug("parse start for vcl compiler");
-        graphHandle = _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(blob.data()), blob.get_byte_size());
+        graphHandle = _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(mainBlob.data()), mainBlob.get_byte_size());
         networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
     }
     _logger.debug("parse end for vcl compiler");
 #else
     _logger.debug("parse start");
-    std::vector<uint8_t> network(mainBlob.get_byte_size());
     network.assign(reinterpret_cast<const uint8_t*>(mainBlob.data()),
                    reinterpret_cast<const uint8_t*>(mainBlob.data()) + mainBlob.get_byte_size());
     auto networkMeta = _compiler->parse(network, config);
