@@ -24,7 +24,7 @@
 
 #ifndef VCL_FOR_COMPILER
 namespace {
-std::shared_ptr<void> loadLibrary(const std::string& libpath) {
+std::shared_ptr<void> load_library(const std::string& libpath) {
 #    if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
     return ov::util::load_shared_object(ov::util::string_to_wstring(libpath).c_str());
 #    else
@@ -77,7 +77,7 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
     _logger.info("MLIR compiler will be used.");
     std::string baseName = "npu_mlir_compiler";
     auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
-    _compiler = loadCompiler(libPath);
+    _compiler = load_compiler(libPath);
 #endif
     if (_zeroInitStruct == nullptr) {
         return;
@@ -284,21 +284,20 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
     _logger.debug("parse end for vcl compiler");
 #else
     _logger.debug("parse start");
-    std::vector<uint8_t> network(blob.get_byte_size());
-    network.assign(reinterpret_cast<const uint8_t*>(blob.data()),
-                   reinterpret_cast<const uint8_t*>(blob.data()) + blob.get_byte_size());
-    networkMeta = _compiler->parse(network, config);
+    std::vector<uint8_t> network(mainBlob.get_byte_size());
+    network.assign(reinterpret_cast<const uint8_t*>(mainBlob.data()),
+                   reinterpret_cast<const uint8_t*>(mainBlob.data()) + mainBlob.get_byte_size());
+    auto networkMeta = _compiler->parse(network, config);
     network.clear();
     network.shrink_to_fit();
-    _logger.debug("parse end");
 
     if (_zeGraphExt) {
-        graphHandle = _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(blob.data()), blob.get_byte_size());
-        networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
+        graphHandle =
+            _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(mainBlob.data()), mainBlob.get_byte_size());
     }
-#endif
 
     _logger.debug("main schedule parse end");
+#endif
 
     if (!initBlobs.has_value()) {
         return std::make_shared<Graph>(_zeGraphExt,
