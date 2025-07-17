@@ -155,12 +155,12 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
     }
 
     _logger.debug("serialize IR");
-    auto serializedIR = serializeIR(model, compilerVersion, maxOpsetVersion);
+    auto serializedIR = intel_npu::driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion);
 
     std::string buildFlags;
     const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
 
-    const std::string serializedIOInfo = serializeIOInfo(model, useIndices);
+    const std::string serializedIOInfo = intel_npu::driver_compiler_utils::serializeIOInfo(model, useIndices);
     const FilteredConfig* plgConfig = dynamic_cast<const FilteredConfig*>(&config);
     if (plgConfig == nullptr) {
         OPENVINO_THROW("config is not FilteredConfig");
@@ -194,7 +194,7 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
         _logger.debug("build flags");
         buildFlags = serializedIOInfo;
         buildFlags += " ";
-        buildFlags += serializeConfig(updatedConfig, compilerVersion);
+        buildFlags += intel_npu::driver_compiler_utils::serializeConfig(updatedConfig, compilerVersion);
 
         _logger.debug("compile start");
         auto graphDesc = _zeGraphExt->getGraphDescriptor(serializedIR, buildFlags, flags);
