@@ -107,7 +107,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
     ov::Tensor tensor = make_tensor_from_vector(networkDesc.compiledNetwork);
     GraphDescriptor graphDesc;
 
-    NetworkMetadata networkMeta;
+    NetworkMetadata networkMeta = std::move(networkDesc.metadata);
     if (_zeGraphExt) {
         // Depending on the config, we may get an error when trying to get the graph handle from the compiled
         // network
