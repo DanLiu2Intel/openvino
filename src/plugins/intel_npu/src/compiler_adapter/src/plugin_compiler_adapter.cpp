@@ -23,7 +23,6 @@
 #include "openvino/util/shared_object.hpp"
 #include "weightless_graph.hpp"
 
-
 namespace {
 #ifndef VCL_FOR_COMPILER
 std::shared_ptr<void> load_library(const std::string& libpath) {
@@ -63,7 +62,6 @@ ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
 }
 
 }  // namespace
-
 
 namespace intel_npu {
 
@@ -282,7 +280,8 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
     _logger.debug("parse metadata from driver for vcl compiler");
     if (_zeGraphExt) {
         _logger.debug("parse start for vcl compiler");
-        graphHandle = _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(mainBlob.data()), mainBlob.get_byte_size());
+        graphHandle =
+            _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(mainBlob.data()), mainBlob.get_byte_size());
         networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
     }
     _logger.debug("parse end for vcl compiler");
