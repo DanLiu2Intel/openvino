@@ -553,6 +553,7 @@ int main(int argc, char* argv[]) {
             std::cout << "[ WARNING ] RUN_MULTI_THREAD_TEST_FOR_SAME_MODEL environment variable is not set, skipping multi-thread test."
                       << std::endl;
         }
+        std::cout << "--------------------add test finish1---------------------------" << std::endl;
 
         if (run) {
             std::cout << "[ INFO ] RUN_MULTI_THREAD_TEST environment variable is  set, run multi-thread test."
@@ -609,11 +610,11 @@ int main(int argc, char* argv[]) {
             for (auto& thread : threads) {
                 thread.join();
             }
-            std::cout << "--------------------add test finish---------------------------" << std::endl;
         } else {
             std::cout << "[ WARNING ] RUN_MULTI_THREAD_TEST environment variable is not set, skipping multi-thread test."
                       << std::endl;
         }
+        std::cout << "--------------------add test finish2---------------------------" << std::endl;
     } catch (const std::exception& error) {
         std::cerr << error.what() << std::endl;
         return EXIT_FAILURE;
