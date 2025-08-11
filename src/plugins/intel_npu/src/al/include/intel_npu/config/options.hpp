@@ -1406,4 +1406,36 @@ struct WS_COMPILE_CALL_NUMBER final : OptionBase<WS_COMPILE_CALL_NUMBER, uint32_
     }
 };
 
+//
+// NPU_PERSIST_LOG
+//
+struct PERSIST_LOG final : OptionBase<PERSIST_LOG, std::string> {
+    static std::string_view key() {
+        return ov::intel_npu::persist_log.name();
+    }
+
+#ifdef NPU_PLUGIN_DEVELOPER_BUILD
+    static std::string_view envVar() {
+        return "IE_NPU_PERSIST_LOG";
+    }
+#endif
+
+    static std::string defaultValue() {
+        return {};
+    }
+
+    static bool isPublic() {
+        return true;
+    }
+
+    static OptionMode mode() {
+        return OptionMode::CompileTime;
+    }
+
+    
+    static ov::PropertyMutability mutability() {
+        return ov::PropertyMutability::RW;
+    }
+};
+
 }  // namespace intel_npu
