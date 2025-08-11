@@ -420,5 +420,12 @@ static constexpr ov::Property<std::string> backend_compilation_params{"NPU_BACKE
  */
 static constexpr ov::Property<bool> disable_version_check{"NPU_DISABLE_VERSION_CHECK"};
 
+/**
+ * @brief [Only for NPU compiler]
+ * Type: std::string, default is `./default_npu_persist_log.txt.
+ * Config for retrieve log in compiler
+ */
+static constexpr ov::Property<std::string> persist_log{"NPU_PERSIST_LOG"};
+
 }  // namespace intel_npu
 }  // namespace ov
