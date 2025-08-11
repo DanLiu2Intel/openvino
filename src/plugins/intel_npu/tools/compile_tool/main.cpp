@@ -12,36 +12,11 @@
 #include <map>
 #include <openvino/core/partial_shape.hpp>
 #include <openvino/openvino.hpp>
-#include <sstream>
 #include <string>
-#include <thread>
 #include <unordered_map>
 #include <vector>
 
 #include "tools_helpers.hpp"
-
-#if defined(_WIN32) || defined(_WIN64)
-#    include <windows.h>
-void printCurrentCpu() {
-    DWORD cpu = GetCurrentProcessorNumber();
-    std::cout << "      Thread is running on CPU core: " << cpu << std::endl;
-}
-#elif defined(__linux__)
-#    include <sched.h>
-#    include <unistd.h>
-void printCurrentCpu() {
-    int cpu = sched_getcpu();
-    if (cpu != -1) {
-        std::cout << "      Thread is running on CPU core: " << cpu << std::endl;
-    } else {
-        std::cerr << "      Failed to get CPU core information" << std::endl;
-    }
-}
-#else
-void printCurrentCpu() {
-    std::cerr << "      Unsupported platform" << std::endl;
-}
-#endif
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -528,72 +503,6 @@ int main(int argc, char* argv[]) {
             compiledModel.export_model(outputFile);
         }
         std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
-
-        std::cout << "--------------------add test start--------model is passed by VALUE in thread.-------------------"
-                  << std::endl;
-        const char* run = std::getenv("RUN_MULTI_THREAD_TEST");
-        if (run) {
-            std::cout << "[ INFO ] RUN_MULTI_THREAD_TEST environment variable is  set, run multi-thread test."
-                      << std::endl;
-            const char* pstr = std::getenv("MODELS_PATH");
-            /////// need save three models in MODELS_PATH.
-            if (!pstr) {
-                std::cerr << "[ ERROR ] MODELS_PATH environment variable is not set." << std::endl;
-            }
-            // pass absolute path
-            std::filesystem::path models_path(pstr);
-            std::vector<std::shared_ptr<ov::Model>> models;
-            std::cout << "[ STEP1 ] Read model:" << std::endl;
-            for (const auto& entry : std::filesystem::directory_iterator{models_path}) {
-                if (entry.path().extension() == ".xml") {
-                    const auto& filename = entry.path().filename().string();
-                    std::cout << "   [ INFO ] Read model: " << filename << std::endl;
-                    ov::Core core2;
-                    auto model = core2.read_model(entry.path());
-                    std::cout << "   [ INFO ] check model name: " << model->get_name() << std::endl;
-                    ov::preprocess::PrePostProcessor ppp(model);
-                    for (const auto& input : model->inputs()) {
-                        const auto& name = input.get_any_name();
-                        auto& ii = ppp.input(name);
-                        ii.tensor().set_element_type(ov::element::f16);
-                    }
-                    for (const auto& output : model->outputs()) {
-                        const auto& name = output.get_any_name();
-                        auto& oi = ppp.output(name);
-                        oi.tensor().set_element_type(ov::element::f16);
-                    }
-                    model = ppp.build();
-                    models.push_back(std::move(model));
-                }
-            }
-
-            std::cout << "[ STEP2 ] Check model name in vector" << std::endl;
-            for (int i = 0; i < models.size(); i++) {
-                std::cout << "    [ INFO ] model[" << i << "]" << models[i]->get_name() << std::endl;
-            }
-
-            std::cout << "[ STEP3 ] Use model to compile in multi_thread" << std::endl;
-            std::vector<std::thread> threads;
-            std::string device = FLAGS_d;
-            for (int i = 0; i < models.size(); i++) {
-                auto mo = models[i];
-                std::cout << "    [ INFO ] before go into thread : model name is" << mo->get_name() << std::endl;
-                threads.emplace_back([&core, mo, device, &configs, i] {
-                    std::cout << "    [ INFO ] in thread[" << i << "], model name is" << mo->get_name() << std::endl;
-                    printCurrentCpu();
-                    /// update config for each thread
-                    configs["NPU_PERSIST_LOG"] = "save_model_" + mo->get_name() + "_" + std::to_string(i) + ".txt";
-                    auto compiledModel2 = core.compile_model(mo, device, {configs.begin(), configs.end()});
-                });
-            }
-            for (auto& thread : threads) {
-                thread.join();
-            }
-            std::cout << "--------------------add test finish---------------------------" << std::endl;
-        } else {
-            std::cout << "[ INFO ] RUN_MULTI_THREAD_TEST environment variable is not set, skipping multi-thread test."
-                      << std::endl;
-        }
     } catch (const std::exception& error) {
         std::cerr << error.what() << std::endl;
         return EXIT_FAILURE;
