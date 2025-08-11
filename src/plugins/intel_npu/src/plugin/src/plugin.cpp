@@ -543,18 +543,14 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     // activate the NPUW path
     auto useNpuwKey = ov::intel_npu::use_npuw.name();
     ov::AnyMap localProperties = properties;
-        const char* addConfig = std::getenv("ADD_CONFIG_TO_PLUGIN");
     const char* addLogDebug = std::getenv("SET_LOG_LEVEL_DEBUG");
-    if (addConfig) {
-        std::string save_path = getLogFileName(model);
-        std::cout << "save log retrieve file in " << save_path << std::endl;
-        localProperties.emplace("NPU_PERSIST_LOG", save_path);
-        if (addLogDebug) {
-            localProperties.emplace("LOG_LEVEL", "LOG_DEBUG");
-        } else {
-            localProperties.emplace("LOG_LEVEL", "LOG_INFO");
-        }
+    std::string save_path = getLogFileName(model);
+    std::cout << "save log retrieve file in " << save_path << std::endl;
+    localProperties.emplace("NPU_PERSIST_LOG", save_path);
+    if (addLogDebug) {
+        localProperties.emplace("LOG_LEVEL", "LOG_DEBUG");
     }
+
     if (localProperties.count(useNpuwKey)) {
         if (localProperties.at(useNpuwKey).as<bool>() == true) {
             return ov::npuw::ICompiledModel::create(model->clone(), shared_from_this(), localProperties);
