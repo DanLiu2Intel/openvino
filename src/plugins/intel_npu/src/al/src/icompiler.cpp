@@ -3,6 +3,7 @@
 //
 
 #include "intel_npu/icompiler.hpp"
+#include "intel_npu/simple_network_metadata_serializer.hpp"
 
 namespace intel_npu {
 
@@ -62,6 +63,26 @@ void NetworkMetadata::bindRelatedDescriptors() {
 
         ++ioIndex;
     }
+}
+
+void NetworkMetadata::saveToJson(const std::string& filePath) const {
+    SimpleNetworkMetadataSerializer::saveToJson(*this, filePath);
+}
+
+void NetworkMetadata::saveToBinary(const std::string& filePath) const {
+    SimpleNetworkMetadataSerializer::saveToBinary(*this, filePath);
+}
+
+NetworkMetadata NetworkMetadata::loadFromJson(const std::string& filePath) {
+    // Note: For full JSON deserialization, use NetworkMetadataSerializer::loadFromJson
+    // This is a placeholder implementation
+    throw std::runtime_error("JSON deserialization not implemented in simple serializer. Use NetworkMetadataSerializer::loadFromJson instead.");
+}
+
+NetworkMetadata NetworkMetadata::loadFromBinary(const std::string& filePath) {
+    // Note: For full binary deserialization, use NetworkMetadataSerializer::loadFromBinary
+    // This is a placeholder implementation  
+    throw std::runtime_error("Binary deserialization not implemented in simple serializer. Use NetworkMetadataSerializer::loadFromBinary instead.");
 }
 
 }  // namespace intel_npu

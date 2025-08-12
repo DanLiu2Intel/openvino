@@ -141,6 +141,32 @@ struct NetworkMetadata final {
      */
     void bindRelatedDescriptors();
 
+    /**
+     * @brief Save NetworkMetadata to JSON file
+     * @param filePath Path to output JSON file
+     */
+    void saveToJson(const std::string& filePath) const;
+
+    /**
+     * @brief Save NetworkMetadata to binary file
+     * @param filePath Path to output binary file
+     */
+    void saveToBinary(const std::string& filePath) const;
+
+    /**
+     * @brief Load NetworkMetadata from JSON file (static method)
+     * @param filePath Path to input JSON file
+     * @return Loaded NetworkMetadata object
+     */
+    static NetworkMetadata loadFromJson(const std::string& filePath);
+
+    /**
+     * @brief Load NetworkMetadata from binary file (static method)
+     * @param filePath Path to input binary file
+     * @return Loaded NetworkMetadata object
+     */
+    static NetworkMetadata loadFromBinary(const std::string& filePath);
+
 };  // namespace intel_npu
 
 }  // namespace intel_npu
