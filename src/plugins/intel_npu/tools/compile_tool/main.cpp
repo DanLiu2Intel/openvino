@@ -542,76 +542,79 @@ int main(int argc, char* argv[]) {
         // 5. Parse configuration file
         // 6. Compile model
         // 7. Export model to file
-        TimeDiff loadNetworkTimeElapsed{0};
-
-        const auto& version = ov::get_openvino_version();
-        std::cout << version.description << " version ......... ";
-        std::cout << OPENVINO_VERSION_MAJOR << "." << OPENVINO_VERSION_MINOR << "." << OPENVINO_VERSION_PATCH
-                  << std::endl;
-
-        std::cout << "Build ........... ";
-        std::cout << version.buildNumber << std::endl;
-        std::cout << "Parsing command-line arguments" << std::endl;
-        if (!parseCommandLine(&argc, &argv)) {
-            return EXIT_SUCCESS;
-        }
-
         ov::Core core;
-        std::cout << "Checking FLAGS_LOG_LEVEL " << FLAGS_log_level << std::endl;
+        const char* nor = std::getenv("CompileToolNORMALLY");
+        if (nor) {
+            TimeDiff loadNetworkTimeElapsed{0};
 
-        if (!FLAGS_log_level.empty()) {
-            std::cout << "Setting log level " << FLAGS_log_level << std::endl;
-            ov::log::Level level;
-            std::stringstream{FLAGS_log_level} >> level;
-            core.set_property(FLAGS_d, ov::log::level(level));
+            const auto& version = ov::get_openvino_version();
+            std::cout << version.description << " version ......... ";
+            std::cout << OPENVINO_VERSION_MAJOR << "." << OPENVINO_VERSION_MINOR << "." << OPENVINO_VERSION_PATCH
+                    << std::endl;
+
+            std::cout << "Build ........... ";
+            std::cout << version.buildNumber << std::endl;
+            std::cout << "Parsing command-line arguments" << std::endl;
+            if (!parseCommandLine(&argc, &argv)) {
+                return EXIT_SUCCESS;
+            }
+
+            std::cout << "Checking FLAGS_LOG_LEVEL " << FLAGS_log_level << std::endl;
+
+            if (!FLAGS_log_level.empty()) {
+                std::cout << "Setting log level " << FLAGS_log_level << std::endl;
+                ov::log::Level level;
+                std::stringstream{FLAGS_log_level} >> level;
+                core.set_property(FLAGS_d, ov::log::level(level));
+            }
+
+            std::cout << "Reading model" << std::endl;
+            auto model = core.read_model(FLAGS_m);
+            auto inputs_info = std::const_pointer_cast<ov::Model>(model)->inputs();
+            InputsInfo info_map;
+
+            std::cout << "Configuring model pre & post processing" << std::endl;
+            configurePrePostProcessing(model,
+                                    FLAGS_ip,
+                                    FLAGS_op,
+                                    FLAGS_iop,
+                                    FLAGS_il,
+                                    FLAGS_ol,
+                                    FLAGS_iol,
+                                    FLAGS_iml,
+                                    FLAGS_oml,
+                                    FLAGS_ioml);
+
+            reshape(std::move(inputs_info), info_map, model, FLAGS_shape, FLAGS_override_model_batch_size, FLAGS_d);
+
+            std::cout << "Printing Input and Output Info from model" << std::endl;
+            printInputAndOutputsInfoShort(*model);
+            auto timeBeforeLoadNetwork = std::chrono::steady_clock::now();
+            std::cout << "Parsing configuration file" << std::endl;
+            auto configs = parseConfigFile();
+            if (FLAGS_pc) {
+                configs["PERF_COUNT"] = "YES";
+            }
+
+            std::cout << "Compiling model" << std::endl;
+            auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
+            loadNetworkTimeElapsed =
+                std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
+            std::string outputName = FLAGS_o;
+            if (outputName.empty()) {
+                outputName = getFileNameFromPath(fileNameNoExt(FLAGS_m)) + ".blob";
+            }
+
+            std::ofstream outputFile{outputName, std::ios::out | std::ios::binary};
+            if (!outputFile.is_open()) {
+                std::cout << "Outputting file " << outputName << " can't be opened for writing" << std::endl;
+                return EXIT_FAILURE;
+            } else {
+                std::cout << "Writing into file - " << outputName << std::endl;
+                compiledModel.export_model(outputFile);
+            }
+            std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
         }
-
-        std::cout << "Reading model" << std::endl;
-        auto model = core.read_model(FLAGS_m);
-        auto inputs_info = std::const_pointer_cast<ov::Model>(model)->inputs();
-        InputsInfo info_map;
-
-        std::cout << "Configuring model pre & post processing" << std::endl;
-        configurePrePostProcessing(model,
-                                   FLAGS_ip,
-                                   FLAGS_op,
-                                   FLAGS_iop,
-                                   FLAGS_il,
-                                   FLAGS_ol,
-                                   FLAGS_iol,
-                                   FLAGS_iml,
-                                   FLAGS_oml,
-                                   FLAGS_ioml);
-
-        reshape(std::move(inputs_info), info_map, model, FLAGS_shape, FLAGS_override_model_batch_size, FLAGS_d);
-
-        std::cout << "Printing Input and Output Info from model" << std::endl;
-        printInputAndOutputsInfoShort(*model);
-        auto timeBeforeLoadNetwork = std::chrono::steady_clock::now();
-        std::cout << "Parsing configuration file" << std::endl;
-        auto configs = parseConfigFile();
-        if (FLAGS_pc) {
-            configs["PERF_COUNT"] = "YES";
-        }
-
-        std::cout << "Compiling model" << std::endl;
-        auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
-        loadNetworkTimeElapsed =
-            std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
-        std::string outputName = FLAGS_o;
-        if (outputName.empty()) {
-            outputName = getFileNameFromPath(fileNameNoExt(FLAGS_m)) + ".blob";
-        }
-
-        std::ofstream outputFile{outputName, std::ios::out | std::ios::binary};
-        if (!outputFile.is_open()) {
-            std::cout << "Outputting file " << outputName << " can't be opened for writing" << std::endl;
-            return EXIT_FAILURE;
-        } else {
-            std::cout << "Writing into file - " << outputName << std::endl;
-            compiledModel.export_model(outputFile);
-        }
-        std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
 
         std::shared_ptr<ov::Model> modelSelf;
         const char* model1 = std::getenv("READ_MODEL1");
