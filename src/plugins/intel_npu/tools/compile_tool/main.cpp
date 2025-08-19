@@ -17,6 +17,15 @@
 #include <vector>
 
 #include "tools_helpers.hpp"
+#include "openvino/pass/serialize.hpp"
+#include "openvino/pass/manager.hpp"
+#include "openvino/op/squeeze.hpp"
+#include "openvino/op/relu.hpp"
+#include "openvino/op/add.hpp"
+#include "openvino/op/relu.hpp"
+#include "openvino/op/squeeze.hpp"
+#include "openvino/op/constant.hpp"
+#include "openvino/op/multiply.hpp"
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -420,6 +429,106 @@ std::string getFileNameFromPath(const std::string& path,
     }
 }
 
+std::shared_ptr<ov::Model> getFunction1() {
+    const std::vector<size_t> inputShape = {1, 1, 128};
+    const ov::element::Type_t ngPrc = ov::element::Type_t::f32;
+
+    ov::ParameterVector params{std::make_shared<ov::op::v0::Parameter>(ngPrc, ov::Shape(inputShape))};
+    params.front()->set_friendly_name("Parameter_1");
+    params.front()->get_output_tensor(0).set_names({"Parameter_1"});
+
+    auto relu = std::make_shared<ov::op::v0::Relu>(params[0]);
+    relu->set_friendly_name("Relu_2");
+    relu->get_output_tensor(0).set_names({"relu_output"});
+
+    auto variable = std::make_shared<ov::op::util::Variable>(
+            ov::op::util::VariableInfo{ov::PartialShape::dynamic(), ov::element::dynamic, "my_var"});
+
+    auto read_value = std::make_shared<ov::op::v6::ReadValue>(relu->output(0), variable);
+    read_value->set_friendly_name("ReadValue_3");
+    read_value->get_output_tensor(0).set_names({"readvalue_output"});
+
+    auto assign = std::make_shared<ov::op::v6::Assign>(read_value->output(0), variable);
+    assign->set_friendly_name("Assign_4");
+    assign->get_output_tensor(0).set_names({"assign_output"});
+
+    auto squeeze = std::make_shared<ov::op::v0::Squeeze>(assign);
+    squeeze->set_friendly_name("Squeeze_5");
+    squeeze->get_output_tensor(0).set_names({"Output_5"});
+
+    auto result = std::make_shared<ov::op::v0::Result>(squeeze);
+    result->set_friendly_name("Result_6");
+
+    return std::make_shared<ov::Model>(ov::ResultVector{result}, params, "custom_model");
+}
+
+std::shared_ptr<ov::Model> getFunction2(bool insert_squeeze, bool use_friendly_names) {
+    std::shared_ptr<ov::Model> model;
+    // create ReadValue for X
+    auto variable_x =
+        std::make_shared<ov::op::util::Variable>(ov::op::util::VariableInfo{ov::Shape{32, 1, 10}, ov::element::f32, "xres0"});
+    auto read_val_x = std::make_shared<ov::op::v6::ReadValue>(variable_x);
+
+    // create ReadValue for Y
+    auto variable_y =
+        std::make_shared<ov::op::util::Variable>(ov::op::util::VariableInfo{ov::Shape{32, 1, 10}, ov::element::f32, "yres1"});
+    auto read_val_y = std::make_shared<ov::op::v6::ReadValue>(variable_y);
+
+    if (!use_friendly_names) {
+        read_val_x->get_output_tensor(0).add_names({"x"});
+        read_val_y->get_output_tensor(0).add_names({"y"});
+    } else {
+        read_val_x->set_friendly_name("x");
+        read_val_y->set_friendly_name("y");
+    }
+
+    // -> Add  -> Squeeze -> Assign
+    //         -> Assign
+    // or
+    // -> Add -> Assign
+    //        -> Assign
+    std::shared_ptr<ov::Node> node;
+    node = std::make_shared<ov::op::v1::Add>(read_val_x, read_val_y);
+    auto assign_x = std::make_shared<ov::op::v6::Assign>(node, variable_x);
+
+    if (!use_friendly_names) {
+        node->get_output_tensor(0).add_names({"res0"});
+    } else {
+        node->set_friendly_name("res0");
+    }
+
+    auto assign_y = std::make_shared<ov::op::v6::Assign>(node, variable_y);
+    if (!use_friendly_names) {
+        node->get_output_tensor(0).add_names({"res1"});
+    } else {
+        node->set_friendly_name("res1");
+    }
+
+    assign_x->add_control_dependency(read_val_x);
+    assign_y->add_control_dependency(read_val_y);
+
+    model = std::make_shared<ov::Model>(ov::ResultVector{}, ov::SinkVector{assign_x, assign_y}, ov::ParameterVector{});
+    model->validate_nodes_and_infer_types();
+    return model;
+}
+
+std::shared_ptr<ov::Model> getFunction3() {
+    ov::Shape shape{1, 10, 2};
+    auto inp = std::make_shared<ov::op::v0::Parameter>(ov::element::f16, shape);
+    auto m_i = std::make_shared<ov::op::v0::Constant>(ov::element::f16, shape, 1);
+    auto variable = std::make_shared<ov::op::util::Variable>(
+        ov::op::util::VariableInfo{ov::PartialShape::dynamic(), ov::element::dynamic, "my_var3"});
+    auto m_r = std::make_shared<ov::op::v6::ReadValue>(m_i, variable);
+    auto sum = std::make_shared<ov::op::v1::Add>(inp, m_r);
+    auto m_w = std::make_shared<ov::op::v6::Assign>(sum, variable);
+    auto mul = std::make_shared<ov::op::v1::Multiply>(inp, sum);
+
+    mul->add_control_dependency(m_w);
+
+    std::shared_ptr<ov::Model> model = std::make_shared<ov::Model>(ov::OutputVector{mul}, ov::ParameterVector{inp});
+    return model;
+}
+
 using TimeDiff = std::chrono::milliseconds;
 
 int main(int argc, char* argv[]) {
@@ -503,6 +612,37 @@ int main(int argc, char* argv[]) {
             compiledModel.export_model(outputFile);
         }
         std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
+
+        std::shared_ptr<ov::Model> modelSelf;
+        const char* model1 = std::getenv("READ_MODEL1");
+        const char* model2 = std::getenv("READ_MODEL2");
+        const char* model3 = std::getenv("READ_MODEL3");
+        if (model1) {
+            std::cout << "    Get model from function1!" << std::endl;
+            modelSelf = getFunction1();
+        } else if (model2) {
+            std::cout << "    Get model from function2!" << std::endl;
+            modelSelf = getFunction2(true, true);
+        } else if (model3) {
+            std::cout << "    Get model from function3!" << std::endl;
+            modelSelf = getFunction3();
+        }
+
+        std::cout << "[ INFO ] serialize mode" << std::endl;
+        const auto passConfig = std::make_shared<ov::pass::PassConfig>();
+        ov::pass::Manager manager(passConfig);
+        std::string modelName = modelSelf->get_friendly_name();
+        std::cout << "    Serialize model name:" << modelName << std::endl;
+        std::string xmlName = modelName + "_serialized.xml";
+        std::string binName = modelName + "_serialized.bin";
+        std::cout << "graph size:" << modelSelf->get_graph_size();
+        manager.register_pass<ov::pass::Serialize>(xmlName, binName);
+        manager.run_passes(modelSelf);
+
+        std::cout << "[ INFO ]read model file again" << std::endl;
+
+        modelSelf = core.read_model(xmlName);
+        std::cout << "[ INFO ]done" << std::endl;
     } catch (const std::exception& error) {
         std::cerr << error.what() << std::endl;
         return EXIT_FAILURE;
