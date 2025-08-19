@@ -16,16 +16,14 @@
 #include <unordered_map>
 #include <vector>
 
-#include "tools_helpers.hpp"
-#include "openvino/pass/serialize.hpp"
-#include "openvino/pass/manager.hpp"
-#include "openvino/op/squeeze.hpp"
-#include "openvino/op/relu.hpp"
 #include "openvino/op/add.hpp"
-#include "openvino/op/relu.hpp"
-#include "openvino/op/squeeze.hpp"
 #include "openvino/op/constant.hpp"
 #include "openvino/op/multiply.hpp"
+#include "openvino/op/relu.hpp"
+#include "openvino/op/squeeze.hpp"
+#include "openvino/pass/manager.hpp"
+#include "openvino/pass/serialize.hpp"
+#include "tools_helpers.hpp"
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -442,7 +440,7 @@ std::shared_ptr<ov::Model> getFunction1() {
     relu->get_output_tensor(0).set_names({"relu_output"});
 
     auto variable = std::make_shared<ov::op::util::Variable>(
-            ov::op::util::VariableInfo{ov::PartialShape::dynamic(), ov::element::dynamic, "my_var"});
+        ov::op::util::VariableInfo{ov::PartialShape::dynamic(), ov::element::dynamic, "my_var"});
 
     auto read_value = std::make_shared<ov::op::v6::ReadValue>(relu->output(0), variable);
     read_value->set_friendly_name("ReadValue_3");
@@ -465,13 +463,13 @@ std::shared_ptr<ov::Model> getFunction1() {
 std::shared_ptr<ov::Model> getFunction2(bool insert_squeeze, bool use_friendly_names) {
     std::shared_ptr<ov::Model> model;
     // create ReadValue for X
-    auto variable_x =
-        std::make_shared<ov::op::util::Variable>(ov::op::util::VariableInfo{ov::Shape{32, 1, 10}, ov::element::f32, "xres0"});
+    auto variable_x = std::make_shared<ov::op::util::Variable>(
+        ov::op::util::VariableInfo{ov::Shape{32, 1, 10}, ov::element::f32, "xres0"});
     auto read_val_x = std::make_shared<ov::op::v6::ReadValue>(variable_x);
 
     // create ReadValue for Y
-    auto variable_y =
-        std::make_shared<ov::op::util::Variable>(ov::op::util::VariableInfo{ov::Shape{32, 1, 10}, ov::element::f32, "yres1"});
+    auto variable_y = std::make_shared<ov::op::util::Variable>(
+        ov::op::util::VariableInfo{ov::Shape{32, 1, 10}, ov::element::f32, "yres1"});
     auto read_val_y = std::make_shared<ov::op::v6::ReadValue>(variable_y);
 
     if (!use_friendly_names) {
@@ -529,6 +527,235 @@ std::shared_ptr<ov::Model> getFunction3() {
     return model;
 }
 
+/**
+ * @brief Print basic model information
+ */
+void print_basic_info(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Basic Information ===" << std::endl;
+    std::cout << "Name: " << model->get_name() << std::endl;
+    std::cout << "Friendly Name: " << model->get_friendly_name() << std::endl;
+    std::cout << "Output Size: " << model->get_output_size() << std::endl;
+    std::cout << "Graph Size: " << model->get_graph_size() << " bytes" << std::endl;
+    std::cout << "Is Dynamic: " << (model->is_dynamic() ? "Yes" : "No") << std::endl;
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model parameters (inputs)
+ */
+void print_parameters(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Parameters (Inputs) ===" << std::endl;
+    const auto& parameters = model->get_parameters();
+    std::cout << "Total Parameters: " << parameters.size() << std::endl;
+
+    for (size_t i = 0; i < parameters.size(); ++i) {
+        const auto& param = parameters[i];
+        std::cout << "  [" << i << "] " << param->get_friendly_name() << " : " << param->get_element_type() << " "
+                  << param->get_partial_shape() << std::endl;
+
+        // Print additional parameter info
+        std::cout << "      Type: " << param->get_type_name() << std::endl;
+        if (param->get_output_size() > 0) {
+            std::cout << "      Output tensor names: ";
+            for (size_t j = 0; j < param->get_output_size(); ++j) {
+                auto names = param->get_output_tensor(j).get_names();
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model results (outputs)
+ */
+void print_results(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Results (Outputs) ===" << std::endl;
+    const auto& results = model->get_results();
+    std::cout << "Total Results: " << results.size() << std::endl;
+
+    for (size_t i = 0; i < results.size(); ++i) {
+        const auto& result = results[i];
+        std::cout << "  [" << i << "] " << result->get_friendly_name() << std::endl;
+        std::cout << "      Type: " << result->get_type_name() << std::endl;
+
+        if (result->get_input_size() > 0) {
+            const auto& input = result->get_input_source_output(0);
+            std::cout << "      Element Type: " << input.get_element_type() << std::endl;
+            std::cout << "      Shape: " << input.get_partial_shape() << std::endl;
+
+            auto names = result->get_output_tensor(0).get_names();
+            if (!names.empty()) {
+                std::cout << "      Tensor names: ";
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model variables
+ */
+void print_variables(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Variables ===" << std::endl;
+    const auto& variables = model->get_variables();
+    std::cout << "Total Variables: " << variables.size() << std::endl;
+
+    for (size_t i = 0; i < variables.size(); ++i) {
+        const auto& var = variables[i];
+        const auto& info = var->get_info();
+        std::cout << "  [" << i << "] ID: " << info.variable_id << std::endl;
+        std::cout << "      Shape: " << info.data_shape << std::endl;
+        std::cout << "      Type: " << info.data_type << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model sinks
+ */
+void print_sinks(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Sinks ===" << std::endl;
+    const auto& sinks = model->get_sinks();
+    std::cout << "Total Sinks: " << sinks.size() << std::endl;
+
+    for (size_t i = 0; i < sinks.size(); ++i) {
+        const auto& sink = sinks[i];
+        std::cout << "  [" << i << "] " << sink->get_friendly_name() << " (" << sink->get_type_name() << ")"
+                  << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print runtime information
+ */
+void print_runtime_info(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Runtime Information ===" << std::endl;
+    const auto& rt_info = model->get_rt_info();
+    std::cout << "Runtime Info Entries: " << rt_info.size() << std::endl;
+
+    for (const auto& kv : rt_info) {
+        std::cout << "  " << kv.first << " = ";
+        try {
+            // Try to convert to string
+            std::cout << kv.second.as<std::string>();
+        } catch (...) {
+            try {
+                // Try to convert to int
+                std::cout << kv.second.as<int>();
+            } catch (...) {
+                try {
+                    // Try to convert to bool
+                    std::cout << (kv.second.as<bool>() ? "true" : "false");
+                } catch (...) {
+                    std::cout << "[complex type]";
+                }
+            }
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print all nodes in the model
+ */
+void print_all_nodes(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== All Nodes (Detailed) ===" << std::endl;
+    const auto& nodes = model->get_ordered_ops();
+    std::cout << "Total Nodes: " << nodes.size() << std::endl;
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        const auto& node = nodes[i];
+        std::cout << "  [" << std::setw(3) << i << "] " << std::setw(20) << std::left << node->get_friendly_name()
+                  << " (" << node->get_type_name() << ")" << std::endl;
+
+        // Print inputs
+        if (node->get_input_size() > 0) {
+            std::cout << "       Inputs: ";
+            for (size_t j = 0; j < node->get_input_size(); ++j) {
+                const auto& input = node->get_input_source_output(j);
+                std::cout << input.get_element_type() << input.get_partial_shape();
+                if (j < node->get_input_size() - 1)
+                    std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+
+        // Print outputs
+        if (node->get_output_size() > 0) {
+            std::cout << "       Outputs: ";
+            for (size_t j = 0; j < node->get_output_size(); ++j) {
+                const auto& output = node->get_output_tensor(j);
+                std::cout << output.get_element_type() << output.get_partial_shape();
+                if (j < node->get_output_size() - 1)
+                    std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+
+        // Print node runtime info if exists
+        const auto& node_rt_info = node->get_rt_info();
+        if (!node_rt_info.empty()) {
+            std::cout << "       RT Info: ";
+            for (const auto& kv : node_rt_info) {
+                std::cout << kv.first << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print graph statistics
+ */
+void print_graph_statistics(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Graph Statistics ===" << std::endl;
+    const auto& nodes = model->get_ops();
+
+    // Count nodes by type
+    std::map<std::string, int> node_type_count;
+    for (const auto& node : nodes) {
+        node_type_count[node->get_type_name()]++;
+    }
+
+    std::cout << "Node Type Distribution:" << std::endl;
+    for (const auto& kv : node_type_count) {
+        std::cout << "  " << std::setw(20) << std::left << kv.first << ": " << kv.second << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+void print_all_info(const std::shared_ptr<ov::Model>& model) {
+    if (!model) {
+        std::cout << "Model is null!" << std::endl;
+        return;
+    }
+
+    print_basic_info(model);
+    print_parameters(model);
+    print_results(model);
+    print_variables(model);
+    print_sinks(model);
+    print_runtime_info(model);
+
+    const char* detail = std::getenv("DETAIL");
+    if (detail) {
+        print_all_nodes(model);
+    }
+
+    print_graph_statistics(model);
+}
+
 using TimeDiff = std::chrono::milliseconds;
 
 int main(int argc, char* argv[]) {
@@ -550,7 +777,7 @@ int main(int argc, char* argv[]) {
             const auto& version = ov::get_openvino_version();
             std::cout << version.description << " version ......... ";
             std::cout << OPENVINO_VERSION_MAJOR << "." << OPENVINO_VERSION_MINOR << "." << OPENVINO_VERSION_PATCH
-                    << std::endl;
+                      << std::endl;
 
             std::cout << "Build ........... ";
             std::cout << version.buildNumber << std::endl;
@@ -560,7 +787,6 @@ int main(int argc, char* argv[]) {
             }
 
             std::cout << "Checking FLAGS_LOG_LEVEL " << FLAGS_log_level << std::endl;
-
             if (!FLAGS_log_level.empty()) {
                 std::cout << "Setting log level " << FLAGS_log_level << std::endl;
                 ov::log::Level level;
@@ -570,20 +796,27 @@ int main(int argc, char* argv[]) {
 
             std::cout << "Reading model" << std::endl;
             auto model = core.read_model(FLAGS_m);
+            std::cout << "------1---------" << std::endl;
+            print_all_info(model);
+            std::cout << "------2---------" << std::endl;
+
             auto inputs_info = std::const_pointer_cast<ov::Model>(model)->inputs();
             InputsInfo info_map;
 
             std::cout << "Configuring model pre & post processing" << std::endl;
             configurePrePostProcessing(model,
-                                    FLAGS_ip,
-                                    FLAGS_op,
-                                    FLAGS_iop,
-                                    FLAGS_il,
-                                    FLAGS_ol,
-                                    FLAGS_iol,
-                                    FLAGS_iml,
-                                    FLAGS_oml,
-                                    FLAGS_ioml);
+                                       FLAGS_ip,
+                                       FLAGS_op,
+                                       FLAGS_iop,
+                                       FLAGS_il,
+                                       FLAGS_ol,
+                                       FLAGS_iol,
+                                       FLAGS_iml,
+                                       FLAGS_oml,
+                                       FLAGS_ioml);
+            std::cout << "------3 after configuration---------" << std::endl;
+            print_all_info(model);
+            std::cout << "------4---------" << std::endl;
 
             reshape(std::move(inputs_info), info_map, model, FLAGS_shape, FLAGS_override_model_batch_size, FLAGS_d);
 
