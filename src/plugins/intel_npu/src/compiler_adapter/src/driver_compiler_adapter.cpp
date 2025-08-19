@@ -210,7 +210,7 @@ DriverCompilerAdapter::DriverCompilerAdapter(const std::shared_ptr<ZeroInitStruc
 /**
  * @brief Print basic model information
  */
-void print_basic_info(const std::shared_ptr<ov::Model>& model) {
+void print_basic_info(const std::shared_ptr<const ov::Model>& model) {
     std::cout << "=== Model Basic Information ===" << std::endl;
     std::cout << "Name: " << model->get_name() << std::endl;
     std::cout << "Friendly Name: " << model->get_friendly_name() << std::endl;
@@ -223,7 +223,7 @@ void print_basic_info(const std::shared_ptr<ov::Model>& model) {
 /**
  * @brief Print model parameters (inputs)
  */
-void print_parameters(const std::shared_ptr<ov::Model>& model) {
+void print_parameters(const std::shared_ptr<const ov::Model>& model) {
     std::cout << "=== Model Parameters (Inputs) ===" << std::endl;
     const auto& parameters = model->get_parameters();
     std::cout << "Total Parameters: " << parameters.size() << std::endl;
@@ -252,7 +252,7 @@ void print_parameters(const std::shared_ptr<ov::Model>& model) {
 /**
  * @brief Print model results (outputs)
  */
-void print_results(const std::shared_ptr<ov::Model>& model) {
+void print_results(const std::shared_ptr<const ov::Model>& model) {
     std::cout << "=== Model Results (Outputs) ===" << std::endl;
     const auto& results = model->get_results();
     std::cout << "Total Results: " << results.size() << std::endl;
@@ -283,7 +283,7 @@ void print_results(const std::shared_ptr<ov::Model>& model) {
 /**
  * @brief Print model variables
  */
-void print_variables(const std::shared_ptr<ov::Model>& model) {
+void print_variables(const std::shared_ptr<const ov::Model>& model) {
     std::cout << "=== Model Variables ===" << std::endl;
     const auto& variables = model->get_variables();
     std::cout << "Total Variables: " << variables.size() << std::endl;
@@ -301,7 +301,7 @@ void print_variables(const std::shared_ptr<ov::Model>& model) {
 /**
  * @brief Print model sinks
  */
-void print_sinks(const std::shared_ptr<ov::Model>& model) {
+void print_sinks(const std::shared_ptr<const ov::Model>& model) {
     std::cout << "=== Model Sinks ===" << std::endl;
     const auto& sinks = model->get_sinks();
     std::cout << "Total Sinks: " << sinks.size() << std::endl;
@@ -317,7 +317,7 @@ void print_sinks(const std::shared_ptr<ov::Model>& model) {
 /**
  * @brief Print runtime information
  */
-void print_runtime_info(const std::shared_ptr<ov::Model>& model) {
+void print_runtime_info(const std::shared_ptr<const ov::Model>& model) {
     std::cout << "=== Model Runtime Information ===" << std::endl;
     const auto& rt_info = model->get_rt_info();
     std::cout << "Runtime Info Entries: " << rt_info.size() << std::endl;
@@ -348,7 +348,7 @@ void print_runtime_info(const std::shared_ptr<ov::Model>& model) {
 /**
  * @brief Print all nodes in the model
  */
-void print_all_nodes(const std::shared_ptr<ov::Model>& model) {
+void print_all_nodes(const std::shared_ptr<const ov::Model>& model) {
     std::cout << "=== All Nodes (Detailed) ===" << std::endl;
     const auto& nodes = model->get_ordered_ops();
     std::cout << "Total Nodes: " << nodes.size() << std::endl;
@@ -398,7 +398,7 @@ void print_all_nodes(const std::shared_ptr<ov::Model>& model) {
 /**
  * @brief Print graph statistics
  */
-void print_graph_statistics(const std::shared_ptr<ov::Model>& model) {
+void print_graph_statistics(const std::shared_ptr<const ov::Model>& model) {
     std::cout << "=== Graph Statistics ===" << std::endl;
     const auto& nodes = model->get_ops();
 
@@ -415,7 +415,7 @@ void print_graph_statistics(const std::shared_ptr<ov::Model>& model) {
     std::cout << std::endl;
 }
 
-void print_all_info(const std::shared_ptr<ov::Model>& model) {
+void print_all_info(const std::shared_ptr<const ov::Model>& model) {
     if (!model) {
         std::cout << "Model is null!" << std::endl;
         return;
