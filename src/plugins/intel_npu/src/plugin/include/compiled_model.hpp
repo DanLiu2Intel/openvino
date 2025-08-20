@@ -9,7 +9,7 @@
 #include "intel_npu/common/icompiled_model.hpp"
 #include "intel_npu/common/npu.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
-#include "network_metadata.hpp"
+#include "intel_npu/network_metadata.hpp"
 #include "openvino/runtime/so_ptr.hpp"
 #include "properties.hpp"
 

@@ -12,6 +12,7 @@
 #include "intel_npu/config/config.hpp"
 #include "intel_npu/config/options.hpp"
 #include "metadata.hpp"
+
 #include "openvino/pass/constant_folding.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "openvino/runtime/system_conf.hpp"
@@ -28,7 +29,7 @@ std::string getIndent(int level) {
 }
 
 // Get IODescriptor string
-std::string ioDescriptorToString(const IODescriptor& desc, int index) {
+std::string ioDescriptorToString(const intel_npu::IODescriptor& desc, int index) {
     std::ostringstream ss;
 
     ss << getIndent(index) << "IODescriptor {\n";
@@ -88,7 +89,7 @@ std::string addIndentationToString(const std::string& inputStr, const std::strin
 }
 
 // Helper function to add IODescriptor vector to string
-std::string addIoDescVectorToString(const std::vector<IODescriptor>& ioDescriptorVector) {
+std::string addIoDescVectorToString(const std::vector<intel_npu::IODescriptor>& ioDescriptorVector) {
     std::ostringstream ss;
     for (size_t i = 0; i < ioDescriptorVector.size(); ++i) {
         std::string inputStr = ioDescriptorToString(ioDescriptorVector[i], 2);
