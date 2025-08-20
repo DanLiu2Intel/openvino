@@ -443,13 +443,13 @@ void print_parameters(const std::shared_ptr<ov::Model>& model) {
 
     for (size_t i = 0; i < parameters.size(); ++i) {
         const auto& param = parameters[i];
-        std::cout << "  [" << i << "] " << param->get_friendly_name() << " : " << param->get_element_type() << " "
+        std::cout << "  [" << i << "] " << param->get_friendly_name() << "/(get_name is " << param->get_name() << ") : " << param->get_element_type() << " "
                   << param->get_partial_shape() << std::endl;
 
         // Print additional parameter info
         std::cout << "      Type: " << param->get_type_name() << std::endl;
         if (param->get_output_size() > 0) {
-            std::cout << "      Output tensor names: ";
+            std::cout << "      Output tensor names (may contains multi names): ";
             for (size_t j = 0; j < param->get_output_size(); ++j) {
                 auto names = param->get_output_tensor(j).get_names();
                 for (const auto& name : names) {
@@ -472,7 +472,7 @@ void print_results(const std::shared_ptr<ov::Model>& model) {
 
     for (size_t i = 0; i < results.size(); ++i) {
         const auto& result = results[i];
-        std::cout << "  [" << i << "] " << result->get_friendly_name() << std::endl;
+        std::cout << "  [" << i << "] " << result->get_friendly_name() << "/(get_name is " << result->get_name() << ") : " << std::endl;
         std::cout << "      Type: " << result->get_type_name() << std::endl;
 
         if (result->get_input_size() > 0) {
@@ -482,7 +482,7 @@ void print_results(const std::shared_ptr<ov::Model>& model) {
 
             auto names = result->get_output_tensor(0).get_names();
             if (!names.empty()) {
-                std::cout << "      Tensor names: ";
+                std::cout << "      Tensor names (may contains multi names):: ";
                 for (const auto& name : names) {
                     std::cout << name << " ";
                 }
