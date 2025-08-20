@@ -712,7 +712,7 @@ int main(int argc, char* argv[]) {
         std::cout << "[compile_tool]------5.after reshape---------" << std::endl;
         print_all_info(model);
         std::cout << "[compile_tool]------6.after reshape----------" << std::endl;
-        
+
         std::cout << "Printing Input and Output Info from model" << std::endl;
         printInputAndOutputsInfoShort(*model);
         auto timeBeforeLoadNetwork = std::chrono::steady_clock::now();

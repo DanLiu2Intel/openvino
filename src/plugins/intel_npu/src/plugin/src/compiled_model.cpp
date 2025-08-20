@@ -119,7 +119,7 @@ std::string networkMetadataToString(const intel_npu::NetworkMetadata& netMetadat
     return ss.str();
 }
 
-}
+}  // namespace
 
 namespace intel_npu {
 

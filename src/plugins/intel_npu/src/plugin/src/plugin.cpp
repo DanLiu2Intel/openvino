@@ -954,7 +954,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         OPENVINO_THROW("NPU plugin: got an unexpected exception from compiler");
     }
     auto metadata = graph->get_metadata();
-    
+
     std::cout << "[plugin]------9.after compile---------" << std::endl;
     std::cout << networkMetadataToString(metadata) << std::endl;
     std::cout << "[plugin]------10.after compile----------" << std::endl;
