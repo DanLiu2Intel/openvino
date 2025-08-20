@@ -11,6 +11,7 @@
 #include "intel_npu/utils/logger/logger.hpp"
 #include "openvino/runtime/so_ptr.hpp"
 #include "properties.hpp"
+#include "network_metadata.hpp"
 
 namespace intel_npu {
 
