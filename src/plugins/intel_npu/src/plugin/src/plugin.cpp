@@ -4,7 +4,9 @@
 
 #include "plugin.hpp"
 
+#include <filesystem>
 #include <fstream>
+#include <regex>
 
 #include "compiled_model.hpp"
 #include "compiler_adapter_factory.hpp"
@@ -280,6 +282,7 @@ void Plugin::init_options() {
     REGISTER_OPTION(WEIGHTLESS_BLOB);
     REGISTER_OPTION(SEPARATE_WEIGHTS_VERSION);
     REGISTER_OPTION(WS_COMPILE_CALL_NUMBER);
+    REGISTER_OPTION(PERSIST_LOG);
 
     if (_backend) {
         if (_backend->isCommandQueueExtSupported()) {
@@ -508,6 +511,30 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
     return _properties->get_property(name, arguments);
 }
 
+std::string getLogFileName(const std::shared_ptr<const ov::Model>& model) {
+    std::string modelName = model->get_friendly_name();
+    /// Use underscores to replace special characters
+    std::regex invalidChars(R"([*?\[\]!;|\\\"'<>()/])");
+    std::string sanitizedModelName = std::regex_replace(modelName, invalidChars, "_");
+
+    auto curTime = std::chrono::high_resolution_clock::now();
+    auto nanoSec = curTime.time_since_epoch().count();
+
+    // get the current workdir
+    std::filesystem::path logDir;
+    try {
+        logDir = std::filesystem::temp_directory_path();
+    } catch (...) {
+        logDir = std::filesystem::current_path();
+    }
+
+    std::string filename = "test_log_retrieve_" + sanitizedModelName + "-timestamp-" + std::to_string(nanoSec) + ".txt";
+    filename.erase(std::remove(filename.begin(), filename.end(), '\"'), filename.end());
+    std::replace(filename.begin(), filename.end(), ' ', '-');
+
+    return (logDir / filename).string();
+}
+
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
@@ -518,6 +545,14 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     // activate the NPUW path
     auto useNpuwKey = ov::intel_npu::use_npuw.name();
     ov::AnyMap localProperties = properties;
+    const char* addLogDebug = std::getenv("SET_LOG_LEVEL_DEBUG");
+    std::string save_path = getLogFileName(model);
+    std::cout << "save log retrieve file in " << save_path << std::endl;
+    localProperties.emplace("NPU_PERSIST_LOG", save_path);
+    if (addLogDebug) {
+        localProperties.emplace("LOG_LEVEL", "LOG_DEBUG");
+    }
+
     if (localProperties.count(useNpuwKey)) {
         if (localProperties.at(useNpuwKey).as<bool>() == true) {
             return ov::npuw::ICompiledModel::create(model->clone(), shared_from_this(), localProperties);
@@ -611,6 +646,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     }
 
     std::shared_ptr<intel_npu::IGraph> graph;
+    std::cout << "-1-Compiling model with properties(toString): " << localConfig.toString() << std::endl;
+    std::cout << "-2-Compiling model with properties(toStringForCompilerInternal): " << localConfig.toStringForCompilerInternal() << std::endl;
+    std::cout << "-3-Compiling model with properties(toStringForCompiler): " << localConfig.toStringForCompiler() << std::endl;
 
     try {
         _logger.debug("performing compile");
