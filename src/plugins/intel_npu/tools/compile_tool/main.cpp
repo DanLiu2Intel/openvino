@@ -13,11 +13,11 @@
 #include <openvino/core/partial_shape.hpp>
 #include <openvino/openvino.hpp>
 #include <string>
+#include <transformations/utils/utils.hpp>
 #include <unordered_map>
 #include <vector>
 
 #include "tools_helpers.hpp"
-#include <transformations/utils/utils.hpp>
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -444,8 +444,8 @@ void print_parameters(const std::shared_ptr<ov::Model>& model) {
 
     for (size_t i = 0; i < parameters.size(); ++i) {
         const auto& param = parameters[i];
-        std::cout << "  [" << i << "] " << param->get_friendly_name() << "/(get_name is " << param->get_name() << ") : " << param->get_element_type() << " "
-                  << param->get_partial_shape() << std::endl;
+        std::cout << "  [" << i << "] " << param->get_friendly_name() << "/(get_name is " << param->get_name()
+                  << ") : " << param->get_element_type() << " " << param->get_partial_shape() << std::endl;
 
         // Print additional parameter info
         std::cout << "      Type: " << param->get_type_name() << std::endl;
@@ -458,8 +458,7 @@ void print_parameters(const std::shared_ptr<ov::Model>& model) {
                 }
             }
             std::cout << std::endl;
-       }
-
+        }
     }
     std::cout << std::endl;
 }
@@ -474,7 +473,8 @@ void print_results(const std::shared_ptr<ov::Model>& model) {
 
     for (size_t i = 0; i < results.size(); ++i) {
         const auto& result = results[i];
-        std::cout << "  [" << i << "] " << result->get_friendly_name() << "/(get_name is " << result->get_name() << ") : " << std::endl;
+        std::cout << "  [" << i << "] " << result->get_friendly_name() << "/(get_name is " << result->get_name()
+                  << ") : " << std::endl;
         std::cout << "      Type: " << result->get_type_name() << std::endl;
 
         if (result->get_input_size() > 0) {
@@ -493,8 +493,8 @@ void print_results(const std::shared_ptr<ov::Model>& model) {
         }
 
         /// new add test line
-        std::cout << "     Output tensor name (ov::op::util::get_ie_output_name(result->input_value(0))): " 
-        << ov::op::util::get_ie_output_name(result->input_value(0)) << std::endl;
+        std::cout << "     Output tensor name (ov::op::util::get_ie_output_name(result->input_value(0))): "
+                  << ov::op::util::get_ie_output_name(result->input_value(0)) << std::endl;
     }
     std::cout << std::endl;
 }
