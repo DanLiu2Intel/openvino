@@ -23,6 +23,9 @@ namespace {
 
 const std::vector<size_t> CONSTANT_NODE_DUMMY_SHAPE{1};
 
+
+std::map<std::string, std::string> stream{{"3720","4"},{"4000","4"},{"5010","1"},{"5020","2"}, {"6000", "3"}};
+
 std::vector<IODescriptor> convertIODescriptors(const std::vector<elf::TensorRef>& descriptorsFromCompiler,
                                                const std::optional<std::vector<elf::OVNode>>& descriptorsFromIRModel,
                                                const bool areInputs) {
@@ -138,6 +141,17 @@ std::vector<IODescriptor> convertIODescriptors(const std::vector<elf::TensorRef>
 }
 
 void getNetworkMetadata(const std::shared_ptr<const std::shared_ptr<const ov::Model>& model, NetworkMetadata& network) {
+    const auto& parameters = model->get_parameters();
+     const auto& results = model->get_results();
+
+    network.inputs =
+            convertIODescriptors(parameters);
+    network.outputs =
+            convertIODescriptors(results);
+    // profilingOutputs how to get?
+    network.profilingOutputs = convertIODescriptors(metadata->mProfilingOutputs, std::nullopt, /*areInputs=*/false);
+
+
     VPUX_THROW_UNLESS(metadata != nullptr, "METADATA NOT FOUND IN ELF");
     network.name = metadata->mIdentification.blob_name;
 
