@@ -18,154 +18,112 @@
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/executor_manager.hpp"
 #include "transformations/utils/utils.hpp"
+#include "intel_npu/prefix.hpp"
+#include "intel_npu/network_metadata.hpp"
+#include "intel_npu/config/options.hpp"
+
 
 namespace {
 
 const std::vector<size_t> CONSTANT_NODE_DUMMY_SHAPE{1};
+class StringNotEqualException : public std::runtime_error {
+public:
+    StringNotEqualException(const std::string& message)
+        : std::runtime_error(message) {}
+};
 
+void compareStrings(const std::string& str1, const std::string& str2) {
+    if (str1 != str2) {
+        throw StringNotEqualException("metadata are not equal: \"" + str1 + "\" != \"" + str2 + "\"");
+    }
+}
 
 std::map<std::string, std::string> stream{{"3720","4"},{"4000","4"},{"5010","1"},{"5020","2"}, {"6000", "3"}};
 
-std::vector<IODescriptor> convertIODescriptors(const std::vector<elf::TensorRef>& descriptorsFromCompiler,
-                                               const std::optional<std::vector<elf::OVNode>>& descriptorsFromIRModel,
-                                               const bool areInputs) {
-    std::vector<IODescriptor> convertedIODescriptors;
+// for result: std::vector<std::shared_ptr<ov::op::v0::Result>>
 
-    const size_t descriptorsFromCompilerCount = descriptorsFromCompiler.size();
-    size_t descriptorsFromIRModelCount = 0;
+std::vector<intel_npu::IODescriptor> convertIODescriptors(std::vector<std::shared_ptr<ov::op::v0::Parameter>> parameters, bool areInputs = true) {
+    std::vector<intel_npu::IODescriptor> convertedIODescriptors;
 
-    if (descriptorsFromIRModel.has_value()) {
-        // In addition to the inputs/outputs found in the IR model, the compiler may also place additional I/O such as
-        // states, shape tensors and weights. Thus, we cannot have less I/O entries originating from the compiler
-        // compared to the IR model.
-        descriptorsFromIRModelCount = descriptorsFromIRModel->size();
-        VPUX_THROW_WHEN(descriptorsFromIRModelCount > descriptorsFromCompilerCount,
-                        "The number of inputs/outputs extracted from the compiled model is less than the number found "
-                        "in the IR model");
-    }
-
-    convertedIODescriptors.reserve(descriptorsFromCompilerCount);
-    for (auto descriptorIndex : irange(descriptorsFromCompilerCount)) {
-        IODescriptor convertedIODescriptor;
-
-        // From the "elf::TensorRef" structure we may build the following "intel_npu::IODescriptor" fields:
-        //  * nameFromCompiler
-        //  * precision
-        //  * shapeFromCompiler
-        //  * isStateInput/isStateOutput/isShapeTensor/isInitInputWeights/isInitOutputWeights/isMainInputWeights
-        const elf::TensorRef& descriptorFromCompiler = descriptorsFromCompiler.at(descriptorIndex);
-        convertedIODescriptor.nameFromCompiler = descriptorFromCompiler.name;
-
-        // Flags will be used instead of indices for informing the type of the current entry
-        if (areInputs && intel_npu::isStateInputName(convertedIODescriptor.nameFromCompiler)) {
-            convertedIODescriptor.nameFromCompiler =
-                    convertedIODescriptor.nameFromCompiler.substr(intel_npu::READVALUE_PREFIX.length());
-            convertedIODescriptor.isStateInput = true;
-        } else if (!areInputs && intel_npu::isStateOutputName(convertedIODescriptor.nameFromCompiler)) {
-            convertedIODescriptor.nameFromCompiler =
-                    convertedIODescriptor.nameFromCompiler.substr(intel_npu::ASSIGN_PREFIX.length());
-            convertedIODescriptor.isStateOutput = true;
-        } else if (intel_npu::isShapeTensorName(convertedIODescriptor.nameFromCompiler)) {
-            convertedIODescriptor.nameFromCompiler =
-                    convertedIODescriptor.nameFromCompiler.substr(intel_npu::SHAPE_TENSOR_PREFIX.length());
-            convertedIODescriptor.isShapeTensor = true;
-        } else if (areInputs && intel_npu::isInitInputWeightsName(convertedIODescriptor.nameFromCompiler)) {
-            convertedIODescriptor.nameFromCompiler =
-                    convertedIODescriptor.nameFromCompiler.substr(intel_npu::INIT_INPUT_WEIGHTS_PREFIX.length());
-            convertedIODescriptor.isInitInputWeights = true;
-        } else if (!areInputs && intel_npu::isInitOutputWeightsName(convertedIODescriptor.nameFromCompiler)) {
-            convertedIODescriptor.nameFromCompiler =
-                    convertedIODescriptor.nameFromCompiler.substr(intel_npu::INIT_OUTPUT_WEIGHTS_PREFIX.length());
-            convertedIODescriptor.isInitOutputWeights = true;
-        } else if (areInputs && intel_npu::isMainInputWeightsName(convertedIODescriptor.nameFromCompiler)) {
-            convertedIODescriptor.nameFromCompiler =
-                    convertedIODescriptor.nameFromCompiler.substr(intel_npu::MAIN_INPUT_WEIGHTS_PREFIX.length());
-            convertedIODescriptor.isMainInputWeights = true;
+    for (int i = 0; i < parameters.size(); i++) {
+        const auto& param = parameters[i];
+        intel_npu::IODescriptor ioDesc;
+        ioDesc.nameFromCompiler = param->get_friendly_name();
+        ioDesc.precision = param->get_element_type();
+        ioDesc.shapeFromCompiler = param->get_shape();
+        if (areInputs && intel_npu::isStateInputName(ioDesc.nameFromCompiler)) {
+            ioDesc.nameFromCompiler =
+                    ioDesc.nameFromCompiler.substr(intel_npu::READVALUE_PREFIX.length());
+            ioDesc.isStateInput = true;
+        } else if (intel_npu::isShapeTensorName(ioDesc.nameFromCompiler)) {
+            ioDesc.nameFromCompiler =
+                    ioDesc.nameFromCompiler.substr(intel_npu::SHAPE_TENSOR_PREFIX.length());
+            ioDesc.isShapeTensor = true;
+        } else if (areInputs && intel_npu::isInitInputWeightsName(ioDesc.nameFromCompiler)) {
+            ioDesc.nameFromCompiler =
+                    ioDesc.nameFromCompiler.substr(intel_npu::INIT_INPUT_WEIGHTS_PREFIX.length());
+            ioDesc.isInitInputWeights = true;
+        } else if (areInputs && intel_npu::isMainInputWeightsName(ioDesc.nameFromCompiler)) {
+            ioDesc.nameFromCompiler =
+                    ioDesc.nameFromCompiler.substr(intel_npu::MAIN_INPUT_WEIGHTS_PREFIX.length());
+            ioDesc.isMainInputWeights = true;
         }
-
-        const std::vector<size_t> dataDims(descriptorFromCompiler.dimensions,
-                                           descriptorFromCompiler.dimensions + descriptorFromCompiler.dimensions_size);
-
-        convertedIODescriptor.shapeFromCompiler = ov::PartialShape(dataDims);
-        convertedIODescriptor.precision = extractPrecisionFromDType(descriptorFromCompiler.data_type);
-
-        if (descriptorsFromIRModel.has_value() && descriptorIndex < descriptorsFromIRModelCount) {
-            // The states, shape tensors or weights (if using weights separation) are appended as inputs/outputs by the
-            // compiler, the IR model cannot contain them in the parameters/results entries.
-            VPUX_THROW_WHEN(convertedIODescriptor.isStateInput || convertedIODescriptor.isStateOutput ||
-                                    convertedIODescriptor.isShapeTensor || convertedIODescriptor.isInitInputWeights ||
-                                    convertedIODescriptor.isInitOutputWeights ||
-                                    convertedIODescriptor.isMainInputWeights,
-                            "The inputs/outputs found in the IR model cannot be states, shape tensors or weights");
-
-            // From the "elf::OVNode" structure we may build the following "intel_npu::IODescriptor" fields:
-            //  * nodeFriendlyName
-            //  * outputTensorNames
-            const elf::OVNode& descriptorFromIRModel = descriptorsFromIRModel->at(descriptorIndex);
-
-            convertedIODescriptor.nodeFriendlyName = std::string(descriptorFromIRModel.friendly_name);
-            convertedIODescriptor.outputTensorNames = [&descriptorFromIRModel]() {
-                std::unordered_set<std::string> retTensorNames;
-                for (auto i : irange(descriptorFromIRModel.tensor_names_count)) {
-                    retTensorNames.insert(std::string(descriptorFromIRModel.tensor_names[i]));
-                }
-                return retTensorNames;
-            }();
-            convertedIODescriptor.shapeFromIRModel = std::optional([&descriptorFromIRModel]() {
-                const auto dynamicDim = std::numeric_limits<uint64_t>::max();
-                ov::PartialShape retShape;
-                for (auto i : irange(descriptorFromIRModel.shape_size)) {
-                    retShape.reserve(descriptorFromIRModel.shape_size);
-                    if (descriptorFromIRModel.shape[i] != dynamicDim) {
-                        retShape.push_back(checked_cast<int64_t>(descriptorFromIRModel.shape[i]));
-                    } else {
-                        retShape.push_back(-1);
-                    }
-                }
-                return retShape;
-            }());
-
-            VPUX_THROW_WHEN(convertedIODescriptor.precision != mapElementTypeOV.at(descriptorFromIRModel.type),
-                            "Precision mismatch between the compiler specific metadata and IR model one.\nName from "
-                            "compiler: {0}, precision: {1}\nNode friendly name: {2}, precision: {3}",
-                            convertedIODescriptor.nameFromCompiler,
-                            ov::element::Type(convertedIODescriptor.precision).get_type_name(),
-                            convertedIODescriptor.nodeFriendlyName,
-                            ov::element::Type(mapElementTypeOV.at(descriptorFromIRModel.type)).get_type_name());
-        }
-
-        convertedIODescriptors.push_back(std::move(convertedIODescriptor));
+            convertedIODescriptors.push_back(ioDesc);
     }
 
     return convertedIODescriptors;
 }
 
-void getNetworkMetadata(const std::shared_ptr<const std::shared_ptr<const ov::Model>& model, NetworkMetadata& network) {
-    const auto& parameters = model->get_parameters();
-     const auto& results = model->get_results();
 
-    network.inputs =
-            convertIODescriptors(parameters);
-    network.outputs =
-            convertIODescriptors(results);
-    // profilingOutputs how to get?
-    network.profilingOutputs = convertIODescriptors(metadata->mProfilingOutputs, std::nullopt, /*areInputs=*/false);
+std::vector<intel_npu::IODescriptor> convertIODescriptors(std::vector<std::shared_ptr<ov::op::v0::Result>> results, bool areInputs = true) {
+    std::vector<intel_npu::IODescriptor> convertedIODescriptors;
 
+    for (int i = 0; i < results.size(); i++) {
+        const auto& result = results[i];
+        intel_npu::IODescriptor ioDesc;
+        ioDesc.nameFromCompiler = ov::op::util::get_ie_output_name(result->input_value(0)); // output
+        ioDesc.precision = result->get_element_type();
+        ioDesc.shapeFromCompiler = result->get_shape();
+            if (!areInputs && intel_npu::isStateOutputName(ioDesc.nameFromCompiler)) {
+                ioDesc.nameFromCompiler =
+                        ioDesc.nameFromCompiler.substr(intel_npu::ASSIGN_PREFIX.length());
+                ioDesc.isStateOutput = true;
+            } else if (intel_npu::isShapeTensorName(ioDesc.nameFromCompiler)) {
+                ioDesc.nameFromCompiler =
+                        ioDesc.nameFromCompiler.substr(intel_npu::SHAPE_TENSOR_PREFIX.length());
+                ioDesc.isShapeTensor = true;
+            } else if (!areInputs && intel_npu::isInitOutputWeightsName(ioDesc.nameFromCompiler)) {
+                ioDesc.nameFromCompiler =
+                        ioDesc.nameFromCompiler.substr(intel_npu::INIT_OUTPUT_WEIGHTS_PREFIX.length());
+                ioDesc.isInitOutputWeights = true;
+            }
+            convertedIODescriptors.push_back(ioDesc);
+    }
 
+    return convertedIODescriptors;
+}
+
+void getNetworkMetadata(const std::shared_ptr<const std::shared_ptr<const ov::Model>& model, NetworkMetadata& network, FilteredConfig config) {
     VPUX_THROW_UNLESS(metadata != nullptr, "METADATA NOT FOUND IN ELF");
-    network.name = metadata->mIdentification.blob_name;
+    network.name = model->get_name();
 
-    OV_ITT_TASK_CHAIN(NETWORK_DESCRIPTION, itt::domains::VPUXPlugin, "getNetworkMetadata", "convertIODescriptors");
+    const auto& parameters = model->get_parameters();
+    const auto& results = model->get_results();
 
-    network.inputs =
-            convertIODescriptors(metadata->mNetInputs, std::optional(metadata->mOVParameters), /*areInputs=*/true);
-    network.outputs =
-            convertIODescriptors(metadata->mNetOutputs, std::optional(metadata->mOVResults), /*areInputs=*/false);
-    network.profilingOutputs = convertIODescriptors(metadata->mProfilingOutputs, std::nullopt, /*areInputs=*/false);
+    network.inputs = convertIODescriptors(parameters);
+    network.outputs =  convertIODescriptors(results);
+    // profilingOutputs how to get?
+    if(config.has<PERF_COUNT>() || !config.get<PERF_COUNT>()) {
+        network.profilingOutputs = convertIODescriptors(results);
+        std::cout << "profiling info is not true, need check with IMD" << std::endl;
+    } else {
+        network.profilingOutputs = {};
+        std::cout << "profiling info is empty, need check with IMD, may get log warning \"inferRequest::get_profiling_info complete with empty\"" << std::endl;
+    }
 
     VPUX_THROW_UNLESS(!network.outputs.empty(), "Metadata structure does not contain info on outputs");
-
-    network.numStreams = metadata->mResourceRequirements.nn_slice_count_;
+    std::cout << "platform: " << localConfig.get<PLATFORM>() << "    deviceID: " << localConfig.get<DEVICE_ID>() << std::endl;
+    network.numStreams = stream[config.get<PLATFORM>];
 
     network.bindRelatedDescriptors();
 }
@@ -438,6 +396,25 @@ void CompiledModel::configure_stream_executors() {
     std::cout << "[CompiledModel]------10.after compile, init---------" << std::endl;
     std::cout << networkMetadataToString(metadata) << std::endl;
     std::cout << "[CompiledModel]------11.after compile, init----------" << std::endl;
+
+    NetworkMetadata& metadataFake;
+    getNetworkMetadata(model, metadata, _config);
+
+    std::cout << "[CompiledModel]------12.fake metadata, init---------" << std::endl;
+    std::cout << networkMetadataToString(metadataFake) << std::endl;
+    std::cout << "[CompiledModel]------13.fake metadata, init after---------" << std::endl;
+
+    try {
+        std::string string1 = networkMetadataToString(metadata);
+        std::string string2 = networkMetadataToString(metadataFake);
+
+        compareStrings(string1, string2);
+        std::cout << "metadata and metadataFake are equal." << std::endl;
+
+    } catch (const StringNotEqualException& e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
+
     set_task_executor(std::move(task_executor));
     const auto executorId = _graph->get_metadata().name + "_NPUResultExecutor";
     _resultExecutor = ov::threading::executor_manager()->get_executor(executorId);
