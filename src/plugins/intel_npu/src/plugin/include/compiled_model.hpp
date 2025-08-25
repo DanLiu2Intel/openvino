@@ -9,6 +9,7 @@
 #include "intel_npu/common/icompiled_model.hpp"
 #include "intel_npu/common/npu.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
+#include "intel_npu/network_metadata.hpp"
 #include "openvino/runtime/so_ptr.hpp"
 #include "properties.hpp"
 
@@ -58,7 +59,7 @@ public:
     const FilteredConfig& get_config() const override;
 
 private:
-    void configure_stream_executors();
+    void configure_stream_executors(const std::shared_ptr<const ov::Model>& model);
 
     FilteredConfig _config;
     Logger _logger;
