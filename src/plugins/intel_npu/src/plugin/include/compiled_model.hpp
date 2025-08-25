@@ -59,7 +59,7 @@ public:
     const FilteredConfig& get_config() const override;
 
 private:
-    void configure_stream_executors();
+    void configure_stream_executors(const std::shared_ptr<const ov::Model>& model);
 
     FilteredConfig _config;
     Logger _logger;

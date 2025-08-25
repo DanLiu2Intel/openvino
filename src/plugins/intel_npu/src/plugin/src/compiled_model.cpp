@@ -8,12 +8,14 @@
 #include <string_view>
 
 #include "async_infer_request.hpp"
+#include "intel_npu/common/filtered_config.hpp"
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/config/config.hpp"
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/network_metadata.hpp"
 #include "intel_npu/prefix.hpp"
 #include "metadata.hpp"
+#include "openvino/core/model.hpp"
 #include "openvino/pass/constant_folding.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "openvino/runtime/system_conf.hpp"
@@ -34,7 +36,7 @@ void compareStrings(const std::string& str1, const std::string& str2) {
     }
 }
 
-std::map<std::string, std::string> stream{{"3720", "4"}, {"4000", "4"}, {"5010", "1"}, {"5020", "2"}, {"6000", "3"}};
+std::map<std::string, std::size_t> stream{{"3720", 4}, {"4000", 4}, {"5010", 1}, {"5020", 2}, {"6000", 3}};
 
 // for result: std::vector<std::shared_ptr<ov::op::v0::Result>>
 
@@ -94,34 +96,39 @@ std::vector<intel_npu::IODescriptor> convertIODescriptors(std::vector<std::share
     return convertedIODescriptors;
 }
 
-void getNetworkMetadata(const std::shared_ptr < const std::shared_ptr<const ov::Model>& model,
-                        NetworkMetadata& network,
-                        FilteredConfig config) {
-    VPUX_THROW_UNLESS(metadata != nullptr, "METADATA NOT FOUND IN ELF");
-    network.name = model->get_name();
+void getNetworkMetadata(const std::shared_ptr<const ov::Model>& model,
+                        intel_npu::NetworkMetadata& networkMetadata,  // return type
+                        intel_npu::FilteredConfig config) {
+    if (!model) {
+        std::cout << "passed model is empty" << std::endl;
+    }
+
+    networkMetadata.name = model->get_name();
 
     const auto& parameters = model->get_parameters();
     const auto& results = model->get_results();
 
-    network.inputs = convertIODescriptors(parameters);
-    network.outputs = convertIODescriptors(results);
+    networkMetadata.inputs = convertIODescriptors(parameters);
+    networkMetadata.outputs = convertIODescriptors(results);
     // profilingOutputs how to get?
-    if (config.has<PERF_COUNT>() || !config.get<PERF_COUNT>()) {
-        network.profilingOutputs = convertIODescriptors(results);
+    if (config.has<intel_npu::PERF_COUNT>() || !config.get<intel_npu::PERF_COUNT>()) {
+        networkMetadata.profilingOutputs = convertIODescriptors(results);
         std::cout << "profiling info is not true, need check with IMD" << std::endl;
     } else {
-        network.profilingOutputs = {};
+        networkMetadata.profilingOutputs = {};
         std::cout << "profiling info is empty, need check with IMD, may get log warning "
                      "\"inferRequest::get_profiling_info complete with empty\""
                   << std::endl;
     }
 
-    VPUX_THROW_UNLESS(!network.outputs.empty(), "Metadata structure does not contain info on outputs");
-    std::cout << "platform: " << localConfig.get<PLATFORM>() << "    deviceID: " << localConfig.get<DEVICE_ID>()
-              << std::endl;
-    network.numStreams = stream[config.get<PLATFORM>];
+    if (!networkMetadata.outputs.empty()) {
+        std::cout << "Metadata structure does not contain info on outputs" << std::endl;
+    }
+    std::cout << "platform: " << config.get<intel_npu::PLATFORM>()
+              << "    deviceID: " << config.get<intel_npu::DEVICE_ID>() << std::endl;
+    networkMetadata.numStreams = stream[config.get<intel_npu::PLATFORM>()];
 
-    network.bindRelatedDescriptors();
+    networkMetadata.bindRelatedDescriptors();
 }
 
 // Control the indentation format
@@ -243,7 +250,7 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
     _properties = std::make_unique<Properties>(PropertiesType::COMPILED_MODEL, _config);
     _properties->registerProperties();
 
-    configure_stream_executors();
+    configure_stream_executors(model);
 
     OV_ITT_TASK_SKIP(COMPILED_MODEL);
 }
@@ -371,7 +378,7 @@ const FilteredConfig& CompiledModel::get_config() const {
     return _config;
 }
 
-void CompiledModel::configure_stream_executors() {
+void CompiledModel::configure_stream_executors(const std::shared_ptr<const ov::Model>& model) {
     std::shared_ptr<ov::threading::ITaskExecutor> task_executor;
     if (get_plugin()->get_property(ov::internal::exclusive_async_requests.name(), {}).as<bool>()) {
         task_executor = ov::threading::executor_manager()->get_executor("NPU");
@@ -392,8 +399,8 @@ void CompiledModel::configure_stream_executors() {
     std::cout << networkMetadataToString(metadata) << std::endl;
     std::cout << "[CompiledModel]------11.after compile, init----------" << std::endl;
 
-    NetworkMetadata& metadataFake;
-    getNetworkMetadata(model, metadata, _config);
+    intel_npu::NetworkMetadata metadataFake;
+    getNetworkMetadata(model, metadataFake, _config);
 
     std::cout << "[CompiledModel]------12.fake metadata, init---------" << std::endl;
     std::cout << networkMetadataToString(metadataFake) << std::endl;
@@ -405,7 +412,6 @@ void CompiledModel::configure_stream_executors() {
 
         compareStrings(string1, string2);
         std::cout << "metadata and metadataFake are equal." << std::endl;
-
     } catch (const StringNotEqualException& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
