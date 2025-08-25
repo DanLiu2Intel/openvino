@@ -11,25 +11,21 @@
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/config/config.hpp"
 #include "intel_npu/config/options.hpp"
+#include "intel_npu/network_metadata.hpp"
+#include "intel_npu/prefix.hpp"
 #include "metadata.hpp"
-
 #include "openvino/pass/constant_folding.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/executor_manager.hpp"
 #include "transformations/utils/utils.hpp"
-#include "intel_npu/prefix.hpp"
-#include "intel_npu/network_metadata.hpp"
-#include "intel_npu/config/options.hpp"
-
 
 namespace {
 
 const std::vector<size_t> CONSTANT_NODE_DUMMY_SHAPE{1};
 class StringNotEqualException : public std::runtime_error {
 public:
-    StringNotEqualException(const std::string& message)
-        : std::runtime_error(message) {}
+    StringNotEqualException(const std::string& message) : std::runtime_error(message) {}
 };
 
 void compareStrings(const std::string& str1, const std::string& str2) {
@@ -38,11 +34,13 @@ void compareStrings(const std::string& str1, const std::string& str2) {
     }
 }
 
-std::map<std::string, std::string> stream{{"3720","4"},{"4000","4"},{"5010","1"},{"5020","2"}, {"6000", "3"}};
+std::map<std::string, std::string> stream{{"3720", "4"}, {"4000", "4"}, {"5010", "1"}, {"5020", "2"}, {"6000", "3"}};
 
 // for result: std::vector<std::shared_ptr<ov::op::v0::Result>>
 
-std::vector<intel_npu::IODescriptor> convertIODescriptors(std::vector<std::shared_ptr<ov::op::v0::Parameter>> parameters, bool areInputs = true) {
+std::vector<intel_npu::IODescriptor> convertIODescriptors(
+    std::vector<std::shared_ptr<ov::op::v0::Parameter>> parameters,
+    bool areInputs = true) {
     std::vector<intel_npu::IODescriptor> convertedIODescriptors;
 
     for (int i = 0; i < parameters.size(); i++) {
@@ -52,58 +50,53 @@ std::vector<intel_npu::IODescriptor> convertIODescriptors(std::vector<std::share
         ioDesc.precision = param->get_element_type();
         ioDesc.shapeFromCompiler = param->get_shape();
         if (areInputs && intel_npu::isStateInputName(ioDesc.nameFromCompiler)) {
-            ioDesc.nameFromCompiler =
-                    ioDesc.nameFromCompiler.substr(intel_npu::READVALUE_PREFIX.length());
+            ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::READVALUE_PREFIX.length());
             ioDesc.isStateInput = true;
         } else if (intel_npu::isShapeTensorName(ioDesc.nameFromCompiler)) {
-            ioDesc.nameFromCompiler =
-                    ioDesc.nameFromCompiler.substr(intel_npu::SHAPE_TENSOR_PREFIX.length());
+            ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::SHAPE_TENSOR_PREFIX.length());
             ioDesc.isShapeTensor = true;
         } else if (areInputs && intel_npu::isInitInputWeightsName(ioDesc.nameFromCompiler)) {
-            ioDesc.nameFromCompiler =
-                    ioDesc.nameFromCompiler.substr(intel_npu::INIT_INPUT_WEIGHTS_PREFIX.length());
+            ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::INIT_INPUT_WEIGHTS_PREFIX.length());
             ioDesc.isInitInputWeights = true;
         } else if (areInputs && intel_npu::isMainInputWeightsName(ioDesc.nameFromCompiler)) {
-            ioDesc.nameFromCompiler =
-                    ioDesc.nameFromCompiler.substr(intel_npu::MAIN_INPUT_WEIGHTS_PREFIX.length());
+            ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::MAIN_INPUT_WEIGHTS_PREFIX.length());
             ioDesc.isMainInputWeights = true;
         }
-            convertedIODescriptors.push_back(ioDesc);
+        convertedIODescriptors.push_back(ioDesc);
     }
 
     return convertedIODescriptors;
 }
 
-
-std::vector<intel_npu::IODescriptor> convertIODescriptors(std::vector<std::shared_ptr<ov::op::v0::Result>> results, bool areInputs = true) {
+std::vector<intel_npu::IODescriptor> convertIODescriptors(std::vector<std::shared_ptr<ov::op::v0::Result>> results,
+                                                          bool areInputs = true) {
     std::vector<intel_npu::IODescriptor> convertedIODescriptors;
 
     for (int i = 0; i < results.size(); i++) {
         const auto& result = results[i];
         intel_npu::IODescriptor ioDesc;
-        ioDesc.nameFromCompiler = ov::op::util::get_ie_output_name(result->input_value(0)); // output
+        ioDesc.nameFromCompiler = ov::op::util::get_ie_output_name(result->input_value(0));  // output
         ioDesc.precision = result->get_element_type();
         ioDesc.shapeFromCompiler = result->get_shape();
-            if (!areInputs && intel_npu::isStateOutputName(ioDesc.nameFromCompiler)) {
-                ioDesc.nameFromCompiler =
-                        ioDesc.nameFromCompiler.substr(intel_npu::ASSIGN_PREFIX.length());
-                ioDesc.isStateOutput = true;
-            } else if (intel_npu::isShapeTensorName(ioDesc.nameFromCompiler)) {
-                ioDesc.nameFromCompiler =
-                        ioDesc.nameFromCompiler.substr(intel_npu::SHAPE_TENSOR_PREFIX.length());
-                ioDesc.isShapeTensor = true;
-            } else if (!areInputs && intel_npu::isInitOutputWeightsName(ioDesc.nameFromCompiler)) {
-                ioDesc.nameFromCompiler =
-                        ioDesc.nameFromCompiler.substr(intel_npu::INIT_OUTPUT_WEIGHTS_PREFIX.length());
-                ioDesc.isInitOutputWeights = true;
-            }
-            convertedIODescriptors.push_back(ioDesc);
+        if (!areInputs && intel_npu::isStateOutputName(ioDesc.nameFromCompiler)) {
+            ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::ASSIGN_PREFIX.length());
+            ioDesc.isStateOutput = true;
+        } else if (intel_npu::isShapeTensorName(ioDesc.nameFromCompiler)) {
+            ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::SHAPE_TENSOR_PREFIX.length());
+            ioDesc.isShapeTensor = true;
+        } else if (!areInputs && intel_npu::isInitOutputWeightsName(ioDesc.nameFromCompiler)) {
+            ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::INIT_OUTPUT_WEIGHTS_PREFIX.length());
+            ioDesc.isInitOutputWeights = true;
+        }
+        convertedIODescriptors.push_back(ioDesc);
     }
 
     return convertedIODescriptors;
 }
 
-void getNetworkMetadata(const std::shared_ptr<const std::shared_ptr<const ov::Model>& model, NetworkMetadata& network, FilteredConfig config) {
+void getNetworkMetadata(const std::shared_ptr < const std::shared_ptr<const ov::Model>& model,
+                        NetworkMetadata& network,
+                        FilteredConfig config) {
     VPUX_THROW_UNLESS(metadata != nullptr, "METADATA NOT FOUND IN ELF");
     network.name = model->get_name();
 
@@ -111,23 +104,25 @@ void getNetworkMetadata(const std::shared_ptr<const std::shared_ptr<const ov::Mo
     const auto& results = model->get_results();
 
     network.inputs = convertIODescriptors(parameters);
-    network.outputs =  convertIODescriptors(results);
+    network.outputs = convertIODescriptors(results);
     // profilingOutputs how to get?
-    if(config.has<PERF_COUNT>() || !config.get<PERF_COUNT>()) {
+    if (config.has<PERF_COUNT>() || !config.get<PERF_COUNT>()) {
         network.profilingOutputs = convertIODescriptors(results);
         std::cout << "profiling info is not true, need check with IMD" << std::endl;
     } else {
         network.profilingOutputs = {};
-        std::cout << "profiling info is empty, need check with IMD, may get log warning \"inferRequest::get_profiling_info complete with empty\"" << std::endl;
+        std::cout << "profiling info is empty, need check with IMD, may get log warning "
+                     "\"inferRequest::get_profiling_info complete with empty\""
+                  << std::endl;
     }
 
     VPUX_THROW_UNLESS(!network.outputs.empty(), "Metadata structure does not contain info on outputs");
-    std::cout << "platform: " << localConfig.get<PLATFORM>() << "    deviceID: " << localConfig.get<DEVICE_ID>() << std::endl;
+    std::cout << "platform: " << localConfig.get<PLATFORM>() << "    deviceID: " << localConfig.get<DEVICE_ID>()
+              << std::endl;
     network.numStreams = stream[config.get<PLATFORM>];
 
     network.bindRelatedDescriptors();
 }
-
 
 // Control the indentation format
 std::string getIndent(int level) {
