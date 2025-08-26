@@ -531,6 +531,8 @@ void print_parameters(const std::shared_ptr<const ov::Model>& model) {
         const auto& param = parameters[i];
         std::cout << "  [" << i << "] " << param->get_friendly_name() << " : " << param->get_element_type() << " "
                   << param->get_partial_shape() << std::endl;
+        std::cout << "          (layout info): "<< param->get_layout().to_string() << std::endl;
+
 
         // Print additional parameter info
         std::cout << "      Type: " << param->get_type_name() << std::endl;
@@ -560,6 +562,8 @@ void print_results(const std::shared_ptr<const ov::Model>& model) {
         const auto& result = results[i];
         std::cout << "  [" << i << "] " << result->get_friendly_name() << std::endl;
         std::cout << "      Type: " << result->get_type_name() << std::endl;
+        std::cout << "          (layout info): "<< result->get_layout().to_string() << std::endl;
+
 
         if (result->get_input_size() > 0) {
             const auto& input = result->get_input_source_output(0);
