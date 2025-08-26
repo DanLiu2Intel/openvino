@@ -32,7 +32,7 @@ public:
 
 void compareStrings(const std::string& str1, const std::string& str2) {
     if (str1 != str2) {
-        throw StringNotEqualException("metadata are not equal: \"" + str1 + "\" != \"" + str2 + "\"");
+        throw StringNotEqualException("##metadata are not equal: \"" + str1 + "\" != \"" + str2 + "\"");
     }
 }
 
@@ -42,7 +42,8 @@ std::map<std::string, std::size_t> stream{{"3720", 4}, {"4000", 4}, {"5010", 1},
 
 std::vector<intel_npu::IODescriptor> convertIODescriptors(
     std::vector<std::shared_ptr<ov::op::v0::Parameter>> parameters,
-    bool areInputs = true) {
+    intel_npu::FilteredConfig config) {
+    std::cout << "------------PROCESS THE INPUT------------" << std::endl;
     std::vector<intel_npu::IODescriptor> convertedIODescriptors;
 
     for (int i = 0; i < parameters.size(); i++) {
@@ -51,27 +52,62 @@ std::vector<intel_npu::IODescriptor> convertIODescriptors(
         ioDesc.nameFromCompiler = param->get_friendly_name();
         ioDesc.precision = param->get_element_type();
         ioDesc.shapeFromCompiler = param->get_shape();
-        if (areInputs && intel_npu::isStateInputName(ioDesc.nameFromCompiler)) {
+        if (intel_npu::isStateInputName(ioDesc.nameFromCompiler)) {
             ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::READVALUE_PREFIX.length());
             ioDesc.isStateInput = true;
         } else if (intel_npu::isShapeTensorName(ioDesc.nameFromCompiler)) {
             ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::SHAPE_TENSOR_PREFIX.length());
             ioDesc.isShapeTensor = true;
-        } else if (areInputs && intel_npu::isInitInputWeightsName(ioDesc.nameFromCompiler)) {
+        } else if (intel_npu::isInitInputWeightsName(ioDesc.nameFromCompiler)) {
             ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::INIT_INPUT_WEIGHTS_PREFIX.length());
             ioDesc.isInitInputWeights = true;
-        } else if (areInputs && intel_npu::isMainInputWeightsName(ioDesc.nameFromCompiler)) {
+        } else if (intel_npu::isMainInputWeightsName(ioDesc.nameFromCompiler)) {
             ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::MAIN_INPUT_WEIGHTS_PREFIX.length());
             ioDesc.isMainInputWeights = true;
         }
+
+        if (param->get_output_size() > 0) {
+            std::cout << "      Output tensor names : ";
+            for (size_t j = 0; j < param->get_output_size(); ++j) {
+                auto names = param->get_output_tensor(j).get_names();
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                    ioDesc.outputTensorNames.insert(name);
+                }
+            }
+            std::cout << std::endl;
+        }
+
+        ioDesc.nodeFriendlyName = param->get_friendly_name();
+        
+        //  /**
+        //  * @brief The shape extracted from the IR model.
+        //  * @details The values may differ from the ones found in "shapeFromCompiler" if batching is to be handled by the
+        //  * plugin.
+        //  *
+        //  * This field may be empty if the I/O entry is not found in the original IR model (i.e. the entry was added
+        //  * by the compiler).
+        //  */
+        // std::optional<ov::PartialShape> shapeFromIRModel = std::nullopt;
+        if (config.isAvailable(ov::intel_npu::batch_mode.name()) &&
+            !config.has(ov::intel_npu::batch_mode.name())) {
+            ioDesc.shapeFromIRModel = param->get_shape();
+        } else if (config.isAvailable(ov::intel_npu::batch_mode.name()) && !config->get_variables().empty()) {
+            if (config.get<intel_npu::BATCH_MODE>() == ov::intel_npu::BatchMode::PLUGIN) {
+                OPENVINO_THROW("This model contains states, thus it is not supported when handling batching on the plugin");
+            }
+            ioDesc.shapeFromIRModel = param->get_shape();
+        }
+
         convertedIODescriptors.push_back(ioDesc);
     }
-
+    std::cout << "------------PROCESS THE INPUT-----end-------" << std::endl;
     return convertedIODescriptors;
 }
 
 std::vector<intel_npu::IODescriptor> convertIODescriptors(std::vector<std::shared_ptr<ov::op::v0::Result>> results,
-                                                          bool areInputs = true) {
+    intel_npu::FilteredConfig config) {
+    std::cout << "------------PROCESS THE output------------" << std::endl;
     std::vector<intel_npu::IODescriptor> convertedIODescriptors;
 
     for (int i = 0; i < results.size(); i++) {
@@ -80,19 +116,56 @@ std::vector<intel_npu::IODescriptor> convertIODescriptors(std::vector<std::share
         ioDesc.nameFromCompiler = ov::op::util::get_ie_output_name(result->input_value(0));  // output
         ioDesc.precision = result->get_element_type();
         ioDesc.shapeFromCompiler = result->get_shape();
-        if (!areInputs && intel_npu::isStateOutputName(ioDesc.nameFromCompiler)) {
+        if (intel_npu::isStateOutputName(ioDesc.nameFromCompiler)) {
             ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::ASSIGN_PREFIX.length());
             ioDesc.isStateOutput = true;
         } else if (intel_npu::isShapeTensorName(ioDesc.nameFromCompiler)) {
             ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::SHAPE_TENSOR_PREFIX.length());
             ioDesc.isShapeTensor = true;
-        } else if (!areInputs && intel_npu::isInitOutputWeightsName(ioDesc.nameFromCompiler)) {
+        } else if (intel_npu::isInitOutputWeightsName(ioDesc.nameFromCompiler)) {
             ioDesc.nameFromCompiler = ioDesc.nameFromCompiler.substr(intel_npu::INIT_OUTPUT_WEIGHTS_PREFIX.length());
             ioDesc.isInitOutputWeights = true;
         }
+
+        auto names = result->get_output_tensor(0).get_names();// return std::unordered_set<std::string>&
+        if (!names.empty()) {
+            std::cout << "      Tensor names (may contains multi names):: ";
+            for (const auto& name : names) {
+                std::cout << name << " ";
+                ioDesc.outputTensorNames.insert(name);
+            }
+            std::cout << std::endl;
+        }
+        auto it = names.find(ioDesc.nameFromCompiler);
+        if (it != names.end()) {
+            std::cout << "Element " << ioDesc.nameFromCompiler << " already exists in the vector." << std::endl;
+        } else {
+            names.insert(ioDesc.nameFromCompiler);
+            std::cout << "Element " << ioDesc.nameFromCompiler << " was not found in the vector and has been inserted." << std::endl;
+        }
+        ioDesc.nodeFriendlyName = result->get_friendly_name();
+    //  /**
+    //  * @brief The shape extracted from the IR model.
+    //  * @details The values may differ from the ones found in "shapeFromCompiler" if batching is to be handled by the
+    //  * plugin.
+    //  *
+    //  * This field may be empty if the I/O entry is not found in the original IR model (i.e. the entry was added
+    //  * by the compiler).
+    //  */
+    // std::optional<ov::PartialShape> shapeFromIRModel = std::nullopt;
+        //need process batch mode
+        if (config.isAvailable(ov::intel_npu::batch_mode.name()) &&
+            !config.has(ov::intel_npu::batch_mode.name())) {
+            ioDesc.shapeFromIRModel = param->get_shape();
+        } else if (config.isAvailable(ov::intel_npu::batch_mode.name()) && !config->get_variables().empty()) {
+            if (config.get<intel_npu::BATCH_MODE>() == ov::intel_npu::BatchMode::PLUGIN) {
+                OPENVINO_THROW("This model contains states, thus it is not supported when handling batching on the plugin");
+            }
+            ioDesc.shapeFromIRModel = param->get_shape();
+        }
         convertedIODescriptors.push_back(ioDesc);
     }
-
+     std::cout << "------------PROCESS THE output------END------" << std::endl;
     return convertedIODescriptors;
 }
 
@@ -103,15 +176,15 @@ void getNetworkMetadata(const std::shared_ptr<const ov::Model>& model,
         std::cout << "passed model is empty" << std::endl;
     }
 
-    networkMetadata.name = model->get_name();
+    networkMetadata.name = model->get_friendly_name(); //add_abc is not match
 
     const auto& parameters = model->get_parameters();
     const auto& results = model->get_results();
 
-    networkMetadata.inputs = convertIODescriptors(parameters);
-    networkMetadata.outputs = convertIODescriptors(results);
+    networkMetadata.inputs = convertIODescriptors(parameters, config);
+    networkMetadata.outputs = convertIODescriptors(results, config, false);
     // profilingOutputs how to get?
-    if (config.has<intel_npu::PERF_COUNT>() || !config.get<intel_npu::PERF_COUNT>()) {
+    if (config.has<intel_npu::PERF_COUNT>()) {
         networkMetadata.profilingOutputs = convertIODescriptors(results);
         std::cout << "profiling info is not true, need check with IMD" << std::endl;
     } else {
@@ -121,11 +194,18 @@ void getNetworkMetadata(const std::shared_ptr<const ov::Model>& model,
                   << std::endl;
     }
 
+    if (!networkMetadata.profilingOutputs.empty()) {
+        std::cout << "Metadata structure contains info on profiling outputs" << std::endl;
+    } else {
+        std::cout << "Metadata structure does not contain info on profiling outputs" << std::endl;
+    }
+
     if (!networkMetadata.outputs.empty()) {
         std::cout << "Metadata structure does not contain info on outputs" << std::endl;
     }
     std::cout << "platform: " << config.get<intel_npu::PLATFORM>()
-              << "    deviceID: " << config.get<intel_npu::DEVICE_ID>() << std::endl;
+              << "    deviceID: " << config.get<intel_npu::DEVICE_ID>()
+              << "    PERF_COUNT: " << config.get<intel_npu::PERF_COUNT>() << std::endl;
     networkMetadata.numStreams = stream[config.get<intel_npu::PLATFORM>()];
 
     networkMetadata.bindRelatedDescriptors();
