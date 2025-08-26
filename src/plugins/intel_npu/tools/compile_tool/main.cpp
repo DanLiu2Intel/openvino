@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "tools_helpers.hpp"
+#include <transformations/utils/utils.hpp>
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 

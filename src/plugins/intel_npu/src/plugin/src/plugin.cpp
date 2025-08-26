@@ -27,6 +27,7 @@
 #include "openvino/runtime/properties.hpp"
 #include "openvino/runtime/shared_buffer.hpp"
 #include "remote_context.hpp"
+#include <transformations/utils/utils.hpp>
 
 using namespace intel_npu;
 
