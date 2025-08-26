@@ -579,6 +579,9 @@ void print_results(const std::shared_ptr<const ov::Model>& model) {
                 std::cout << std::endl;
             }
         }
+
+        std::cout << "     Output tensor name (ov::op::util::get_ie_output_name(result->input_value(0))): "
+            << ov::op::util::get_ie_output_name(result->input_value(0)) << std::endl;
     }
     std::cout << std::endl;
 }
