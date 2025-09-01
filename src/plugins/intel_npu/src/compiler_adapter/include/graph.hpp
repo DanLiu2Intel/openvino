@@ -21,7 +21,7 @@ public:
     Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
           const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct,
           const GraphDescriptor& graphDesc,
-          NetworkMetadata metadata,
+          NetworkMetadata metadata,/// for vcl part this is empty
           std::optional<ov::Tensor> blob,
           const Config& config,
           const bool blobIsPersistent = false,

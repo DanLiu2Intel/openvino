@@ -46,6 +46,11 @@ void check_level_zero_attributes_match(const IODescriptor& ioDescriptor, const A
     } else if (isMainInputWeightsName(zeDescriptorName)) {
         zeDescriptorName = zeDescriptorName.substr(MAIN_INPUT_WEIGHTS_PREFIX.length());
     }
+    const char* run_infer = std::getenv("RUN_MULTI_THREAD_TEST");
+    if (run_infer) {
+        ioDescriptor.nameFromCompiler = "test_to failed";
+        std::cout << "it seems that is will crash later!!!" << std::endl;
+    }
 
     OPENVINO_ASSERT(ioDescriptor.nameFromCompiler == zeDescriptorName,
                     "Name mismatch between the I/O structure used internally and its Level Zero correspondent: ",

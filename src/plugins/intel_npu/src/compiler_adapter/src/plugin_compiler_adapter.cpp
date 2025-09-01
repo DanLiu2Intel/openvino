@@ -129,9 +129,9 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
                                    _zeroInitStruct,
                                    graphHandle,
 #ifdef VCL_FOR_COMPILER
-                                   std::move(networkMeta),
+                                   std::move(networkMeta), 
 #else
-                                   std::move(networkDesc.metadata),
+                                   std::move(networkDesc.metadata), // for vcl part this is empty
 #endif
                                    std::move(tensor),
                                    /* blobAllocatedByPlugin = */ false,

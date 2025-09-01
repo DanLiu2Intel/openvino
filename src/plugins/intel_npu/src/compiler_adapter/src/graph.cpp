@@ -22,7 +22,7 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
              const bool blobIsPersistent,
              const ov::SoPtr<ICompiler>& compiler,
              const bool calledFromWeightlessGraph)
-    : IGraph(),
+    : IGraph(),/// for vcl part, metadata is empty
       _zeGraphExt(zeGraphExt),
       _zeroInitStruct(zeroInitStruct),
       _graphDesc(graphDesc),
