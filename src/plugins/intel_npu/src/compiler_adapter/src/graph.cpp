@@ -10,16 +10,20 @@
 
 namespace intel_npu {
 
+bool isMetadataEmpty(const intel_npu::NetworkMetadata& netMetadata) {
+    return (netMetadata.inputs.empty() && netMetadata.outputs.empty() && netMetadata.profilingOutputs.empty()) ||
+           (!netMetadata.numStreams);
+}
+
 Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
              const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct,
              ze_graph_handle_t graphHandle,
-             NetworkMetadata metadata,
              std::optional<ov::Tensor> blob,
              bool blobAllocatedByPlugin,
              const Config& config,
              const ov::SoPtr<ICompiler>& compiler,
              const bool calledFromWeightlessGraph)
-    : IGraph(graphHandle, std::move(metadata), config, std::move(blob)),
+    : IGraph(graphHandle, {}, config, std::move(blob)),
       _zeGraphExt(zeGraphExt),
       _zeroInitStruct(zeroInitStruct),
       _blobAllocatedByPlugin(blobAllocatedByPlugin),
@@ -33,6 +37,14 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
     if (!calledFromWeightlessGraph) {
         // Will be called at a later stage from WeightlessGraph::initialize() in order to save some memory
         initialize(config);
+    }
+    // init metadata due to its empty
+    if (isMetadataEmpty(_metadata)) {
+        if (!_zeGraphExt) {
+            OPENVINO_THROW("Failed to get ZeGraphExtWrappers");
+        }
+        // get from driver
+        _metadata = _zeGraphExt->getNetworkMeta(_handle);
     }
 }
 

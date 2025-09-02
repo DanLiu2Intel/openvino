@@ -118,14 +118,10 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     ze_graph_handle_t graphHandle = _zeGraphExt->getGraphHandle(std::move(serializedIR), buildFlags, flags);
     _logger.debug("compile end");
 
-    OV_ITT_TASK_NEXT(COMPILE_BLOB, "getNetworkMeta");
-    auto networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
-    networkMeta.name = model->get_friendly_name();
 
     return std::make_shared<Graph>(_zeGraphExt,
                                    _zeroInitStruct,
                                    graphHandle,
-                                   std::move(networkMeta),
                                    /* blob = */ std::nullopt,
                                    /* blobAllocatedByPlugin = */ false,
                                    config);
@@ -177,7 +173,6 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
     // WS v3 is based on a stateless compiler. We'll use a separate config entry for informing the compiler the index of
     // the current call iteration.
     std::vector<NetworkMetadata> initNetworkMetadata;
-    NetworkMetadata mainNetworkMetadata;
     std::vector<ze_graph_handle_t> initGraphHandles;
     ze_graph_handle_t mainGraphHandle;
     size_t callNumber = 0;
@@ -209,7 +204,6 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
             initGraphHandles.push_back(graphHandle);
         } else {
             networkMetadata.name = model->get_friendly_name() + "_main";
-            mainNetworkMetadata = std::move(networkMetadata);
             mainGraphHandle = graphHandle;
             serializedIR = SerializedIR();
             // By convention, the main schedule is the last result produced by the compiler
@@ -229,7 +223,6 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
                                              _zeroInitStruct,
                                              /* blobAllocatedByPlugin = */ false,
                                              mainGraphHandle,
-                                             std::move(mainNetworkMetadata),
                                              /* mainBlob = */ std::nullopt,
                                              initGraphHandles,
                                              std::move(initNetworkMetadata),
@@ -251,18 +244,14 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::parse(
         _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(mainBlob.data()), mainBlob.get_byte_size());
     _logger.debug("parse end");
 
-    OV_ITT_TASK_NEXT(PARSE_BLOB, "getNetworkMeta");
-    auto networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
-
     if (!initBlobs.has_value()) {
         return std::make_shared<Graph>(_zeGraphExt,
                                        _zeroInitStruct,
                                        graphHandle,
-                                       std::move(networkMeta),
                                        std::move(mainBlob),
                                        blobAllocatedByPlugin,
                                        config);
-    }
+    } /// TODO: where call this parse? no metadata will impact what
 
     // The presence of init schedules means weights separation has been enabled at compilation time. Use a specific
     // "Graph" object as wrapper over all L0 handles.
@@ -279,7 +268,6 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::parse(
                                              _zeroInitStruct,
                                              blobAllocatedByPlugin,
                                              graphHandle,
-                                             std::move(networkMeta),
                                              std::move(mainBlob),
                                              initGraphHandles,
                                              std::move(initMetadata),
