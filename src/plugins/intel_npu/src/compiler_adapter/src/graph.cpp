@@ -10,6 +10,11 @@
 
 namespace intel_npu {
 
+bool isMetadataEmpty(const intel_npu::NetworkMetadata& netMetadata) {
+    return (netMetadata.inputs.empty() && netMetadata.outputs.empty() && netMetadata.profilingOutputs.empty()) ||
+           (!netMetadata.numStreams);
+}
+
 Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
              const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct,
              ze_graph_handle_t graphHandle,
@@ -34,25 +39,13 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
         initialize(config);
     }
     // init metadata due to its empty
-    get_metadata();
-}
-
-bool isMetadataEmpty(const intel_npu::NetworkMetadata& netMetadata) {
-    return (netMetadata.inputs.empty() && netMetadata.outputs.empty() && netMetadata.profilingOutputs.empty()) ||
-           (!netMetadata.numStreams);
-}
-
-const NetworkMetadata& Graph::get_metadata() const {
     if (isMetadataEmpty(_metadata)) {
-        // get from driver
-        std::shared_ptr<ZeGraphExtWrappers> _zeGraphExt;
         if (!_zeGraphExt) {
             OPENVINO_THROW("Failed to get ZeGraphExtWrappers");
         }
+        // get from driver
         _metadata = _zeGraphExt->getNetworkMeta(_handle);
     }
-
-    return _metadata;
 }
 
 std::pair<uint64_t, std::optional<std::vector<uint64_t>>> Graph::export_blob(std::ostream& stream) const {

@@ -16,6 +16,7 @@
 
 namespace intel_npu {
 
+bool isMetadataEmpty(const NetworkMetadata& netMetadata);
 class Graph : public IGraph {
 public:
     Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
@@ -38,7 +39,7 @@ public:
 
     ~Graph() override;
 
-    const NetworkMetadata& get_metadata() const override;
+    const NetworkMetadata& get_metadata() const;
 
 protected:
     bool release_blob(const Config& config);

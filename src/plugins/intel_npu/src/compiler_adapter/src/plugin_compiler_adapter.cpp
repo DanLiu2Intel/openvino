@@ -241,7 +241,6 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compileWS(const std::shared_ptr<o
                                              _zeroInitStruct,
                                              /* blobAllocatedByPlugin = */ false,
                                              mainGraphHandle,
-                                             std::move(mainNetworkDescription->metadata),
                                              std::move(tensorMain),
                                              initGraphHandles,
                                              std::move(initNetworkMetadata),
