@@ -104,12 +104,21 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
     ov::Tensor tensor = make_tensor_from_vector(networkDesc.compiledNetwork);
     ze_graph_handle_t graphHandle = nullptr;
 
+    NetworkMetadata networkMeta = std::move(networkDesc.metadata);
     if (_zeGraphExt) {
         // Depending on the config, we may get an error when trying to get the graph handle from the compiled
         // network
         try {
             graphHandle =
                 _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(tensor.data()), tensor.get_byte_size());
+#ifdef VCL_FOR_COMPILER
+            if (networkMeta.inputs.empty() && networkMeta.outputs.empty()) {
+                // If the metadata is empty, we can try to get it from the driver parser
+                _logger.info("Metadata is empty, trying to get it from the driver parser");
+                networkMeta = _zeGraphExt->getNetworkMeta(graphHandle);
+                networkMeta.name = model->get_friendly_name();
+            }
+#endif
         } catch (...) {
             _logger.info("Failed to obtain the level zero graph handle. Inference requests for this model are not "
                          "allowed. Only exports are available");
@@ -118,6 +127,11 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
     return std::make_shared<Graph>(_zeGraphExt,
                                    _zeroInitStruct,
                                    graphHandle,
+#ifdef VCL_FOR_COMPILER
+                                   std::move(networkMeta),
+#else
+                                   std::move(networkDesc.metadata),
+#endif
                                    std::move(tensor),
                                    /* blobAllocatedByPlugin = */ false,
                                    config,
@@ -241,6 +255,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compileWS(const std::shared_ptr<o
                                              _zeroInitStruct,
                                              /* blobAllocatedByPlugin = */ false,
                                              mainGraphHandle,
+                                             std::move(mainNetworkDescription->metadata),
                                              std::move(tensorMain),
                                              initGraphHandles,
                                              std::move(initNetworkMetadata),
@@ -275,7 +290,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
     _logger.debug("parse start");
     network.assign(reinterpret_cast<const uint8_t*>(mainBlob.data()),
                    reinterpret_cast<const uint8_t*>(mainBlob.data()) + mainBlob.get_byte_size());
-    // auto networkMeta = _compiler->parse(network, config);  /// parse return metadata
+    auto networkMeta = _compiler->parse(network, config);
     network.clear();
     network.shrink_to_fit();
 
@@ -291,7 +306,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
         return std::make_shared<Graph>(_zeGraphExt,
                                        _zeroInitStruct,
                                        graphHandle,
-                                    //    std::move(networkMeta),
+                                       std::move(networkMeta),
                                        std::move(mainBlob),
                                        blobAllocatedByPlugin,
                                        config,
@@ -321,7 +336,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
                                              _zeroInitStruct,
                                              blobAllocatedByPlugin,
                                              graphHandle,
-                                            //  std::move(networkMeta),
+                                             std::move(networkMeta),
                                              std::move(mainBlob),
                                              initGraphHandles,
                                              std::move(initMetadata),

@@ -25,6 +25,7 @@ public:
                     const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct,
                     const bool blobAllocatedByPlugin,
                     ze_graph_handle_t mainGraphHandle,
+                    NetworkMetadata mainMetadata,
                     std::optional<ov::Tensor> mainBlob,
                     const std::vector<ze_graph_handle_t>& initGraphHandles,
                     std::vector<NetworkMetadata> initMetadata,
