@@ -4,8 +4,10 @@
 
 # Function to download and extract files
 function(download_and_extract url dest_dir zip_file extracted_dir modify_proxy)
+    message(" ----  --- extracted_dir is -- ${extracted_dir}")
     # Check if the prebuilt VCL compiler libraries not exist
     if(NOT EXISTS "${extracted_dir}")
+         message(" ----  the extracted_dir is -- ${extracted_dir} is not exist, start download")
         if(modify_proxy STREQUAL "MODIFY")
             # Update proxy to enable download for windows url
 	    set(original_NO_PROXY $ENV{NO_PROXY})
@@ -86,9 +88,13 @@ function(download_and_extract url dest_dir zip_file extracted_dir modify_proxy)
     endif()
 endfunction()
 
+
+message("Checking if enable ENABLE_VCL_FOR_COMPILER option...")
 if(ENABLE_VCL_FOR_COMPILER)
+    message("Checking if enable ENABLE_VCL_FOR_COMPILER option...YES")
     if(ENABLE_SYSTEM_NPU_VCL_COMPILER)
         message(STATUS "Using system NPU VCL compiler libraries, skip download")
+        #TODO: add check if the libraries are present
     else()
         message(STATUS "Downloading prebuilt NPU VCL compiler libraries")
         if(WIN32)

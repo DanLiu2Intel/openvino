@@ -19,6 +19,7 @@ set(NPU_PLUGIN_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 include(cmake/features.cmake)
 
 if(ENABLE_VCL_FOR_COMPILER)
+    message(" ----- is enable vcl in build command line ")
     include(cmake/download_compiler_libs.cmake)
     add_definitions("-DVCL_FOR_COMPILER")
 endif()

@@ -24,12 +24,14 @@
 
 namespace {
 #ifndef VCL_FOR_COMPILER
+// run in mlir pass
 std::shared_ptr<void> load_library(const std::string& libpath) {
-#    if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
+    std::cout << "===== load_library is " << libpath << std::endl;
+#  if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
     return ov::util::load_shared_object(ov::util::string_to_wstring(libpath).c_str());
-#    else
+#  else
     return ov::util::load_shared_object(libpath.c_str());
-#    endif
+#  endif
 }
 
 std::shared_ptr<intel_npu::ICompiler> get_compiler(std::shared_ptr<void> so) {
@@ -51,6 +53,7 @@ ov::SoPtr<intel_npu::ICompiler> load_compiler(const std::string& libpath) {
     return ov::SoPtr<intel_npu::ICompiler>(compiler, compilerSO);
 }
 #endif
+
 ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
     auto tensor = ov::Tensor(ov::element::u8, ov::Shape{vector.size()}, vector.data());
     auto impl = ov::get_tensor_impl(std::move(tensor));
@@ -123,6 +126,13 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
             _logger.info("Failed to obtain the level zero graph handle. Inference requests for this model are not "
                          "allowed. Only exports are available");
         }
+    } else {
+#ifdef VCL_FOR_COMPILER
+            if (networkMeta.inputs.empty() && networkMeta.outputs.empty()) {
+                // If the metadata is empty, we can try to get it from the driver parser
+                _logger.warning("Metadata is empty ...  bacause it is compile from vcl compiler");
+            }
+#endif
     }
     return std::make_shared<Graph>(_zeGraphExt,
                                    _zeroInitStruct,
