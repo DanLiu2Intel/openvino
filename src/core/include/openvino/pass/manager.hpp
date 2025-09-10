@@ -45,8 +45,8 @@ public:
     std::shared_ptr<T> register_pass(Args&&... args) {
         auto rc = push_pass<T>(std::forward<Args>(args)...);
         rc->set_pass_config(m_pass_config);
-        if (m_per_pass_validation) {
-            push_pass<Validate>();
+        if (m_per_pass_validation) {// default value is true
+            push_pass<Validate>(); //add Validate after each pass
         }
         if (!Enable && !m_pass_config->is_enabled<T>()) {
             m_pass_config->disable<T>();

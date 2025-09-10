@@ -78,7 +78,7 @@ void transformation_pipeline(std::shared_ptr<ov::Model>& model) {
     manager.set_per_pass_validation(false);
 
     // prerequisite: the model structure optimization before applying of the markup
-    REGISTER_PASS(manager, SharedOpOptimization)
+    REGISTER_PASS(manager, SharedOpOptimization)////
 
     // 1. Set "disable_const_folding" attribute
     // we have to add a call into the PrePostProcessing, it runs before compile_model call
@@ -95,8 +95,9 @@ void transformation_pipeline(std::shared_ptr<ov::Model>& model) {
 
     // 2. Fusion transformations:
     REGISTER_PASS(manager, ConvertDivideWithConstant)
-    auto fusions = manager.register_pass<GraphRewrite>();
+    auto fusions = manager.register_pass<GraphRewrite>(); // return pass ptr, and use it ptr to do the following fusions operation
     // Gelu fusion have to be executed before MulConv fusion because Mul(X, 0.5) might be fused to Conv weights
+    // call manager.add_matcher()
     ADD_MATCHER(fusions, GeluFusion)
     ADD_MATCHER(fusions, MultiplyConvolutionFusion)
     ADD_MATCHER(fusions, MultiplyGroupConvolutionFusion)
@@ -272,7 +273,7 @@ void PrePostProcessor::dump(std::ostream& str) const {
 std::shared_ptr<Model> PrePostProcessor::build() {
     auto function = m_impl->m_function;
     std::tuple<std::unordered_set<std::string>, bool> existing_names{std::unordered_set<std::string>{}, false};
-    FunctionGuard guard(function);
+    FunctionGuard guard(function); // origin model backup
     bool need_validate = false;
     auto results = function->get_results();
     auto parameters_list = std::list<std::shared_ptr<op::v0::Parameter>>(function->get_parameters().begin(),

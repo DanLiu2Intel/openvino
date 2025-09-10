@@ -48,8 +48,8 @@ public:
     };
 
     ov::AnyMap visit_attributes(const std::shared_ptr<Node>& node) {
-        m_attributes_map.clear();
-        node->visit_attributes(*this);
+        m_attributes_map.clear(); // /will clear its internal member
+        node->visit_attributes(*this);///will update its internal member
         return m_attributes_map;
     }
 
@@ -80,10 +80,11 @@ bool inputs_from_same_source_or_equal_constants(const std::shared_ptr<Node>& lhs
 
 void collect_node_attrs(const std::shared_ptr<Node>& node,
                         std::unordered_map<std::shared_ptr<ov::Node>, ov::AnyMap>& node_attributes_cache) {
-    if (node_attributes_cache.count(node))
+    if (node_attributes_cache.count(node)) // find this node, so it has been collected to this cache
         return;
-    auto visitor = NodeComparingVisitor();
-    node_attributes_cache[node] = visitor.visit_attributes(node);
+    // Not find this node, so it need to collect its info
+    static auto visitor = NodeComparingVisitor();  //single instance
+    node_attributes_cache[node] = visitor.visit_attributes(node); 
 }
 
 bool nodes_are_equal(const std::shared_ptr<Node>& lhs,
@@ -105,7 +106,7 @@ bool nodes_are_equal(const std::shared_ptr<Node>& lhs,
         return false;
     // compare attributes
     try {
-        collect_node_attrs(lhs, node_attributes_cache);
+        collect_node_attrs(lhs, node_attributes_cache); /// update node_attributes_cache
         collect_node_attrs(rhs, node_attributes_cache);
         OPENVINO_ASSERT(node_attributes_cache.count(lhs) && node_attributes_cache.count(rhs));
         if (node_attributes_cache[lhs] != node_attributes_cache[rhs])
@@ -118,14 +119,14 @@ bool nodes_are_equal(const std::shared_ptr<Node>& lhs,
     return true;
 }
 
-bool shared_node_optimization(const shared_ptr<Model>& model) {
+bool shared_node_optimization(const shared_ptr<Model>& model) {  //this function may Recursively call
     bool rewritten = false;
     std::unordered_map<std::shared_ptr<ov::Node>, size_t> index_map;
-    const auto& order = model->get_ordered_ops();
+    const auto& order = model->get_ordered_ops(); //std::vector<shared_ptr<ov::Node>>
     for (size_t i = 0; i < order.size(); ++i)
         index_map[order[i]] = i;
-    std::unordered_map<std::shared_ptr<ov::Node>, ov::AnyMap> node_attributes_cache;
-    for (const auto& op : order) {
+    std::unordered_map<std::shared_ptr<ov::Node>, ov::AnyMap> node_attributes_cache;  ///// empty, is local function variable
+    for (const auto& op : order) {  ///shared_ptr<ov::Node>
         // Recursively apply transformation for sub-graph based operations
         if (auto multi_subgraph_op = ov::as_type_ptr<op::util::MultiSubGraphOp>(op)) {
             for (const auto& sub_graph : multi_subgraph_op->get_functions()) {
@@ -133,16 +134,18 @@ bool shared_node_optimization(const shared_ptr<Model>& model) {
                     rewritten = shared_node_optimization(sub_graph) || rewritten;
             }
         }
-        for (const auto& output : op->outputs()) {
-            const auto& target_inputs = output.get_target_inputs();
+        for (const auto& output : op->outputs()) { ///std::vector<Output<Node>>
+            const auto& target_inputs = output.get_target_inputs();///std::set<Input<Node>>
             if (target_inputs.size() <= 1)
                 continue;  // nothing to optimize
             unordered_map<Node::type_info_t, vector<std::shared_ptr<Node>>> type_to_node;
-            for (const auto& input : target_inputs)
-                if (auto node = input.get_node()->shared_from_this())
+            for (const auto& input : target_inputs)///Input<Node>
+                if (auto node = input.get_node()->shared_from_this()) //  Node*  -> shared_from_this  // it seems to mean it is this ptr // non empty
                     type_to_node[node->get_type_info()].push_back(node);
-            for (auto& item : type_to_node) {
-                auto& shared_nodes = item.second;
+                    // input is existed and then save it to type_to_node by type?
+                    // same type may be multi node
+            for (auto& item : type_to_node) { //unordered_map<Node::type_info_t, vector<std::shared_ptr<Node>>> type_to_node;
+                auto& shared_nodes = item.second; /// vector<std::shared_ptr<Node>>
                 if (shared_nodes.size() < 2)
                     continue;
                 // sort shared_nodes so that root would be the earliest in the topological order
@@ -157,19 +160,20 @@ bool shared_node_optimization(const shared_ptr<Model>& model) {
                 for (size_t i = 0; i < visited_nodes.size(); ++i) {
                     if (visited_nodes[i])
                         continue;
-                    const auto& root_op = shared_nodes[i];
+                    const auto& root_op = shared_nodes[i]; ////
                     visited_nodes[i] = true;
                     for (size_t j = i + 1; j < visited_nodes.size(); ++j) {
                         if (visited_nodes[j])
                             continue;
-                        const auto& child_op = shared_nodes[j];
+                        const auto& child_op = shared_nodes[j]; ////
 
                         // no functionality is implemented to compare bodies of MultiSubGraphOp operations
                         if (ov::as_type_ptr<ov::op::util::MultiSubGraphOp>(root_op)) {
                             continue;
                         }
 
-                        if (nodes_are_equal(root_op, child_op, node_attributes_cache)) {
+                        if (nodes_are_equal(root_op, child_op, node_attributes_cache)) { ///all are reference call
+                            // replace child_op with root_op
                             rewritten =
                                 replace_output_update_name(child_op->output(0), root_op->output(0)) || rewritten;
                             visited_nodes[j] = true;
@@ -194,7 +198,7 @@ bool shape_of_upgrade(const shared_ptr<Model>& model) {
         } else if (auto v1_shape_of = ov::as_type_ptr<v0::ShapeOf>(op)) {
             auto v3_shape_of = std::make_shared<v3::ShapeOf>(v1_shape_of->input_value(0), element::i64);
             v3_shape_of->set_friendly_name(v1_shape_of->get_friendly_name());
-            ov::replace_output_update_name(v1_shape_of, v3_shape_of);
+            ov::replace_output_update_name(v1_shape_of, v3_shape_of);  //  update rt info  later
             rewritten = true;
         }
     }
@@ -205,7 +209,8 @@ bool shape_of_upgrade(const shared_ptr<Model>& model) {
 bool pass::SharedOpOptimization::run_on_model(const shared_ptr<Model>& model) {
     RUN_ON_FUNCTION_SCOPE(SharedOpOptimization);
 
-    bool rewritten = shape_of_upgrade(model);
-    rewritten = shared_node_optimization(model) || rewritten;
+    bool rewritten = shape_of_upgrade(model);  /// Recursively call this shape_of_upgrade function
+    rewritten = shared_node_optimization(model) || rewritten; 
+    // Recursively call this shared_node_optimization function if it is MultiSubGraphOp,
     return rewritten;
 }
