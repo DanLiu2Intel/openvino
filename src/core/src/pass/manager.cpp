@@ -338,7 +338,8 @@ bool ov::pass::Manager::run_passes(const std::shared_ptr<ov::Model>& model) {
     profiler.start_timer(m_name);
     for (const auto& pass : m_pass_list) {
         const auto& pass_name = pass->get_name();
-
+        // std::vector<std::shared_ptr<PassBase>> m_pass_list;
+        // pass is std::make_shared<T>, T is different derived pass
         profiler.start_timer(pass_name);
         pass_changed_model = run_pass(pass, model, pass_changed_model);
         profiler.stop_timer(pass_name, pass_changed_model);
@@ -355,7 +356,7 @@ bool ov::pass::Manager::run_passes(const std::shared_ptr<ov::Model>& model) {
 
 bool ov::pass::Manager::run_pass(const std::shared_ptr<PassBase>& pass,
                                  const std::shared_ptr<Model>& model,
-                                 bool needs_validate) {
+                                 bool needs_validate) {// sharedOpOptimization pass is false
     if (m_pass_config->is_disabled(pass->get_type_info())) {
         OPENVINO_DEBUG("Pass ", pass->get_name(), " is disabled.");
         return false;
