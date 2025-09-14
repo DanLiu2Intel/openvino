@@ -68,6 +68,366 @@ void check_level_zero_attributes_match(const IODescriptor& ioDescriptor, const A
     }
 }
 
+/**
+ * @brief Print basic model information
+ */
+void print_basic_info(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Basic Information ===" << std::endl;
+    std::cout << "Name: " << model->get_name() << std::endl;
+    std::cout << "Friendly Name: " << model->get_friendly_name() << std::endl;
+    std::cout << "Output Size: " << model->get_output_size() << std::endl;
+    std::cout << "Graph Size: " << model->get_graph_size() << " bytes" << std::endl;
+    std::cout << "Is Dynamic: " << (model->is_dynamic() ? "Yes" : "No") << std::endl;
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model parameters (inputs)
+ */
+void print_parameters(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Parameters (Inputs) ===" << std::endl;
+    const auto& parameters = model->get_parameters();
+    std::cout << "Total Parameters: " << parameters.size() << std::endl;
+
+    for (size_t i = 0; i < parameters.size(); ++i) {
+        const auto& param = parameters[i];
+        std::cout << "  [" << i << "] " << param->get_friendly_name() << "/(get_name is " << param->get_name()
+                  << ") : " << param->get_element_type() << " " << param->get_partial_shape() << std::endl;
+
+        // Print additional parameter info
+        std::cout << "      Type: " << param->get_type_name() << std::endl;
+        if (param->get_output_size() > 0) {
+            std::cout << "      Output tensor names (may contains multi names): ";
+            for (size_t j = 0; j < param->get_output_size(); ++j) {
+                auto names = param->get_output_tensor(j).get_names();
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model results (outputs)
+ */
+void print_results(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Results (Outputs) ===" << std::endl;
+    const auto& results = model->get_results();
+    std::cout << "Total Results: " << results.size() << std::endl;
+
+    for (size_t i = 0; i < results.size(); ++i) {
+        const auto& result = results[i];
+        std::cout << "  [" << i << "] " << result->get_friendly_name() << "/(get_name is " << result->get_name()
+                  << ") : " << std::endl;
+        std::cout << "      Type: " << result->get_type_name() << std::endl;
+
+        if (result->get_input_size() > 0) {
+            const auto& input = result->get_input_source_output(0);
+            std::cout << "      Element Type: " << input.get_element_type() << std::endl;
+            std::cout << "      Shape: " << input.get_partial_shape() << std::endl;
+
+            auto names = result->get_output_tensor(0).get_names();
+            if (!names.empty()) {
+                std::cout << "      Tensor names (may contains multi names):: ";
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
+
+        /// new add test line
+        std::cout << "     Output tensor name (ov::op::util::get_ie_output_name(result->input_value(0))): "
+                  << ov::op::util::get_ie_output_name(result->input_value(0)) << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model variables
+ */
+void print_variables(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Variables ===" << std::endl;
+    const auto& variables = model->get_variables();
+    std::cout << "Total Variables: " << variables.size() << std::endl;
+
+    for (size_t i = 0; i < variables.size(); ++i) {
+        const auto& var = variables[i];
+        const auto& info = var->get_info();
+        std::cout << "  [" << i << "] ID: " << info.variable_id << std::endl;
+        std::cout << "      Shape: " << info.data_shape << std::endl;
+        std::cout << "      Type: " << info.data_type << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model sinks
+ */
+void print_sinks(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Sinks ===" << std::endl;
+    const auto& sinks = model->get_sinks();
+    std::cout << "Total Sinks: " << sinks.size() << std::endl;
+
+    for (size_t i = 0; i < sinks.size(); ++i) {
+        const auto& sink = sinks[i];
+        std::cout << "  [" << i << "] " << sink->get_friendly_name() << " (" << sink->get_type_name() << ")"
+                  << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print runtime information
+ */
+void print_runtime_info(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Runtime Information ===" << std::endl;
+    const auto& rt_info = model->get_rt_info();
+    std::cout << "Runtime Info Entries: " << rt_info.size() << std::endl;
+
+    for (const auto& kv : rt_info) {
+        std::cout << "  " << kv.first << " = ";
+        try {
+            // Try to convert to string
+            std::cout << kv.second.as<std::string>();
+        } catch (...) {
+            try {
+                // Try to convert to int
+                std::cout << kv.second.as<int>();
+            } catch (...) {
+                try {
+                    // Try to convert to bool
+                    std::cout << (kv.second.as<bool>() ? "true" : "false");
+                } catch (...) {
+                    std::cout << "[complex type]";
+                }
+            }
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print all nodes in the model
+ */
+void print_all_nodes(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== All Nodes (Detailed) ===" << std::endl;
+    const auto& nodes = model->get_ordered_ops();
+    std::cout << "Total Nodes: " << nodes.size() << std::endl;
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        const auto& node = nodes[i];
+        std::cout << "  [" << std::setw(3) << i << "] " << std::setw(20) << std::left << node->get_friendly_name()
+                  << " (" << node->get_type_name() << ")" << std::endl;
+
+        // Print inputs
+        if (node->get_input_size() > 0) {
+            std::cout << "       Inputs: ";
+            for (size_t j = 0; j < node->get_input_size(); ++j) {
+                const auto& input = node->get_input_source_output(j);
+                std::cout << input.get_element_type() << input.get_partial_shape();
+                if (j < node->get_input_size() - 1)
+                    std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+
+        // Print outputs
+        if (node->get_output_size() > 0) {
+            std::cout << "       Outputs: ";
+            for (size_t j = 0; j < node->get_output_size(); ++j) {
+                const auto& output = node->get_output_tensor(j);
+                std::cout << output.get_element_type() << output.get_partial_shape();
+                if (j < node->get_output_size() - 1)
+                    std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+
+        // Print node runtime info if exists
+        const auto& node_rt_info = node->get_rt_info();
+        if (!node_rt_info.empty()) {
+            std::cout << "       RT Info: ";
+            for (const auto& kv : node_rt_info) {
+                std::cout << kv.first << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print graph statistics
+ */
+void print_graph_statistics(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Graph Statistics ===" << std::endl;
+    const auto& nodes = model->get_ops();
+
+    // Count nodes by type
+    std::map<std::string, int> node_type_count;
+    for (const auto& node : nodes) {
+        node_type_count[node->get_type_name()]++;
+    }
+
+    std::cout << "Node Type Distribution:" << std::endl;
+    for (const auto& kv : node_type_count) {
+        std::cout << "  " << std::setw(20) << std::left << kv.first << ": " << kv.second << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+void print_all_info(const std::shared_ptr<ov::Model>& model) {
+    if (!model) {
+        std::cout << "Model is null!" << std::endl;
+        return;
+    }
+
+    print_basic_info(model);
+    print_parameters(model);
+    print_results(model);
+    print_variables(model);
+    print_sinks(model);
+    print_runtime_info(model);
+
+    const char* detail = std::getenv("DETAIL");
+    if (detail) {
+        print_all_nodes(model);
+    }
+
+    print_graph_statistics(model);
+}
+
+// Control the indentation format
+std::string getIndent(int level) {
+    return std::string(level * 2, ' ');
+}
+
+// Get IODescriptor string
+std::string ioDescriptorToString(const intel_npu::IODescriptor& desc, int index) {
+    std::ostringstream ss;
+
+    ss << getIndent(index) << "IODescriptor {\n";
+    ss << getIndent(index + 1) << "nameFromCompiler: \"" << desc.nameFromCompiler << "\"\n";
+    ss << getIndent(index + 1) << "precision: " << desc.precision.get_type_name() << "\n";
+    ss << getIndent(index + 1) << "shapeFromCompiler: " << desc.shapeFromCompiler << "\n";
+    ss << getIndent(index + 1) << "isStateInput: " << (desc.isStateInput ? "true" : "false") << "\n";
+    ss << getIndent(index + 1) << "isStateOutput: " << (desc.isStateOutput ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isShapeTensor: " << (desc.isShapeTensor ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitInputWeights: " << (desc.isInitInputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitOutputWeights: " << (desc.isInitOutputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isMainInputWeights: " << (desc.isMainInputWeights ? "true" : "false") << "\n";
+
+    if (desc.relatedDescriptorIndex.has_value()) {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: " << desc.relatedDescriptorIndex.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: null\n";
+    }
+
+    ss << getIndent(index + 2) << "nodeFriendlyName: \"" << desc.nodeFriendlyName << "\"\n";
+    ss << getIndent(index + 2) << "outputTensorNames: [";
+    bool first = true;
+    for (const auto& name : desc.outputTensorNames) {
+        if (!first) {
+            ss << ", ";
+        }
+        ss << "\"" << name << "\"";
+        first = false;
+    }
+    ss << "]\n";
+
+    if (desc.shapeFromIRModel.has_value()) {
+        ss << getIndent(index + 2) << "shapeFromIRModel: " << desc.shapeFromIRModel.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "shapeFromIRModel: null\n";
+    }
+
+    ss << getIndent(index) << "}";
+
+    return ss.str();
+}
+
+// Helper function to add indentation to each line of a string
+std::string addIndentationToString(const std::string& inputStr, const std::string& baseIndent) {
+    std::ostringstream ss;
+    std::istringstream stream(inputStr);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        ss << baseIndent << line;
+        if (!stream.eof()) {
+            ss << "\n";
+        }
+    }
+
+    return ss.str();
+}
+
+// Helper function to add IODescriptor vector to string
+std::string addIoDescVectorToString(const std::vector<intel_npu::IODescriptor>& ioDescriptorVector) {
+    std::ostringstream ss;
+    for (size_t i = 0; i < ioDescriptorVector.size(); ++i) {
+        std::string inputStr = ioDescriptorToString(ioDescriptorVector[i], 2);
+        ss << addIndentationToString(inputStr, "    ");
+        if (i < ioDescriptorVector.size() - 1) {
+            ss << ",";
+        }
+        ss << "\n";
+    }
+    return ss.str();
+}
+
+// Get NetworkMetadata string
+std::string networkMetadataToString(const intel_npu::NetworkMetadata& netMetadata) {
+    std::ostringstream ss;
+
+    ss << "NetworkMetadata {\n";
+    ss << "  name: \"" << netMetadata.name << "\"\n";
+    ss << "  numStreams: " << netMetadata.numStreams << "\n";
+    ss << "  inputs: [\n" << addIoDescVectorToString(netMetadata.inputs) << "  ]\n";
+    ss << "  outputs: [\n" << addIoDescVectorToString(netMetadata.outputs) << "  ]\n";
+
+    if (!netMetadata.profilingOutputs.empty()) {
+        ss << "  profilingOutputs: [\n" << addIoDescVectorToString(netMetadata.profilingOutputs) << "  ]\n";
+    }
+    ss << "}";
+
+    return ss.str();
+}
+
+inline void printArgumentDescriptor(const intel_npu::ArgumentDescriptor& arg) {
+    std::cout << "ArgumentDescriptor:" << std::endl;
+    std::cout << "  idx: " << arg.idx << std::endl;
+    std::cout << "  info:" << std::endl;
+    std::cout << "    stype: " << arg.info.stype << std::endl;
+    std::cout << "    pNext: " << arg.info.pNext << std::endl;
+    std::cout << "    name: " << arg.info.name << std::endl;
+    std::cout << "    type: " << arg.info.type << std::endl;
+    std::cout << "    dims: ";
+    for (size_t i = 0; i < sizeof(arg.info.dims)/sizeof(arg.info.dims[0]); ++i) {
+        std::cout << arg.info.dims[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "    networkPrecision: " << arg.info.networkPrecision << std::endl;
+    std::cout << "    networkLayout: " << arg.info.networkLayout << std::endl;
+    std::cout << "    devicePrecision: " << arg.info.devicePrecision << std::endl;
+    std::cout << "    deviceLayout: " << arg.info.deviceLayout << std::endl;
+    std::cout << "    quantReverseScale: " << arg.info.quantReverseScale << std::endl;
+    std::cout << "    quantZeroPoint: " << static_cast<int>(arg.info.quantZeroPoint) << std::endl;
+    std::cout << "    dims_count: " << arg.info.dims_count << std::endl;
+    std::cout << "    debug_friendly_name: " << arg.info.debug_friendly_name << std::endl;
+    std::cout << "    associated_tensor_names_count: " << arg.info.associated_tensor_names_count << std::endl;
+    std::cout << "    associated_tensor_names: ";
+    for (uint32_t i = 0; i < arg.info.associated_tensor_names_count; ++i) {
+        std::cout << arg.info.associated_tensor_names[i] << " ";
+    }
+    std::cout << std::endl;
+}
+
 }  // namespace
 
 //------------------------------------------------------------------------------
@@ -84,6 +444,10 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
       _levelZeroInputTensors(_metadata.inputs.size(), std::vector<std::shared_ptr<ov::ITensor>>(1, nullptr)),
       _levelZeroOutputTensors(_metadata.outputs.size(), nullptr) {
     _logger.debug("ZeroInferRequest::ZeroInferRequest - SyncInferRequest");
+
+    std::cout << "-------------------------ZeroInferRequest init1----------------------------------------" << std::endl;
+    std::cout << networkMetadataToString(_metadata) << std::endl;
+    std::cout << "-------------------------ZeroInferRequest init2----------------------------------------" << std::endl;
 
     _outputAllocator = std::make_shared<const zeroMemory::HostMemAllocator>(_initStructs);
     _inputAllocator =
