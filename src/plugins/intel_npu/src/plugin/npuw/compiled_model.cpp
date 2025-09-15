@@ -1481,6 +1481,12 @@ std::shared_ptr<const ov::Model> ov::npuw::CompiledModel::get_runtime_model() co
     OPENVINO_NOT_IMPLEMENTED;
 }
 
+std::shared_ptr<const ov::Model> ov::npuw::CompiledModel::get_runtime_model_from_Metadata() const {
+    // NOTE(dm): See hetero plugin implementation if need to bring this method back
+    // (that code should work as-is)
+    OPENVINO_NOT_IMPLEMENTED;
+}
+
 std::shared_ptr<const ::intel_npu::Plugin> ov::npuw::CompiledModel::get_npuw_plugin() const {
     auto plugin = get_plugin();
     OPENVINO_ASSERT(plugin);
