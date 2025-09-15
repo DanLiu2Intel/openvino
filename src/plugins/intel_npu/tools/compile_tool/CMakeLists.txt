@@ -24,8 +24,17 @@ ov_add_target(ADD_CPPLINT
               TYPE EXECUTABLE
               NAME ${TARGET_NAME}
               ROOT ${CMAKE_CURRENT_SOURCE_DIR}
+              INCLUDES
+                PUBLIC
+                "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+                $<BUILD_INTERFACE:${OpenVINO_SOURCE_DIR}/src/common/transformations/include>
               LINK_LIBRARIES
+                    PUBLIC
+                      ${OpenVINO_SOURCE_DIR}/
+                      ${OpenVINO_SOURCE_DIR}/src/common/transformations/include
                   PRIVATE
+                      openvino::core::dev 
+                      openvino_transformations
                       openvino::runtime
                       gflags
                       Threads::Threads

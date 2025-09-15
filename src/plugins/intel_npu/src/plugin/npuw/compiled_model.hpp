@@ -53,6 +53,8 @@ public:
                                                        const ov::AnyMap& properties);
     std::shared_ptr<const ov::Model> get_runtime_model() const override;
 
+    std::shared_ptr<const ov::Model> get_runtime_model_from_Metadata() const override;
+
     void set_property(const ov::AnyMap& properties) override;
     ov::Any get_property(const std::string& name) const override;
 

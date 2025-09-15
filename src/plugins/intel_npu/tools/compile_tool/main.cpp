@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "tools_helpers.hpp"
+#include <transformations/utils/utils.hpp>
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
 
@@ -420,6 +421,127 @@ std::string getFileNameFromPath(const std::string& path,
     }
 }
 
+/**
+ * @brief Print basic model information
+ */
+void print_basic_info(const std::shared_ptr<const ov::Model>& model) {
+    std::cout << "=== Model Basic Information ===" << std::endl;
+    std::cout << "Name: " << model->get_name() << std::endl;
+    std::cout << "Friendly Name: " << model->get_friendly_name() << std::endl;
+    std::cout << "Output Size: " << model->get_output_size() << std::endl;
+    std::cout << "Graph Size: " << model->get_graph_size() << " bytes" << std::endl;
+    std::cout << "Is Dynamic: " << (model->is_dynamic() ? "Yes" : "No") << std::endl;
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model parameters (inputs)
+ */
+void print_parameters(const std::shared_ptr<const ov::Model>& model) {
+    std::cout << "=== Model Parameters (Inputs) ===" << std::endl;
+    const auto& parameters = model->get_parameters();
+    std::cout << "Total Parameters: " << parameters.size() << std::endl;
+
+    for (size_t i = 0; i < parameters.size(); ++i) {
+        const auto& param = parameters[i];
+        std::cout << "  [" << i << "] " << param->get_friendly_name() << "/(get_name is " << param->get_name()
+                  << ") : " << param->get_element_type() << " " << param->get_partial_shape() << std::endl;
+
+        // Print additional parameter info
+        std::cout << "      Type: " << param->get_type_name() << std::endl;
+        if (param->get_output_size() > 0) {
+            std::cout << "      Output tensor names (may contains multi names): ";
+            for (size_t j = 0; j < param->get_output_size(); ++j) {
+                auto names = param->get_output_tensor(j).get_names();
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model results (outputs)
+ */
+void print_results(const std::shared_ptr<const ov::Model>& model) {
+    std::cout << "=== Model Results (Outputs) ===" << std::endl;
+    const auto& results = model->get_results();
+    std::cout << "Total Results: " << results.size() << std::endl;
+
+    for (size_t i = 0; i < results.size(); ++i) {
+        const auto& result = results[i];
+        std::cout << "  [" << i << "] " << result->get_friendly_name() << "/(get_name is " << result->get_name()
+                  << ") : " << std::endl;
+        std::cout << "      Type: " << result->get_type_name() << std::endl;
+
+        if (result->get_input_size() > 0) {
+            const auto& input = result->get_input_source_output(0);
+            std::cout << "      Element Type: " << input.get_element_type() << std::endl;
+            std::cout << "      Shape: " << input.get_partial_shape() << std::endl;
+
+            auto names = result->get_output_tensor(0).get_names();
+            if (!names.empty()) {
+                std::cout << "      Tensor names (may contains multi names):: ";
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
+
+        /// new add test line
+        std::cout << "     Output tensor name (ov::op::util::get_ie_output_name(result->input_value(0))): "
+                  << ov::op::util::get_ie_output_name(result->input_value(0)) << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print runtime information
+ */
+void print_runtime_info(const std::shared_ptr<const ov::Model>& model) {
+    std::cout << "=== Model Runtime Information ===" << std::endl;
+    const auto& rt_info = model->get_rt_info();
+    std::cout << "Runtime Info Entries: " << rt_info.size() << std::endl;
+
+    for (const auto& kv : rt_info) {
+        std::cout << "  " << kv.first << " = ";
+        try {
+            // Try to convert to string
+            std::cout << kv.second.as<std::string>();
+        } catch (...) {
+            try {
+                // Try to convert to int
+                std::cout << kv.second.as<int>();
+            } catch (...) {
+                try {
+                    // Try to convert to bool
+                    std::cout << (kv.second.as<bool>() ? "true" : "false");
+                } catch (...) {
+                    std::cout << "[complex type]";
+                }
+            }
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+void print_all_info(const std::shared_ptr<const ov::Model>& model) {
+    if (!model) {
+        std::cout << "Model is null!" << std::endl;
+        return;
+    }
+
+    print_basic_info(model);
+    print_parameters(model);
+    print_results(model);
+    print_runtime_info(model);
+}
+
 using TimeDiff = std::chrono::milliseconds;
 
 int main(int argc, char* argv[]) {
@@ -503,6 +625,13 @@ int main(int argc, char* argv[]) {
             compiledModel.export_model(outputFile);
         }
         std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
+        std::cout << "------------Done. compiledModel.get_runtime_model()------------" << std::endl;
+        auto modelRuntime = compiledModel.get_runtime_model();
+        print_all_info(modelRuntime);
+        std::cout << "------------Done. compiledModel.get_runtime_model_from_Metadata()------------" << std::endl;
+        auto modelRuntimeMetadata = compiledModel.get_runtime_model_from_Metadata();
+        print_all_info(modelRuntimeMetadata);
+        std::cout << "------------Done. compiledModel.get_runtime_mode ....------------" << std::endl;
     } catch (const std::exception& error) {
         std::cerr << error.what() << std::endl;
         return EXIT_FAILURE;

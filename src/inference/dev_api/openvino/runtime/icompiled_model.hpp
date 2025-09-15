@@ -111,6 +111,8 @@ public:
      */
     virtual std::shared_ptr<const ov::Model> get_runtime_model() const = 0;
 
+    virtual std::shared_ptr<const ov::Model> get_runtime_model_from_Metadata() const = 0;
+
     /**
      * @brief Allows to set property
      *

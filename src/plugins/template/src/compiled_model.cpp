@@ -115,6 +115,35 @@ std::shared_ptr<const ov::Model> ov::template_plugin::CompiledModel::get_runtime
     }
     return model;
 }
+
+// ! [compiled_model:get_runtime_model]
+std::shared_ptr<const ov::Model> ov::template_plugin::CompiledModel::get_runtime_model_from_Metadata() const {
+    auto model = m_model->clone();
+    // Add execution information into the model
+    size_t exec_order = 0;
+    for (const auto& op : model->get_ordered_ops()) {
+        auto& info = op->get_rt_info();
+        const auto& it = info.find(ov::runtime::interpreter::PERF_COUNTER_NAME);
+        OPENVINO_ASSERT(it != info.end(), "Operation ", op, " doesn't contain performance counter");
+        auto perf_count = it->second.as<std::shared_ptr<ov::runtime::interpreter::PerfCounter>>();
+        OPENVINO_ASSERT(perf_count, "Performance counter is empty");
+        info[ov::exec_model_info::LAYER_TYPE] = op->get_type_info().name;
+        info[ov::exec_model_info::EXECUTION_ORDER] = std::to_string(exec_order++);
+        info[ov::exec_model_info::IMPL_TYPE] = "ref";
+        info[ov::exec_model_info::PERF_COUNTER] = m_cfg.perf_count && perf_count && perf_count->avg() != 0
+                                                      ? std::to_string(perf_count->avg())
+                                                      : "not_executed";
+
+        std::string original_names = ov::getFusedNames(op);
+        if (original_names.empty()) {
+            original_names = op->get_friendly_name();
+        } else if (original_names.find(op->get_friendly_name()) == std::string::npos) {
+            original_names = op->get_friendly_name() + "," + original_names;
+        }
+        info[ov::exec_model_info::ORIGINAL_NAMES] = original_names;
+    }
+    return model;
+}
 // ! [compiled_model:get_runtime_model]
 
 std::shared_ptr<const ov::template_plugin::Plugin> ov::template_plugin::CompiledModel::get_template_plugin() const {

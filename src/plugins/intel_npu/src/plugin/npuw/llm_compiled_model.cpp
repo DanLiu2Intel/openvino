@@ -1310,6 +1310,11 @@ std::shared_ptr<const ov::Model> ov::npuw::LLMCompiledModel::get_runtime_model()
     OPENVINO_NOT_IMPLEMENTED;
 }
 
+std::shared_ptr<const ov::Model> ov::npuw::LLMCompiledModel::get_runtime_model_from_Metadata() const {
+    OPENVINO_NOT_IMPLEMENTED;
+}
+
+
 void ov::npuw::LLMCompiledModel::set_property(const ov::AnyMap& properties) {
     OPENVINO_NOT_IMPLEMENTED;
 }

@@ -47,7 +47,11 @@ public:
 
     void export_model(std::ostream& stream) const override;
 
+    // from ov model
     std::shared_ptr<const ov::Model> get_runtime_model() const override;
+
+    // from metadata
+    std::shared_ptr<const ov::Model> get_runtime_model_from_Metadata() const;
 
     void set_property(const ov::AnyMap& properties) override;
 

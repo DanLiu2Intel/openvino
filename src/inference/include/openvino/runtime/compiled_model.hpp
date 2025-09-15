@@ -69,6 +69,8 @@ public:
      */
     std::shared_ptr<const Model> get_runtime_model() const;
 
+    std::shared_ptr<const Model> get_runtime_model_from_Metadata() const;
+
     /**
      * @brief Gets all inputs of a compiled model.
      * Inputs are represented as a vector of outputs of the ov::op::v0::Parameter operations.
