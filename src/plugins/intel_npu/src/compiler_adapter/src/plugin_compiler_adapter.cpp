@@ -63,6 +63,103 @@ ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
     return ov::make_tensor(impl);
 }
 
+// Control the indentation format
+std::string getIndent(int level) {
+    return std::string(level * 2, ' ');
+}
+
+// Get IODescriptor string
+std::string ioDescriptorToString(const intel_npu::IODescriptor& desc, int index) {
+    std::ostringstream ss;
+
+    ss << getIndent(index) << "IODescriptor {\n";
+    ss << getIndent(index + 1) << "nameFromCompiler: \"" << desc.nameFromCompiler << "\"\n";
+    ss << getIndent(index + 1) << "precision: " << desc.precision.get_type_name() << "\n";
+    ss << getIndent(index + 1) << "shapeFromCompiler: " << desc.shapeFromCompiler << "\n";
+    ss << getIndent(index + 1) << "isStateInput: " << (desc.isStateInput ? "true" : "false") << "\n";
+    ss << getIndent(index + 1) << "isStateOutput: " << (desc.isStateOutput ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isShapeTensor: " << (desc.isShapeTensor ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitInputWeights: " << (desc.isInitInputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitOutputWeights: " << (desc.isInitOutputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isMainInputWeights: " << (desc.isMainInputWeights ? "true" : "false") << "\n";
+
+    if (desc.relatedDescriptorIndex.has_value()) {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: " << desc.relatedDescriptorIndex.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: null\n";
+    }
+
+    ss << getIndent(index + 2) << "nodeFriendlyName: \"" << desc.nodeFriendlyName << "\"\n";
+    ss << getIndent(index + 2) << "outputTensorNames: [";
+    bool first = true;
+    for (const auto& name : desc.outputTensorNames) {
+        if (!first) {
+            ss << ", ";
+        }
+        ss << "\"" << name << "\"";
+        first = false;
+    }
+    ss << "]\n";
+
+    if (desc.shapeFromIRModel.has_value()) {
+        ss << getIndent(index + 2) << "shapeFromIRModel: " << desc.shapeFromIRModel.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "shapeFromIRModel: null\n";
+    }
+
+    ss << getIndent(index) << "}";
+
+    return ss.str();
+}
+
+// Helper function to add indentation to each line of a string
+std::string addIndentationToString(const std::string& inputStr, const std::string& baseIndent) {
+    std::ostringstream ss;
+    std::istringstream stream(inputStr);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        ss << baseIndent << line;
+        if (!stream.eof()) {
+            ss << "\n";
+        }
+    }
+
+    return ss.str();
+}
+
+// Helper function to add IODescriptor vector to string
+std::string addIoDescVectorToString(const std::vector<intel_npu::IODescriptor>& ioDescriptorVector) {
+    std::ostringstream ss;
+    for (size_t i = 0; i < ioDescriptorVector.size(); ++i) {
+        std::string inputStr = ioDescriptorToString(ioDescriptorVector[i], 2);
+        ss << addIndentationToString(inputStr, "    ");
+        if (i < ioDescriptorVector.size() - 1) {
+            ss << ",";
+        }
+        ss << "\n";
+    }
+    return ss.str();
+}
+
+// Get NetworkMetadata string
+std::string networkMetadataToString(const intel_npu::NetworkMetadata& netMetadata) {
+    std::ostringstream ss;
+
+    ss << "NetworkMetadata {\n";
+    ss << "  name: \"" << netMetadata.name << "\"\n";
+    ss << "  numStreams: " << netMetadata.numStreams << "\n";
+    ss << "  inputs: [\n" << addIoDescVectorToString(netMetadata.inputs) << "  ]\n";
+    ss << "  outputs: [\n" << addIoDescVectorToString(netMetadata.outputs) << "  ]\n";
+
+    if (!netMetadata.profilingOutputs.empty()) {
+        ss << "  profilingOutputs: [\n" << addIoDescVectorToString(netMetadata.profilingOutputs) << "  ]\n";
+    }
+    ss << "}";
+
+    return ss.str();
+}
+
 }  // namespace
 
 namespace intel_npu {
@@ -108,12 +205,18 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
     ze_graph_handle_t graphHandle = nullptr;
 
     NetworkMetadata networkMeta = std::move(networkDesc.metadata);
+    std::cout << "networkMeta for compile ------------1------------" << std::endl;
+    std::cout << networkMetadataToString(networkMeta) << std::endl;
+    std::cout << "networkMeta for compile -----------2-------------" << std::endl;
     if (_zeGraphExt) {
         // Depending on the config, we may get an error when trying to get the graph handle from the compiled
         // network
         try {
             graphHandle =
                 _zeGraphExt->getGraphHandle(*reinterpret_cast<const uint8_t*>(tensor.data()), tensor.get_byte_size());
+            std::cout << "networkMeta for driver parser ------------1------------" << std::endl;
+            std::cout << networkMetadataToString(_zeGraphExt->getNetworkMeta(graphHandle)) << std::endl;
+            std::cout << "networkMeta for driver parser -----------2-------------" << std::endl;
 #ifdef VCL_FOR_COMPILER
             if (networkMeta.inputs.empty() && networkMeta.outputs.empty()) {
                 // If the metadata is empty, we can try to get it from the driver parser
