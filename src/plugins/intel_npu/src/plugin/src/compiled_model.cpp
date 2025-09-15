@@ -17,6 +17,8 @@
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/executor_manager.hpp"
 #include "transformations/utils/utils.hpp"
+#include "intel_npu/network_metadata.hpp"
+#include "openvino/core/model.hpp"
 
 namespace {
 
@@ -119,6 +121,128 @@ std::string networkMetadataToString(const intel_npu::NetworkMetadata& netMetadat
     return ss.str();
 }
 
+/**
+ * @brief Print basic model information
+ */
+void print_basic_info(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Basic Information ===" << std::endl;
+    std::cout << "Name: " << model->get_name() << std::endl;
+    std::cout << "Friendly Name: " << model->get_friendly_name() << std::endl;
+    std::cout << "Output Size: " << model->get_output_size() << std::endl;
+    std::cout << "Graph Size: " << model->get_graph_size() << " bytes" << std::endl;
+    std::cout << "Is Dynamic: " << (model->is_dynamic() ? "Yes" : "No") << std::endl;
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model parameters (inputs)
+ */
+void print_parameters(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Parameters (Inputs) ===" << std::endl;
+    const auto& parameters = model->get_parameters();
+    std::cout << "Total Parameters: " << parameters.size() << std::endl;
+
+    for (size_t i = 0; i < parameters.size(); ++i) {
+        const auto& param = parameters[i];
+        std::cout << "  [" << i << "] " << param->get_friendly_name() << "/(get_name is " << param->get_name()
+                  << ") : " << param->get_element_type() << " " << param->get_partial_shape() << std::endl;
+
+        // Print additional parameter info
+        std::cout << "      Type: " << param->get_type_name() << std::endl;
+        if (param->get_output_size() > 0) {
+            std::cout << "      Output tensor names (may contains multi names): ";
+            for (size_t j = 0; j < param->get_output_size(); ++j) {
+                auto names = param->get_output_tensor(j).get_names();
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model results (outputs)
+ */
+void print_results(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Results (Outputs) ===" << std::endl;
+    const auto& results = model->get_results();
+    std::cout << "Total Results: " << results.size() << std::endl;
+
+    for (size_t i = 0; i < results.size(); ++i) {
+        const auto& result = results[i];
+        std::cout << "  [" << i << "] " << result->get_friendly_name() << "/(get_name is " << result->get_name()
+                  << ") : " << std::endl;
+        std::cout << "      Type: " << result->get_type_name() << std::endl;
+
+        if (result->get_input_size() > 0) {
+            const auto& input = result->get_input_source_output(0);
+            std::cout << "      Element Type: " << input.get_element_type() << std::endl;
+            std::cout << "      Shape: " << input.get_partial_shape() << std::endl;
+
+            auto names = result->get_output_tensor(0).get_names();
+            if (!names.empty()) {
+                std::cout << "      Tensor names (may contains multi names):: ";
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
+
+        /// new add test line
+        std::cout << "     Output tensor name (ov::op::util::get_ie_output_name(result->input_value(0))): "
+                  << ov::op::util::get_ie_output_name(result->input_value(0)) << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print runtime information
+ */
+void print_runtime_info(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Runtime Information ===" << std::endl;
+    const auto& rt_info = model->get_rt_info();
+    std::cout << "Runtime Info Entries: " << rt_info.size() << std::endl;
+
+    for (const auto& kv : rt_info) {
+        std::cout << "  " << kv.first << " = ";
+        try {
+            // Try to convert to string
+            std::cout << kv.second.as<std::string>();
+        } catch (...) {
+            try {
+                // Try to convert to int
+                std::cout << kv.second.as<int>();
+            } catch (...) {
+                try {
+                    // Try to convert to bool
+                    std::cout << (kv.second.as<bool>() ? "true" : "false");
+                } catch (...) {
+                    std::cout << "[complex type]";
+                }
+            }
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+void print_all_info(const std::shared_ptr<ov::Model>& model) {
+    if (!model) {
+        std::cout << "Model is null!" << std::endl;
+        return;
+    }
+
+    print_basic_info(model);
+    print_parameters(model);
+    print_results(model);
+    print_runtime_info(model);
+
+}
+
 }  // namespace
 
 namespace intel_npu {
@@ -195,12 +319,63 @@ void CompiledModel::export_model(std::ostream& stream) const {
 std::shared_ptr<const ov::Model> CompiledModel::get_runtime_model() const {
     ov::ParameterVector parameters;
     ov::ResultVector results;
-
+     std::cout << "=== NPU CompiledModel get_runtime_model method 1===" << std::endl;
+     int ii1 = 0, io1 = 0;
     for (const ov::Output<const ov::Node>& nodeOutput : inputs()) {
         std::shared_ptr<ov::Node> clonedParameter =
             std::dynamic_pointer_cast<const ov::op::v0::Parameter>(nodeOutput.get_node_shared_ptr())
                 ->clone_with_new_inputs({});
         parameters.push_back(std::dynamic_pointer_cast<ov::op::v0::Parameter>(clonedParameter));
+        // print input info, shape, type, name
+        std::cout << "input1 ["<< ii1  << "]:" << std::endl;
+        std::cout << "input1 from model's set_friendly_name" << clonedParameter->get_friendly_name() << std::endl;
+        std::cout << "input1 from model's precision" << clonedParameter->get_element_type() << std::endl;
+        std::cout << "input1 from model's get_partial_shape [";
+        for (const auto& item : clonedParameter->get_partial_shape()) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << "\"" << item << "\"";
+            first = false;
+        }
+        std::cout << "]" << std::endl;
+        std::cout << "input1 from model's get_shape [";
+        for (const auto& item : clonedParameter->get_shape()) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << "\"" << item << "\"";
+            first = false;
+        }
+        std::cout << "]" << std::endl;
+
+        std::cout << "input1 from model's nodeOutput.get_names() [";
+        for (const auto& name : nodeOutput.get_names()) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << "\"" << name << "\"";
+            first = false;
+        }
+        std::cout << "]" << std::endl;
+
+        std::cout << "input1 from model's print_parameters:" << std::endl;
+        std::cout << "  [" << ii1 << "] " << clonedParameter->get_friendly_name() << "/(get_name is " << clonedParameter->get_name()
+                  << ") : " << clonedParameter->get_element_type() << " " << clonedParameter->get_partial_shape() << std::endl;
+
+        // Print additional parameter info
+        std::cout << "      Type: " << clonedParameter->get_type_name() << std::endl;
+        if (clonedParameter->get_output_size() > 0) {
+            std::cout << "      Output tensor names (may contains multi names): ";
+            for (size_t j = 0; j < clonedParameter->get_output_size(); ++j) {
+                auto names = clonedParameter->get_output_tensor(j).get_names();
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+        ii1++;
     }
 
     for (const ov::Output<const ov::Node>& nodeOutput : outputs()) {
@@ -217,7 +392,145 @@ std::shared_ptr<const ov::Model> CompiledModel::get_runtime_model() const {
         auto& resultCopy = results.emplace_back(std::make_shared<ov::op::v0::Result>(constantDummy));
         resultCopy->output(0).set_tensor_ptr(tensorDummy);
         resultCopy->set_friendly_name(resultOriginal->get_friendly_name());
+        //print output info, shape, type, name(contain get_ie_output_name)
+        //  std::make_shared<ov::descriptor::Tensor>(precision, shape, nodeOutput.get_names());
+        std::cout << "result1 ["<< io1  << "]:" << std::endl;
+        std::cout << "result1 from model's set_friendly_name" << resultOriginal->get_friendly_name() << std::endl;
+        std::cout << "result1 from model's precision" << precision << std::endl;
+        std::cout << "result1 from model's shape [";
+        for (const auto& item : shape) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << "\"" << item << "\"";
+            first = false;
+        }
+        std::cout << "]" << std::endl;
+
+        std::cout << "result1 from model's nodeOutput.get_names() [";
+        for (const auto& name : nodeOutput.get_names()) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << "\"" << name << "\"";
+            first = false;
+        }
+        std::cout << "]" << std::endl;
+
+        std::cout << "result1 from model's print_results:" << std::endl;
+        const auto& res = results[io1];
+        std::cout << "  [" << i << "] " << res->get_friendly_name() << "/(get_name is " << res->get_name()
+                  << ") : " << std::endl;
+        std::cout << "      Type: " << res->get_type_name() << std::endl;
+
+        if (res->get_input_size() > 0) {
+            const auto& input = res->get_input_source_output(0);
+            std::cout << "      Element Type: " << input.get_element_type() << std::endl;
+            std::cout << "      Shape: " << input.get_partial_shape() << std::endl;
+
+            auto names = res->get_output_tensor(0).get_names();
+            if (!names.empty()) {
+                std::cout << "      Tensor names (may contains multi names):: ";
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
+
+        /// new add test line
+        std::cout << "     Output tensor name (ov::op::util::get_ie_output_name(res->input_value(0))): "
+                  << ov::op::util::get_ie_output_name(res->input_value(0)) << std::endl;
+        io1++;
     }
+
+    std::cout << "=== NPU CompiledModel get_runtime_model method 2===" << std::endl;
+
+    std::cout << "=== NPU CompiledModel get_runtime_model method 3===" << std::endl;
+    ov::ParameterVector parameters2;
+    ov::ResultVector results2;
+
+    for (const IODescriptor& inputDescriptor : _graph->get_metadata().inputs) {
+        if (inputDescriptor.isStateInput || inputDescriptor.isStateOutput || inputDescriptor.isShapeTensor) {
+            continue;
+        }
+
+        std::shared_ptr<ov::op::v0::Parameter> parameter =
+            std::make_shared<ov::op::v0::Parameter>(inputDescriptor.precision, inputDescriptor.shapeFromCompiler);
+
+        parameter->set_friendly_name(inputDescriptor.nodeFriendlyName);
+        parameter->output(0).get_tensor().set_names(inputDescriptor.outputTensorNames);
+        parameters2.push_back(std::move(parameter));
+        std::cout << "input from metadata's set_friendly_name" << inputDescriptor.nodeFriendlyName << std::endl;
+        std::cout << "input from metadata's precision" << inputDescriptor.precision << std::endl;
+        std::cout << "input from metadata's outputTensorNames [";
+        for (const auto& name : inputDescriptor.outputTensorNames) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << "\"" << name << "\"";
+            first = false;
+        }
+        std::cout << "]" << std::endl;
+    }
+
+    // The "result2" nodes require a parent node in order to satisfy the API conventions. Additionally, a dummy shape for
+    // the "Constant" node was required since the specific constructor does not accept "ov::PartialShape" values (a
+    // constant can't have dynamic shape). The dummy tensor was also brought in order to register the correct,
+    // potentially dynamic, output shape.
+    for (const IODescriptor& outputDescriptor : _graph->get_metadata().outputs) {
+        if (outputDescriptor.isStateInput || outputDescriptor.isStateOutput || outputDescriptor.isShapeTensor) {
+            continue;
+        }
+
+        std::shared_ptr<ov::Node> constantDummy = std::make_shared<ov::op::v0::Constant>(
+            outputDescriptor.precision,
+            outputDescriptor.shapeFromCompiler.to_shape().empty() ? CONSTANT_NODE_DUMMY_SHAPE
+                                                                  : outputDescriptor.shapeFromCompiler.to_shape());
+
+        const std::shared_ptr<ov::descriptor::Tensor>& tensorDummy =
+        std::make_shared<ov::descriptor::Tensor>(outputDescriptor.precision,
+                                                    outputDescriptor.shapeFromCompiler,
+                                                    outputDescriptor.outputTensorNames);
+
+        auto& result2 = results2.emplace_back(std::make_shared<ov::op::v0::result2>(constantDummy));
+        result2->output(0).set_tensor_ptr(tensorDummy);
+        result2->set_friendly_name(outputDescriptor.nodeFriendlyName);
+        std::cout << "result2 from metadata's set_friendly_name" << outputDescriptor.nodeFriendlyName << std::endl;
+        std::cout << "result2 from metadata's precision" << outputDescriptor.precision << std::endl;
+        std::cout << "result2 from metadata's outputTensorNames [";
+        for (const auto& name : outputDescriptor.outputTensorNames) {
+            if (!first) {
+                std::cout << ", ";
+            }
+            std::cout << "\"" << name << "\"";
+            first = false;
+        }
+        std::cout << "]" << std::endl;
+        
+
+        std::cout << "result2 from metadata's shapeFromCompiler [";
+        for (const auto& name : outputDescriptor.shapeFromCompiler) {
+        if (!first) {
+                std::cout << ", ";
+        }
+            std::cout << "\"" << name << "\"";
+            first = false;
+        }
+        std::cout << "]" << std::endl;
+        
+    }
+
+    _logger.warning("Returning a dummy ov::Model object that contains only the given parameter and result2 nodes");
+    std::cout << "=== NPU CompiledModel get_runtime_model method 4===" << std::endl;
+
+    std::cout << "=== NPU CompiledModel get_runtime_model model after print updated model===" << std::endl;
+    std::shared_ptr<ov::Model> model1 = std::make_shared<ov::Model>(results, parameters);
+    print_all_info(model1);
+    
+    std::cout << "=== NPU CompiledModel get_runtime_model model after print used metadata model===" << std::endl;
+    std::shared_ptr<ov::Model> model2 = std::make_shared<ov::Model>(results2, parameters2);
+    print_all_info(model2);
 
     return std::make_shared<ov::Model>(results, parameters);
 }
