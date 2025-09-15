@@ -22,6 +22,7 @@
 #include "openvino/util/file_util.hpp"
 #include "openvino/util/shared_object.hpp"
 #include "weightless_graph.hpp"
+#include "transformations/utils/utils.hpp"
 
 namespace {
 
@@ -59,6 +60,192 @@ ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
         std::make_shared<std::vector<uint8_t>>(std::move(vector));
     impl._so = std::move(sharedCompiledNetwork);
     return ov::make_tensor(impl);
+}
+
+// Control the indentation format
+std::string getIndent(int level) {
+    return std::string(level * 2, ' ');
+}
+
+// Get IODescriptor string
+std::string ioDescriptorToString(const intel_npu::IODescriptor& desc, int index) {
+    std::ostringstream ss;
+
+    ss << getIndent(index) << "IODescriptor {\n";
+    ss << getIndent(index + 1) << "nameFromCompiler: \"" << desc.nameFromCompiler << "\"\n";
+    ss << getIndent(index + 1) << "precision: " << desc.precision.get_type_name() << "\n";
+    ss << getIndent(index + 1) << "shapeFromCompiler: " << desc.shapeFromCompiler << "\n";
+    ss << getIndent(index + 1) << "isStateInput: " << (desc.isStateInput ? "true" : "false") << "\n";
+    ss << getIndent(index + 1) << "isStateOutput: " << (desc.isStateOutput ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isShapeTensor: " << (desc.isShapeTensor ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitInputWeights: " << (desc.isInitInputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitOutputWeights: " << (desc.isInitOutputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isMainInputWeights: " << (desc.isMainInputWeights ? "true" : "false") << "\n";
+
+    if (desc.relatedDescriptorIndex.has_value()) {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: " << desc.relatedDescriptorIndex.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: null\n";
+    }
+
+    ss << getIndent(index + 2) << "nodeFriendlyName: \"" << desc.nodeFriendlyName << "\"\n";
+    ss << getIndent(index + 2) << "outputTensorNames: [";
+    bool first = true;
+    for (const auto& name : desc.outputTensorNames) {
+        if (!first) {
+            ss << ", ";
+        }
+        ss << "\"" << name << "\"";
+        first = false;
+    }
+    ss << "]\n";
+
+    if (desc.shapeFromIRModel.has_value()) {
+        ss << getIndent(index + 2) << "shapeFromIRModel: " << desc.shapeFromIRModel.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "shapeFromIRModel: null\n";
+    }
+
+    ss << getIndent(index) << "}";
+
+    return ss.str();
+}
+
+// Helper function to add indentation to each line of a string
+std::string addIndentationToString(const std::string& inputStr, const std::string& baseIndent) {
+    std::ostringstream ss;
+    std::istringstream stream(inputStr);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        ss << baseIndent << line;
+        if (!stream.eof()) {
+            ss << "\n";
+        }
+    }
+
+    return ss.str();
+}
+
+// Helper function to add IODescriptor vector to string
+std::string addIoDescVectorToString(const std::vector<intel_npu::IODescriptor>& ioDescriptorVector) {
+    std::ostringstream ss;
+    for (size_t i = 0; i < ioDescriptorVector.size(); ++i) {
+        std::string inputStr = ioDescriptorToString(ioDescriptorVector[i], 2);
+        ss << addIndentationToString(inputStr, "    ");
+        if (i < ioDescriptorVector.size() - 1) {
+            ss << ",";
+        }
+        ss << "\n";
+    }
+    return ss.str();
+}
+
+// Get NetworkMetadata string
+std::string networkMetadataToString(const intel_npu::NetworkMetadata& netMetadata) {
+    std::ostringstream ss;
+
+    ss << "NetworkMetadata {\n";
+    ss << "  name: \"" << netMetadata.name << "\"\n";
+    ss << "  numStreams: " << netMetadata.numStreams << "\n";
+    ss << "  inputs: [\n" << addIoDescVectorToString(netMetadata.inputs) << "  ]\n";
+    ss << "  outputs: [\n" << addIoDescVectorToString(netMetadata.outputs) << "  ]\n";
+
+    if (!netMetadata.profilingOutputs.empty()) {
+        ss << "  profilingOutputs: [\n" << addIoDescVectorToString(netMetadata.profilingOutputs) << "  ]\n";
+    }
+    ss << "}";
+
+    return ss.str();
+}
+
+/**
+ * @brief Print basic model information
+ */
+void print_basic_info(const std::shared_ptr<const ov::Model>& model) {
+    std::cout << "=== Model Basic Information ===" << std::endl;
+    std::cout << "Name: " << model->get_name() << std::endl;
+    std::cout << "Friendly Name: " << model->get_friendly_name() << std::endl;
+    std::cout << "Output Size: " << model->get_output_size() << std::endl;
+    std::cout << "Graph Size: " << model->get_graph_size() << " bytes" << std::endl;
+    std::cout << "Is Dynamic: " << (model->is_dynamic() ? "Yes" : "No") << std::endl;
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model parameters (inputs)
+ */
+void print_parameters(const std::shared_ptr<const ov::Model>& model) {
+    std::cout << "=== Model Parameters (Inputs) ===" << std::endl;
+    const auto& parameters = model->get_parameters();
+    std::cout << "Total Parameters: " << parameters.size() << std::endl;
+
+    for (size_t i = 0; i < parameters.size(); ++i) {
+        const auto& param = parameters[i];
+        std::cout << "  [" << i << "] " << param->get_friendly_name() << "/(get_name is " << param->get_name()
+                  << ") : " << param->get_element_type() << " " << param->get_partial_shape() << std::endl;
+
+        // Print additional parameter info
+        std::cout << "      Type: " << param->get_type_name() << std::endl;
+        if (param->get_output_size() > 0) {
+            std::cout << "      Output tensor names (may contains multi names): ";
+            for (size_t j = 0; j < param->get_output_size(); ++j) {
+                auto names = param->get_output_tensor(j).get_names();
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model results (outputs)
+ */
+void print_results(const std::shared_ptr<const ov::Model>& model) {
+    std::cout << "=== Model Results (Outputs) ===" << std::endl;
+    const auto& results = model->get_results();
+    std::cout << "Total Results: " << results.size() << std::endl;
+
+    for (size_t i = 0; i < results.size(); ++i) {
+        const auto& result = results[i];
+        std::cout << "  [" << i << "] " << result->get_friendly_name() << "/(get_name is " << result->get_name()
+                  << ") : " << std::endl;
+        std::cout << "      Type: " << result->get_type_name() << std::endl;
+
+        if (result->get_input_size() > 0) {
+            const auto& input = result->get_input_source_output(0);
+            std::cout << "      Element Type: " << input.get_element_type() << std::endl;
+            std::cout << "      Shape: " << input.get_partial_shape() << std::endl;
+
+            auto names = result->get_output_tensor(0).get_names();
+            if (!names.empty()) {
+                std::cout << "      Tensor names (may contains multi names):: ";
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
+
+        /// new add test line
+        std::cout << "     Output tensor name (ov::op::util::get_ie_output_name(result->input_value(0))): "
+                  << ov::op::util::get_ie_output_name(result->input_value(0)) << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+void print_all_info(const std::shared_ptr<const ov::Model>& model) {
+    if (!model) {
+        std::cout << "Model is null!" << std::endl;
+        return;
+    }
+
+    print_basic_info(model);
+    print_parameters(model);
+    print_results(model);
 }
 
 }  // namespace
@@ -106,6 +293,15 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
         // network
         try {
             graphDesc = _zeGraphExt->getGraphDescriptor(tensor.data(), tensor.get_byte_size());
+            _logger.debug("parse metadata from driver");
+            NetworkMetadata networkMeta = _zeGraphExt->getNetworkMeta(graphDesc);
+
+            std::cout << "---------print metadata-----------" << std::endl;
+            std::cout << networkMetadataToString(networkMeta) << std::endl;
+            std::cout << "---------print metadata-----------" << std::endl;
+            std::cout << "---------print model-----------" << std::endl;
+            print_all_info(model);
+            std::cout << "---------print model-----------" << std::endl;
         } catch (...) {
             _logger.info("Failed to obtain the level zero graph handle. Inference requests for this model are not "
                          "allowed. Only exports are available");
