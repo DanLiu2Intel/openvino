@@ -100,6 +100,132 @@ std::optional<size_t> determine_dynamic_batch_size(const IODescriptor& desc,
     return std::nullopt;
 }
 
+// Control the indentation format
+std::string getIndent(int level) {
+    return std::string(level * 2, ' ');
+}
+
+// Get IODescriptor string
+std::string ioDescriptorToString(const intel_npu::IODescriptor& desc, int index) {
+    std::ostringstream ss;
+
+    ss << getIndent(index) << "IODescriptor {\n";
+    ss << getIndent(index + 1) << "nameFromCompiler: \"" << desc.nameFromCompiler << "\"\n";
+    ss << getIndent(index + 1) << "precision: " << desc.precision.get_type_name() << "\n";
+    ss << getIndent(index + 1) << "shapeFromCompiler: " << desc.shapeFromCompiler << "\n";
+    ss << getIndent(index + 1) << "isStateInput: " << (desc.isStateInput ? "true" : "false") << "\n";
+    ss << getIndent(index + 1) << "isStateOutput: " << (desc.isStateOutput ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isShapeTensor: " << (desc.isShapeTensor ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitInputWeights: " << (desc.isInitInputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitOutputWeights: " << (desc.isInitOutputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isMainInputWeights: " << (desc.isMainInputWeights ? "true" : "false") << "\n";
+
+    if (desc.relatedDescriptorIndex.has_value()) {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: " << desc.relatedDescriptorIndex.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: null\n";
+    }
+
+    ss << getIndent(index + 2) << "nodeFriendlyName: \"" << desc.nodeFriendlyName << "\"\n";
+    ss << getIndent(index + 2) << "outputTensorNames: [";
+    bool first = true;
+    for (const auto& name : desc.outputTensorNames) {
+        if (!first) {
+            ss << ", ";
+        }
+        ss << "\"" << name << "\"";
+        first = false;
+    }
+    ss << "]\n";
+
+    if (desc.shapeFromIRModel.has_value()) {
+        ss << getIndent(index + 2) << "shapeFromIRModel: " << desc.shapeFromIRModel.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "shapeFromIRModel: null\n";
+    }
+
+    ss << getIndent(index) << "}";
+
+    return ss.str();
+}
+
+// Helper function to add indentation to each line of a string
+std::string addIndentationToString(const std::string& inputStr, const std::string& baseIndent) {
+    std::ostringstream ss;
+    std::istringstream stream(inputStr);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        ss << baseIndent << line;
+        if (!stream.eof()) {
+            ss << "\n";
+        }
+    }
+
+    return ss.str();
+}
+
+// Helper function to add IODescriptor vector to string
+std::string addIoDescVectorToString(const std::vector<intel_npu::IODescriptor>& ioDescriptorVector) {
+    std::ostringstream ss;
+    for (size_t i = 0; i < ioDescriptorVector.size(); ++i) {
+        std::string inputStr = ioDescriptorToString(ioDescriptorVector[i], 2);
+        ss << addIndentationToString(inputStr, "    ");
+        if (i < ioDescriptorVector.size() - 1) {
+            ss << ",";
+        }
+        ss << "\n";
+    }
+    return ss.str();
+}
+
+// Get NetworkMetadata string
+std::string networkMetadataToString(const intel_npu::NetworkMetadata& netMetadata) {
+    std::ostringstream ss;
+
+    ss << "NetworkMetadata {\n";
+    ss << "  name: \"" << netMetadata.name << "\"\n";
+    ss << "  numStreams: " << netMetadata.numStreams << "\n";
+    ss << "  inputs: [\n" << addIoDescVectorToString(netMetadata.inputs) << "  ]\n";
+    ss << "  outputs: [\n" << addIoDescVectorToString(netMetadata.outputs) << "  ]\n";
+
+    if (!netMetadata.profilingOutputs.empty()) {
+        ss << "  profilingOutputs: [\n" << addIoDescVectorToString(netMetadata.profilingOutputs) << "  ]\n";
+    }
+    ss << "}";
+
+    return ss.str();
+}
+
+inline void printArgumentDescriptor(const intel_npu::ArgumentDescriptor& arg) {
+    std::cout << "ArgumentDescriptor:" << std::endl;
+    std::cout << "  idx: " << arg.idx << std::endl;
+    std::cout << "  info:" << std::endl;
+    std::cout << "    stype: " << arg.info.stype << std::endl;
+    std::cout << "    pNext: " << arg.info.pNext << std::endl;
+    std::cout << "    name: " << arg.info.name << std::endl;
+    std::cout << "    type: " << arg.info.type << std::endl;
+    std::cout << "    dims: ";
+    for (size_t i = 0; i < sizeof(arg.info.dims) / sizeof(arg.info.dims[0]); ++i) {
+        std::cout << arg.info.dims[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "    networkPrecision: " << arg.info.networkPrecision << std::endl;
+    std::cout << "    networkLayout: " << arg.info.networkLayout << std::endl;
+    std::cout << "    devicePrecision: " << arg.info.devicePrecision << std::endl;
+    std::cout << "    deviceLayout: " << arg.info.deviceLayout << std::endl;
+    std::cout << "    quantReverseScale: " << arg.info.quantReverseScale << std::endl;
+    std::cout << "    quantZeroPoint: " << static_cast<int>(arg.info.quantZeroPoint) << std::endl;
+    std::cout << "    dims_count: " << arg.info.dims_count << std::endl;
+    std::cout << "    debug_friendly_name: " << arg.info.debug_friendly_name << std::endl;
+    std::cout << "    associated_tensor_names_count: " << arg.info.associated_tensor_names_count << std::endl;
+    std::cout << "    associated_tensor_names: ";
+    for (uint32_t i = 0; i < arg.info.associated_tensor_names_count; ++i) {
+        std::cout << arg.info.associated_tensor_names[i] << " ";
+    }
+    std::cout << std::endl;
+}
+
 }  // namespace
 
 //------------------------------------------------------------------------------
@@ -125,6 +251,11 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
 
     size_t ioIndex = 0;
     for (const IODescriptor& inputDescriptor : _metadata.inputs) {
+        std::cout << "---------inputDescriptor-------" << ioIndex << "-------" << std::endl;
+        std::cout << ioDescriptorToString(inputDescriptor, 1) << std::endl;
+        std::cout << "---------_graphInputDescriptors--------------" << std::endl;
+        printArgumentDescriptor(_graphInputDescriptors.at(ioIndex));
+        std::cout << "----------end of _graphInputDescriptors----" << ioIndex << "---------" << std::endl;
         check_level_zero_attributes_match(inputDescriptor, _graphInputDescriptors.at(ioIndex));
 
         if (!(inputDescriptor.isStateInput || inputDescriptor.isShapeTensor)) {
@@ -139,6 +270,11 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
 
     ioIndex = 0;
     for (const IODescriptor& outputDescriptor : _metadata.outputs) {
+        std::cout << "---------outputDescriptor-------" << ioIndex << "-------" << std::endl;
+        std::cout << ioDescriptorToString(outputDescriptor, 1) << std::endl;
+        std::cout << "---------_graphOutputDescriptors--------------" << std::endl;
+        printArgumentDescriptor(_graphOutputDescriptors.at(ioIndex));
+        std::cout << "----------end of _graphOutputDescriptors----" << ioIndex << "---------" << std::endl;
         check_level_zero_attributes_match(outputDescriptor, _graphOutputDescriptors.at(ioIndex));
 
         if (!(outputDescriptor.isStateOutput || outputDescriptor.isShapeTensor)) {
