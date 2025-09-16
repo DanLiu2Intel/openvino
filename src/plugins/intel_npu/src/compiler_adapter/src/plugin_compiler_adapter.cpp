@@ -21,8 +21,8 @@
 #include "openvino/runtime/make_tensor.hpp"
 #include "openvino/util/file_util.hpp"
 #include "openvino/util/shared_object.hpp"
-#include "weightless_graph.hpp"
 #include "transformations/utils/utils.hpp"
+#include "weightless_graph.hpp"
 
 namespace {
 
@@ -296,12 +296,24 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
             _logger.debug("parse metadata from driver");
             NetworkMetadata networkMeta = _zeGraphExt->getNetworkMeta(graphDesc);
 
-            std::cout << "---------print metadata-----------" << std::endl;
+            std::cout << "----1-----print metadata-----from driver------" << std::endl;
             std::cout << networkMetadataToString(networkMeta) << std::endl;
-            std::cout << "---------print metadata-----------" << std::endl;
+            std::cout << "----1-----print metadata----from driver-------" << std::endl << std::endl;
+
+            std::cout << "----2-----print metadata-----from mlir compiler------" << std::endl;
+            std::cout << networkMetadataToString(networkDesc.metadata) << std::endl;
+            std::cout << "----2-----print metadata----from mlir compiler-------" << std::endl << std::endl;
+            if (networkMetadataToString(networkMeta) == networkMetadataToString(networkDesc.metadata)) {
+                std::cout << "The metadata from driver is equal to the metadata from mlir compiler." << std::endl
+                          << std::endl;
+            } else {
+                std::cout << "The metadata from driver is NOT EQUAL to the metadata from mlir compiler." << std::endl
+                          << std::endl;
+            }
+
             std::cout << "---------print model-----------" << std::endl;
             print_all_info(model);
-            std::cout << "---------print model-----------" << std::endl;
+            std::cout << "---------print model-----------" << std::endl << std::endl;
         } catch (...) {
             _logger.info("Failed to obtain the level zero graph handle. Inference requests for this model are not "
                          "allowed. Only exports are available");
