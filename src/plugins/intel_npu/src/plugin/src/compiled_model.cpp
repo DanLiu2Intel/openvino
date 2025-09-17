@@ -13,13 +13,13 @@
 #include "intel_npu/config/config.hpp"
 #include "intel_npu/config/options.hpp"
 #include "metadata.hpp"
+#include "openvino/op/constant.hpp"
+#include "openvino/op/parameter.hpp"
+#include "openvino/op/result.hpp"
 #include "openvino/pass/constant_folding.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/executor_manager.hpp"
-#include "openvino/op/constant.hpp"
-#include "openvino/op/parameter.hpp"
-#include "openvino/op/result.hpp"
 
 #if defined(__linux__)
 #    include "transformations/utils/utils.hpp"
@@ -74,6 +74,9 @@ std::string print_parameters(const std::shared_ptr<ov::Model>& model) {
     return ss.str();
 }
 
+/**
+ * @brief Print model results (outputs)
+ */
 std::string print_results(const std::shared_ptr<ov::Model>& model) {
     std::ostringstream ss;
     ss << "=== Model Results (Outputs) ===" << std::endl;
@@ -107,19 +110,171 @@ std::string print_results(const std::shared_ptr<ov::Model>& model) {
 #endif
     }
     ss << std::endl;
+    return ss.str();
+}
 
+/**
+ * @brief Print model variables
+ */
+std::string print_variables(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Model Variables ===" << std::endl;
+    const auto& variables = model->get_variables();
+    ss << "Total Variables: " << variables.size() << std::endl;
+
+    for (size_t i = 0; i < variables.size(); ++i) {
+        const auto& var = variables[i];
+        const auto& info = var->get_info();
+        ss << "  [" << i << "] ID: " << info.variable_id << std::endl;
+        ss << "      Shape: " << info.data_shape << std::endl;
+        ss << "      Type: " << info.data_type << std::endl;
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print model sinks
+ */
+std::string print_sinks(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Model Sinks ===" << std::endl;
+    const auto& sinks = model->get_sinks();
+    ss << "Total Sinks: " << sinks.size() << std::endl;
+
+    for (size_t i = 0; i < sinks.size(); ++i) {
+        const auto& sink = sinks[i];
+        ss << "  [" << i << "] " << sink->get_friendly_name() << " (" << sink->get_type_name() << ")" << std::endl;
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print runtime information
+ */
+std::string print_runtime_info(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Model Runtime Information ===" << std::endl;
+    const auto& rt_info = model->get_rt_info();
+    ss << "Runtime Info Entries: " << rt_info.size() << std::endl;
+
+    for (const auto& kv : rt_info) {
+        ss << "  " << kv.first << " = ";
+        try {
+            // Try to convert to string
+            ss << kv.second.as<std::string>();
+        } catch (...) {
+            try {
+                // Try to convert to int
+                ss << kv.second.as<int>();
+            } catch (...) {
+                try {
+                    // Try to convert to bool
+                    ss << (kv.second.as<bool>() ? "true" : "false");
+                } catch (...) {
+                    ss << "[complex type]";
+                }
+            }
+        }
+        ss << std::endl;
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print all nodes in the model
+ */
+std::string print_all_nodes(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== All Nodes (Detailed) ===" << std::endl;
+    const auto& nodes = model->get_ordered_ops();
+    ss << "Total Nodes: " << nodes.size() << std::endl;
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        const auto& node = nodes[i];
+        ss << "  [" << std::setw(3) << i << "] " << std::setw(20) << std::left << node->get_friendly_name() << " ("
+           << node->get_type_name() << ")" << std::endl;
+
+        // Print inputs
+        if (node->get_input_size() > 0) {
+            ss << "       Inputs: ";
+            for (size_t j = 0; j < node->get_input_size(); ++j) {
+                const auto& input = node->get_input_source_output(j);
+                ss << input.get_element_type() << input.get_partial_shape();
+                if (j < node->get_input_size() - 1)
+                    ss << ", ";
+            }
+            ss << std::endl;
+        }
+
+        // Print outputs
+        if (node->get_output_size() > 0) {
+            ss << "       Outputs: ";
+            for (size_t j = 0; j < node->get_output_size(); ++j) {
+                const auto& output = node->get_output_tensor(j);
+                ss << output.get_element_type() << output.get_partial_shape();
+                if (j < node->get_output_size() - 1)
+                    ss << ", ";
+            }
+            ss << std::endl;
+        }
+
+        // Print node runtime info if exists
+        const auto& node_rt_info = node->get_rt_info();
+        if (!node_rt_info.empty()) {
+            ss << "       RT Info: ";
+            for (const auto& kv : node_rt_info) {
+                ss << kv.first << " ";
+            }
+            ss << std::endl;
+        }
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print graph statistics
+ */
+std::string print_graph_statistics(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Graph Statistics ===" << std::endl;
+    const auto& nodes = model->get_ops();
+
+    // Count nodes by type
+    std::map<std::string, int> node_type_count;
+    for (const auto& node : nodes) {
+        node_type_count[node->get_type_name()]++;
+    }
+
+    ss << "Node Type Distribution:" << std::endl;
+    for (const auto& kv : node_type_count) {
+        ss << "  " << std::setw(20) << std::left << kv.first << ": " << kv.second << std::endl;
+    }
+    ss << std::endl;
     return ss.str();
 }
 
 std::string print_all_info(const std::shared_ptr<ov::Model>& model) {
-    if (!model) {
-        std::cout << "Model is null!" << std::endl;
-        return "";
-    }
     std::ostringstream ss;
+    if (!model) {
+        ss << "Model is null!" << std::endl;
+        return ss.str();
+    }
+
     ss << print_basic_info(model);
     ss << print_parameters(model);
     ss << print_results(model);
+    ss << print_variables(model);
+    ss << print_sinks(model);
+    ss << print_runtime_info(model);
+
+    ss << print_all_nodes(model);
+
+    ss << print_graph_statistics(model);
+    ss << std::endl;
     return ss.str();
 }
 
@@ -135,6 +290,11 @@ std::string compare_info(const std::shared_ptr<ov::Model>& model) {
     ss << std::endl;
     ss << print_parameters(model);
     ss << print_results(model);
+    ss << print_variables(model);
+    ss << print_sinks(model);
+    ss << print_runtime_info(model);
+    ss << print_all_nodes(model);
+    ss << print_graph_statistics(model);
     return ss.str();
 }
 
@@ -291,11 +451,11 @@ std::shared_ptr<const ov::Model> CompiledModel::get_runtime_model() const {
     auto modelUseMetadata = std::make_shared<ov::Model>(resultMetatdasMetatda, parameterMetatdasMetatda);
     try {
         if (compare_info(modelNoUseMetadata) != compare_info(modelUseMetadata)) {
-            std::cout << "------------modelNoUseMetadata----------------" << std::endl;
+            std::cout << "------------modelNoUseMetadata---Detail-------------" << std::endl;
             std::cout << print_all_info(modelNoUseMetadata) << std::endl;
-            std::cout << "-----------modelNoUseMetadata VS modelUseMetadata-----------------" << std::endl;
+            std::cout << "-----------modelNoUseMetadata VS modelUseMetadata-------Detail----------" << std::endl;
             std::cout << print_all_info(modelUseMetadata) << std::endl;
-            std::cout << "------------modelUseMetadata----------------" << std::endl;
+            std::cout << "------------modelUseMetadata-------Detail---------" << std::endl;
             throw NotEqualException(
                 "Runtime model using metadata and not using's result are NOT EQUAL in get_runtime_model()");
         } else {
