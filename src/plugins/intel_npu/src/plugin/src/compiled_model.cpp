@@ -271,7 +271,10 @@ std::string print_all_info(const std::shared_ptr<ov::Model>& model) {
     ss << print_sinks(model);
     ss << print_runtime_info(model);
 
-    ss << print_all_nodes(model);
+    const char* detail = std::getenv("DETAIL");
+    if (detail) {
+        ss << print_all_nodes(model);
+    }
 
     ss << print_graph_statistics(model);
     ss << std::endl;
