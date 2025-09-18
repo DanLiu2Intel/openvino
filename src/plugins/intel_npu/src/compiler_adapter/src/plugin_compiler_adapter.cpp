@@ -211,6 +211,12 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
             graphDesc = _zeGraphExt->getGraphDescriptor(tensor.data(), tensor.get_byte_size());
             NetworkMetadata networkMeta = _zeGraphExt->getNetworkMeta(graphDesc);
             try {
+                const char* adapterThrow = std::getenv("ADAPTER_THROW");
+                if (adapterThrow) {
+                    std::cout << "ADAPTER_THROW is set, so throw exception in compileradapter manually." << std::endl;
+                    throw NotEqualException(
+                        "The metadata from driver is NOT EQUAL to the metadata from mlir compiler in compileradapter");
+                }
                 if (networkMetadataToString(networkMeta) == networkMetadataToString(networkDesc.metadata)) {
                     std::cout
                         << "The metadata from driver is equal to the metadata from mlir compiler in compileradapter."
@@ -238,6 +244,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
                 }
             } catch (const NotEqualException& e) {
                 std::cerr << "Exception caught: " << e.what() << std::endl;
+                throw;
             }
 
         } catch (...) {
@@ -246,11 +253,21 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
         }
     }
 
+    NetworkMetadata networkMetaTopass;
+    const char* isEmpty = std::getenv("MLIR_METADATA_IS_EMPTY");
+    if (isEmpty) {
+        std::cout << "MLIR_METADATA_IS_EMPTY is set, so the metadata passed to Graph is empty." << std::endl;
+        networkMetaTopass = {};
+    } else {
+        std::cout << "MLIR_METADATA_IS_EMPTY is Not set, so the metadata passed to Graph is from mlir compiler." << std::endl;
+        networkMetaTopass = std::move(networkDesc.metadata);
+    }
+
     return std::make_shared<Graph>(
         _zeGraphExt,
         _zeroInitStruct,
         graphDesc,
-        std::move(networkDesc.metadata),
+        std::move(networkMetaTopass),
         std::move(tensor),
         config,
         /* persistentBlob = */ true,  // exporting the blob shall be available in such a scenario
