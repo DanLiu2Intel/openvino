@@ -503,6 +503,10 @@ int main(int argc, char* argv[]) {
             compiledModel.export_model(outputFile);
         }
         std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
+
+        std::cout << "------------Run compiledModel.get_runtime_model(start)------------" << std::endl;
+        auto modelRuntime = compiledModel.get_runtime_model();
+        std::cout << "------------Done. compiledModel.get_runtime_model(end)------------" << std::endl;
     } catch (const std::exception& error) {
         std::cerr << error.what() << std::endl;
         return EXIT_FAILURE;
