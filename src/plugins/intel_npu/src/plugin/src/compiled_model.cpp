@@ -453,6 +453,12 @@ std::shared_ptr<const ov::Model> CompiledModel::get_runtime_model() const {
 
     auto modelUseMetadata = std::make_shared<ov::Model>(resultMetatdasMetatda, parameterMetatdasMetatda);
     try {
+        const char* compiledModelThrow = std::getenv("COMPILEDMODEL_THROW");
+        if (compiledModelThrow) {
+            std::cout << "COMPILEDMODEL_THROW is set, so throw exception in compileradapter manually." << std::endl;
+            throw NotEqualException(
+                "Runtime model using metadata and not using's result are NOT EQUAL in get_runtime_model() manually");
+        }
         if (compare_info(modelNoUseMetadata) != compare_info(modelUseMetadata)) {
             std::cout << "------------modelNoUseMetadata---Detail-------------" << std::endl;
             std::cout << print_all_info(modelNoUseMetadata) << std::endl;
@@ -466,6 +472,7 @@ std::shared_ptr<const ov::Model> CompiledModel::get_runtime_model() const {
         }
     } catch (const NotEqualException& e) {
         std::cerr << "Exception caught: " << e.what() << std::endl;
+        throw;
     }
 
     return modelNoUseMetadata;
