@@ -19,6 +19,49 @@ constexpr uint32_t WIN_DRIVER_NO_MCL_SUPPORT = 2688;
 
 namespace intel_npu {
 
+const char* getStructureTypeName(ze_structure_type_graph_ext_t stype) {
+    switch (stype) {
+        case ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES:
+            return "ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES";
+        case ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES:
+            return "ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES";
+        case ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES:
+            return "ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES";
+        case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES:
+            return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES";
+        case ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL:
+            return "ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL";
+        case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA:
+            return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA";
+        case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED:
+            return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED";
+        case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC:
+            return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC";
+        default:
+            return "UNKNOWN_STRUCTURE_TYPE";
+    }
+}
+
+const char* getStructureFormatName(ze_graph_format_t format) {
+    switch (format) {
+        case ZE_GRAPH_FORMAT_NATIVE:
+            return "ZE_GRAPH_FORMAT_NATIVE";
+        case ZE_GRAPH_FORMAT_NGRAPH_LITE:
+            return "ZE_GRAPH_FORMAT_NGRAPH_LITE";
+        default:
+            return "UNKNOWN_FORMAT_TYPE";
+    }
+}
+
+void printCompilerProperties(const ze_device_graph_properties_t properties) {
+    printf("stype: 0x%x (%s)\n", properties.stype, getStructureTypeName(properties.stype));
+    printf("pNext: %p\n", properties.pNext);
+    printf("graphExtensionVersion: 0x%x\n", properties.graphExtensionVersion);
+    printf("compilerVersion: major=%u, minor=%u\n", properties.compilerVersion.major, properties.compilerVersion.minor);
+    printf("graphFormatsSupported: 0x%s\n", getStructureFormatName(properties.graphFormatsSupported));
+    printf("maxOVOpsetVersionSupported: %u\n", properties.maxOVOpsetVersionSupported);
+}
+
 const ze_driver_uuid_t ZeroInitStructsHolder::uuid = ze_intel_npu_driver_uuid;
 
 static std::tuple<uint32_t, std::string> queryDriverExtensionVersion(
@@ -304,8 +347,12 @@ ZeroInitStructsHolder::ZeroInitStructsHolder()
     log.debug("ZeroInitStructsHolder initialize complete");
 
     // Obtain compiler-in-driver properties
+    std::cout << "-------before update-------" << std::endl;
+    printCompilerProperties(compiler_properties);
     compiler_properties.stype = ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES;
     auto result = graph_dditable_ext_decorator->pfnDeviceGetGraphProperties(device_handle, &compiler_properties);
+    std::cout << "-------after update-------" << std::endl;
+    printCompilerProperties(compiler_properties);
     THROW_ON_FAIL_FOR_LEVELZERO("pfnDeviceGetGraphProperties", result);
 }
 
