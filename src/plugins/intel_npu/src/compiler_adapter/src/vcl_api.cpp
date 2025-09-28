@@ -243,11 +243,20 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
 
     /// check the vcl version whether support the lastest compile api
     /// Not support: use the default introduced in vcl api
-    int usedMajor = std::min(static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR), _vclVersion.major);
-    int usedMinor = (usedMajor == VCL_COMPILER_VERSION_MAJOR) ? VCL_COMPILER_VERSION_MINOR : _vclVersion.minor;
+    int usedMajor = 0;
+    bool isDowngrade = false;
+    if(static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) < _vclVersion.major) {
+        usedMajor = VCL_COMPILER_VERSION_MAJOR;
+        isDowngrade = true;
+    }
+    int usedMinor = isDowngrade ? VCL_COMPILER_VERSION_MINOR : _vclVersion.minor;
+
+    _logger.info("[Debug] Used VCL API Version: %d.%d", usedMajor, usedMinor);
+    _logger.info("[Debug] compiler vcl version: %d.%d", _vclVersion.major, _vclVersion.minor);
+    _logger.info("[Debug] embedding compiler vcl version: %d.%d", VCL_COMPILER_VERSION_MAJOR, VCL_COMPILER_VERSION_MINOR);
 
     if (usedMajor >= 7 && usedMinor >= 4) {
-        if (usedMajor == VCL_COMPILER_VERSION_MAJOR) {
+        if (VCL_COMPILER_VERSION_MAJOR < _vclVersion.major) {
           _logger.warning("inside supported VCL version is lower than used VCL api:\n plugin was built with VCL %d.%d, \n      but loaded VCL is %d.%d.\n"
                           "Will downwise to form %s to use vclAllocatedExecutableCreate2",
                           VCL_COMPILER_VERSION_MAJOR,
@@ -276,7 +285,7 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
         _logger.debug("compile end, blob size:%d", allocator.m_vec.size());
         return NetworkDescription(std::move(allocator.m_vec), std::move(metadata));
     } else if (usedMajor >= 6 && usedMinor >= 1) {
-        if (usedMajor == VCL_COMPILER_VERSION_MAJOR) {
+        if (VCL_COMPILER_VERSION_MAJOR < _vclVersion.major) {
           _logger.warning("inside supported VCL version is lower than used VCL api:\n plugin was built with VCL %d.%d, \n      but loaded VCL is %d.%d.\n"
                           "Will downwise to form %s to use vclAllocatedExecutableCreate2",
                           VCL_COMPILER_VERSION_MAJOR,
@@ -308,13 +317,13 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
         _logger.debug("compile end, blob size:%d", compiledNetwork.size());
         return NetworkDescription(std::move(compiledNetwork), std::move(metadata));
     } else {
-        if (usedMajor == VCL_COMPILER_VERSION_MAJOR) {
+        if (VCL_COMPILER_VERSION_MAJOR < _vclVersion.major) {
           _logger.warning("inside supported VCL version is lower than used VCL api:\n plugin was built with VCL %d.%d, \n      but loaded VCL is %d.%d.\n"
                           "Will downwise to form %s to use vclAllocatedExecutableCreate2",
                           VCL_COMPILER_VERSION_MAJOR,
                           VCL_COMPILER_VERSION_MINOR,
                           _vclVersion.major,
-                          _vclVersion.minor, supportVclCompiler(usedMajor, usedMinor));
+                          _vclVersion.minor, supportVclCompiler(usedMajor, usedMinor).c_str());
         }
         // For versions before 6.1, we use vclExecutableCreate
         _logger.debug("Using vclExecutableCreate for VCL < 6.1");
