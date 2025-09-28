@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include <algorithm>
 #include "vcl_api.hpp"
 
 #include "intel_npu/profiling.hpp"
@@ -11,6 +12,9 @@
 #include "openvino/util/shared_object.hpp"
 
 namespace intel_npu {
+
+int VCL_COMPILER_VERSION_MAJOR = 7;
+int VCL_COMPILER_VERSION_MINOR = 5;
 
 static inline std::string getLatestVCLLog(vcl_log_handle_t logHandle) {
     Logger _logger("VCLAPI", Logger::global().level());
@@ -114,6 +118,10 @@ const std::shared_ptr<VCLApi>& VCLApi::getInstance() {
 
 VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerImpl", ov::log::Level::DEBUG) {
     _logger.debug("VCLCompilerImpl constructor start");
+    const char* majorEnv = std::getenv("VCL_COMPILER_VERSION_MAJOR");
+    const char* minorEnv = std::getenv("VCL_COMPILER_VERSION_MINOR");
+    VCL_COMPILER_VERSION_MAJOR = majorEnv ? std::stoi(majorEnv) : 7;
+    VCL_COMPILER_VERSION_MINOR = minorEnv ? std::stoi(minorEnv) : 5;
     // Initialize the VCL API from vcl.dll/so
     THROW_ON_FAIL_FOR_VCL("vclGetVersion", vclGetVersion(&_vclVersion, &_vclProfilingVersion), nullptr);
 
@@ -196,6 +204,17 @@ struct vcl_allocator_malloc {
     }
 };
 
+std::string supportVclCompiler(int major, int minor) {
+    if (major >= 7 && minor >= 4) {
+        return "vclAllocatedExecutableCreate2";
+    } else if (major >= 6 && minor >= 1) {
+        return "vclAllocatedExecutableCreate";
+    } else {
+        return "vclExecutableCreate";
+    } 
+    return "unsupported VCL version";
+}
+
 NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Model>& model, const Config& config) const {
     _logger.debug("compile start");
 
@@ -224,88 +243,18 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
 
     /// check the vcl version whether support the lastest compile api
     /// Not support: use the default introduced in vcl api
-    if (VCL_COMPILER_VERSION_MAJOR < _vclVersion.major || (VCL_COMPILER_VERSION_MAJOR ==  _vclVersion.major && VCL_COMPILER_VERSION_MINOR < _vclVersion.minor)) {
-        _logger.warning("inside supported VCL version is lower than used VCL api:\n plugin was built with VCL %d.%d, \n      but loaded VCL is %d.%d.\n"
-                        "Will downwise to use the lastest plugin vcl compiler!!!",
-                        VCL_COMPILER_VERSION_MAJOR,
-                        VCL_COMPILER_VERSION_MINOR,
-                        _vclVersion.major,
-                        _vclVersion.minor);
-        if (VCL_COMPILER_VERSION_MAJOR >= 7 && VCL_COMPILER_VERSION_MINOR >= 4) {
-            // check the vcl version whether support the lastest compile api
-            // support the lastest vcl api
-            // For VCL 7.4 and later, we can use vclAllocatedExecutableCreate2
-            _logger.debug("Using vclAllocatedExecutableCreate2 for 7.4 <= VCL < 7.5");
-            vcl_allocator_vector allocator;
-            uint8_t* blob = nullptr;
-            size_t size = 0;
+    int usedMajor = std::min(static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR), _vclVersion.major);
+    int usedMinor = (usedMajor == VCL_COMPILER_VERSION_MAJOR) ? VCL_COMPILER_VERSION_MINOR : _vclVersion.minor;
 
-            THROW_ON_FAIL_FOR_VCL("vclAllocatedExecutableCreate2",
-                                vclAllocatedExecutableCreate2(_compilerHandle, exeDesc, &allocator, &blob, &size),
-                                _logHandle);
-            if (size == 0 || blob == nullptr) {
-                OPENVINO_THROW("Failed to create VCL executable, size is zero or blob is null");
-            }
-
-            // Use empty metadata as VCL does not support metadata extraction
-            NetworkMetadata metadata;
-
-            _logger.debug("compile end, blob size:%d", allocator.m_vec.size());
-            return NetworkDescription(std::move(allocator.m_vec), std::move(metadata));
-        } else if (VCL_COMPILER_VERSION_MAJOR >= 6 && VCL_COMPILER_VERSION_MINOR >= 1) {
-            // For older versions, we use vclAllocatedExecutableCreate
-            _logger.debug("Using vclAllocatedExecutableCreate for 6.1 < VCL < 7.4");
-
-            vcl_allocator_t allocator;
-            allocator.allocate = vcl_allocator_malloc::vcl_allocate;
-            allocator.deallocate = vcl_allocator_malloc::vcl_deallocate;
-            uint8_t* blob = nullptr;
-            size_t size = 0;
-            THROW_ON_FAIL_FOR_VCL("vclAllocatedExecutableCreate",
-                                vclAllocatedExecutableCreate(_compilerHandle, exeDesc, &allocator, &blob, &size),
-                                _logHandle);
-            if (size == 0 || blob == nullptr) {
-                OPENVINO_THROW("Failed to create VCL executable, size is zero or blob is null");
-            }
-
-            std::vector<uint8_t> compiledNetwork(blob, blob + size);
-            allocator.deallocate(blob);
-
-            // Use empty metadata as VCL does not support metadata extraction
-            NetworkMetadata metadata;
-
-            _logger.debug("compile end, blob size:%d", compiledNetwork.size());
-            return NetworkDescription(std::move(compiledNetwork), std::move(metadata));
-        } else {
-            // For versions before 6.1, we use vclExecutableCreate
-            _logger.debug("Using vclExecutableCreate for VCL < 6.1");
-            vcl_executable_handle_t exeHandle = nullptr;
-            THROW_ON_FAIL_FOR_VCL("vclExecutableCreate",
-                                vclExecutableCreate(_compilerHandle, exeDesc, &exeHandle),
-                                _logHandle);
-
-            size_t size = 0;
-            THROW_ON_FAIL_FOR_VCL("vclExecutableGetSerializableBlob",
-                                vclExecutableGetSerializableBlob(exeHandle, nullptr, &size),
-                                _logHandle);
-            if (size == 0) {
-                OPENVINO_THROW("Failed to get VCL executable blob size, size is zero");
-            }
-            std::vector<uint8_t> compiledNetwork(size);
-            THROW_ON_FAIL_FOR_VCL("vclExecutableGetSerializableBlob",
-                                vclExecutableGetSerializableBlob(exeHandle, compiledNetwork.data(), &size),
-                                _logHandle);
-
-            THROW_ON_FAIL_FOR_VCL("vclExecutableDestroy", vclExecutableDestroy(exeHandle), _logHandle);
-
-            // Use empty metadata as VCL does not support metadata extraction
-            NetworkMetadata metadata;
-
-            _logger.debug("compile end, blob size:%d", compiledNetwork.size());
-            return NetworkDescription(std::move(compiledNetwork), std::move(metadata));
+    if (usedMajor >= 7 && usedMinor >= 4) {
+        if (usedMajor == VCL_COMPILER_VERSION_MAJOR) {
+          _logger.warning("inside supported VCL version is lower than used VCL api:\n plugin was built with VCL %d.%d, \n      but loaded VCL is %d.%d.\n"
+                          "Will downwise to form %s to use vclAllocatedExecutableCreate2",
+                          VCL_COMPILER_VERSION_MAJOR,
+                          VCL_COMPILER_VERSION_MINOR,
+                          _vclVersion.major,
+                          _vclVersion.minor, supportVclCompiler(usedMajor, usedMinor));
         }
-            
-    } else if (_vclVersion.major >= 7 && _vclVersion.minor >= 4) {
         // check the vcl version whether support the lastest compile api
         // support the lastest vcl api
         // For VCL 7.4 and later, we can use vclAllocatedExecutableCreate2
@@ -326,7 +275,15 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
 
         _logger.debug("compile end, blob size:%d", allocator.m_vec.size());
         return NetworkDescription(std::move(allocator.m_vec), std::move(metadata));
-    } else if (_vclVersion.major >= 6 && _vclVersion.minor >= 1) {
+    } else if (usedMajor >= 6 && usedMinor >= 1) {
+        if (usedMajor == VCL_COMPILER_VERSION_MAJOR) {
+          _logger.warning("inside supported VCL version is lower than used VCL api:\n plugin was built with VCL %d.%d, \n      but loaded VCL is %d.%d.\n"
+                          "Will downwise to form %s to use vclAllocatedExecutableCreate2",
+                          VCL_COMPILER_VERSION_MAJOR,
+                          VCL_COMPILER_VERSION_MINOR,
+                          _vclVersion.major,
+                          _vclVersion.minor, supportVclCompiler(usedMajor, usedMinor));
+        }
         // For older versions, we use vclAllocatedExecutableCreate
         _logger.debug("Using vclAllocatedExecutableCreate for 6.1 < VCL < 7.4");
 
@@ -351,6 +308,14 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
         _logger.debug("compile end, blob size:%d", compiledNetwork.size());
         return NetworkDescription(std::move(compiledNetwork), std::move(metadata));
     } else {
+        if (usedMajor == VCL_COMPILER_VERSION_MAJOR) {
+          _logger.warning("inside supported VCL version is lower than used VCL api:\n plugin was built with VCL %d.%d, \n      but loaded VCL is %d.%d.\n"
+                          "Will downwise to form %s to use vclAllocatedExecutableCreate2",
+                          VCL_COMPILER_VERSION_MAJOR,
+                          VCL_COMPILER_VERSION_MINOR,
+                          _vclVersion.major,
+                          _vclVersion.minor, supportVclCompiler(usedMajor, usedMinor));
+        }
         // For versions before 6.1, we use vclExecutableCreate
         _logger.debug("Using vclExecutableCreate for VCL < 6.1");
         vcl_executable_handle_t exeHandle = nullptr;
