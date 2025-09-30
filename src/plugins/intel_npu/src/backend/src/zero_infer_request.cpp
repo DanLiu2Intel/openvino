@@ -23,6 +23,406 @@ constexpr std::size_t SINGLE_TENSOR = 0;
 constexpr bool INPUT = true;
 constexpr bool OUTPUT = false;
 
+// Control the indentation format
+std::string getIndent(int level) {
+    return std::string(level * 2, ' ');
+}
+
+// Get IODescriptor string
+std::string ioDescriptorToString(const intel_npu::IODescriptor& desc, int index) {
+    std::ostringstream ss;
+
+    ss << getIndent(index) << "IODescriptor {\n";
+    ss << getIndent(index + 1) << "nameFromCompiler: \"" << desc.nameFromCompiler << "\"\n";
+    ss << getIndent(index + 1) << "precision: " << desc.precision.get_type_name() << "\n";
+    ss << getIndent(index + 1) << "shapeFromCompiler: " << desc.shapeFromCompiler << "\n";
+    ss << getIndent(index + 1) << "isStateInput: " << (desc.isStateInput ? "true" : "false") << "\n";
+    ss << getIndent(index + 1) << "isStateOutput: " << (desc.isStateOutput ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isShapeTensor: " << (desc.isShapeTensor ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitInputWeights: " << (desc.isInitInputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isInitOutputWeights: " << (desc.isInitOutputWeights ? "true" : "false") << "\n";
+    ss << getIndent(index + 2) << "isMainInputWeights: " << (desc.isMainInputWeights ? "true" : "false") << "\n";
+
+    if (desc.relatedDescriptorIndex.has_value()) {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: " << desc.relatedDescriptorIndex.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "relatedDescriptorIndex: null\n";
+    }
+
+    ss << getIndent(index + 2) << "nodeFriendlyName: \"" << desc.nodeFriendlyName << "\"\n";
+    ss << getIndent(index + 2) << "outputTensorNames: [";
+    bool first = true;
+    for (const auto& name : desc.outputTensorNames) {
+        if (!first) {
+            ss << ", ";
+        }
+        ss << "\"" << name << "\"";
+        first = false;
+    }
+    ss << "]\n";
+
+    if (desc.shapeFromIRModel.has_value()) {
+        ss << getIndent(index + 2) << "shapeFromIRModel: " << desc.shapeFromIRModel.value() << "\n";
+    } else {
+        ss << getIndent(index + 2) << "shapeFromIRModel: null\n";
+    }
+
+    ss << getIndent(index) << "}";
+
+    return ss.str();
+}
+
+// Helper function to add indentation to each line of a string
+std::string addIndentationToString(const std::string& inputStr, const std::string& baseIndent) {
+    std::ostringstream ss;
+    std::istringstream stream(inputStr);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        ss << baseIndent << line;
+        if (!stream.eof()) {
+            ss << "\n";
+        }
+    }
+
+    return ss.str();
+}
+
+// Helper function to add IODescriptor vector to string
+std::string addIoDescVectorToString(const std::vector<intel_npu::IODescriptor>& ioDescriptorVector) {
+    std::ostringstream ss;
+    for (size_t i = 0; i < ioDescriptorVector.size(); ++i) {
+        std::string inputStr = ioDescriptorToString(ioDescriptorVector[i], 2);
+        ss << addIndentationToString(inputStr, "    ");
+        if (i < ioDescriptorVector.size() - 1) {
+            ss << ",";
+        }
+        ss << "\n";
+    }
+    return ss.str();
+}
+
+// Get NetworkMetadata string
+std::string networkMetadataToString(const intel_npu::NetworkMetadata& netMetadata) {
+    std::ostringstream ss;
+
+    ss << "NetworkMetadata {\n";
+    ss << "  name: \"" << netMetadata.name << "\"\n";
+    ss << "  numStreams: " << netMetadata.numStreams << "\n";
+    ss << "  inputs: [\n" << addIoDescVectorToString(netMetadata.inputs) << "  ]\n";
+    ss << "  outputs: [\n" << addIoDescVectorToString(netMetadata.outputs) << "  ]\n";
+
+    if (!netMetadata.profilingOutputs.empty()) {
+        ss << "  profilingOutputs: [\n" << addIoDescVectorToString(netMetadata.profilingOutputs) << "  ]\n";
+    }
+    ss << "}";
+
+    return ss.str();
+}
+
+std::string print_argument_descriptor(const ArgumentDescriptor& zeDescriptor) {
+    std::ostringstream ss;
+    ss << "=== ArgumentDescriptor Details ===" << std::endl;
+    ss << "Index: " << zeDescriptor.idx << std::endl;
+
+    const auto& info = zeDescriptor.info;
+
+    ss << "Structure Type: " << info.stype << std::endl;
+    ss << "Name: " << info.name << std::endl;
+    ss << "Debug Friendly Name: " << info.debug_friendly_name << std::endl;
+
+    ss << "Argument Type: ";
+    switch (info.type) {
+    case ZE_GRAPH_ARGUMENT_TYPE_INPUT:
+        ss << "INPUT";
+        break;
+    case ZE_GRAPH_ARGUMENT_TYPE_OUTPUT:
+        ss << "OUTPUT";
+        break;
+    default:
+        ss << "UNKNOWN (" << info.type << ")";
+        break;
+    }
+    ss << std::endl;
+
+    ss << "Dimensions Count: " << info.dims_count << std::endl;
+    ss << "Dimensions: [";
+    for (uint32_t i = 0; i < std::min<uint32_t>(info.dims_count, ZE_MAX_GRAPH_ARGUMENT_DIMENSIONS_SIZE); i++) {
+        if (i > 0)
+            ss << ", ";
+        ss << info.dims[i];
+    }
+    ss << "]" << std::endl;
+
+    ss << "Network Precision: ";
+    switch (info.networkPrecision) {
+    case ZE_GRAPH_ARGUMENT_PRECISION_UNKNOWN:
+        ss << "UNKNOWN";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP64:
+        ss << "FP64";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP32:
+        ss << "FP32";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP16:
+        ss << "FP16";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP8_E4M3:
+        ss << "FP8_E4M3";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP8_E5M2:
+        ss << "FP8_E5M2";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP8_E8M0:
+        ss << "FP8_E8M0";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_BF16:
+        ss << "BF16";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT64:
+        ss << "UINT64";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT32:
+        ss << "UINT32";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT16:
+        ss << "UINT16";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT8:
+        ss << "UINT8";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT4:
+        ss << "UINT4";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT2:
+        ss << "UINT2";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT64:
+        ss << "INT64";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT32:
+        ss << "INT32";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT16:
+        ss << "INT16";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT8:
+        ss << "INT8";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT4:
+        ss << "INT4";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT2:
+        ss << "INT2";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_BIN:
+        ss << "BIN";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_DYNAMIC:
+        ss << "DYNAMIC";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_BOOLEAN:
+        ss << "BOOLEAN";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_NF4:
+        ss << "NF4";
+        break;
+    default:
+        ss << "UNKNOWN_PRECISION (" << std::hex << info.networkPrecision << std::dec << ")";
+        break;
+    }
+    ss << " (0x" << std::hex << info.networkPrecision << std::dec << ")" << std::endl;
+
+    ss << "Device Precision: ";
+    switch (info.devicePrecision) {
+    case ZE_GRAPH_ARGUMENT_PRECISION_UNKNOWN:
+        ss << "UNKNOWN";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP64:
+        ss << "FP64";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP32:
+        ss << "FP32";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP16:
+        ss << "FP16";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP8_E4M3:
+        ss << "FP8_E4M3";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP8_E5M2:
+        ss << "FP8_E5M2";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_FP8_E8M0:
+        ss << "FP8_E8M0";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_BF16:
+        ss << "BF16";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT64:
+        ss << "UINT64";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT32:
+        ss << "UINT32";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT16:
+        ss << "UINT16";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT8:
+        ss << "UINT8";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT4:
+        ss << "UINT4";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_UINT2:
+        ss << "UINT2";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT64:
+        ss << "INT64";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT32:
+        ss << "INT32";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT16:
+        ss << "INT16";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT8:
+        ss << "INT8";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT4:
+        ss << "INT4";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_INT2:
+        ss << "INT2";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_BIN:
+        ss << "BIN";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_DYNAMIC:
+        ss << "DYNAMIC";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_BOOLEAN:
+        ss << "BOOLEAN";
+        break;
+    case ZE_GRAPH_ARGUMENT_PRECISION_NF4:
+        ss << "NF4";
+        break;
+    default:
+        ss << "UNKNOWN_PRECISION (" << std::hex << info.devicePrecision << std::dec << ")";
+        break;
+    }
+    ss << " (0x" << std::hex << info.devicePrecision << std::dec << ")" << std::endl;
+
+    ss << "Network Layout: ";
+    switch (info.networkLayout) {
+    case ZE_GRAPH_ARGUMENT_LAYOUT_ANY:
+        ss << "ANY";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NCHW:
+        ss << "NCHW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NHWC:
+        ss << "NHWC";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NCDHW:
+        ss << "NCDHW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NDHWC:
+        ss << "NDHWC";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_OIHW:
+        ss << "OIHW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_C:
+        ss << "C";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_CHW:
+        ss << "CHW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_HW:
+        ss << "HW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NC:
+        ss << "NC";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_CN:
+        ss << "CN";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_BLOCKED:
+        ss << "BLOCKED";
+        break;
+    default:
+        ss << "UNKNOWN_LAYOUT (" << std::hex << info.networkLayout << std::dec << ")";
+        break;
+    }
+    ss << " (0x" << std::hex << info.networkLayout << std::dec << ")" << std::endl;
+
+    ss << "Device Layout: ";
+    switch (info.deviceLayout) {
+    case ZE_GRAPH_ARGUMENT_LAYOUT_ANY:
+        ss << "ANY";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NCHW:
+        ss << "NCHW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NHWC:
+        ss << "NHWC";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NCDHW:
+        ss << "NCDHW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NDHWC:
+        ss << "NDHWC";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_OIHW:
+        ss << "OIHW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_C:
+        ss << "C";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_CHW:
+        ss << "CHW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_HW:
+        ss << "HW";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_NC:
+        ss << "NC";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_CN:
+        ss << "CN";
+        break;
+    case ZE_GRAPH_ARGUMENT_LAYOUT_BLOCKED:
+        ss << "BLOCKED";
+        break;
+    default:
+        ss << "UNKNOWN_LAYOUT (" << std::hex << info.deviceLayout << std::dec << ")";
+        break;
+    }
+    ss << " (0x" << std::hex << info.deviceLayout << std::dec << ")" << std::endl;
+
+    ss << "Quantization Reverse Scale: " << info.quantReverseScale << std::endl;
+    ss << "Quantization Zero Point: " << static_cast<int>(info.quantZeroPoint) << std::endl;
+
+    ss << "Associated Tensor Names Count: " << info.associated_tensor_names_count << std::endl;
+    if (info.associated_tensor_names_count > 0) {
+        ss << "Associated Tensor Names: [";
+        for (uint32_t i = 0; i < info.associated_tensor_names_count && i < ZE_MAX_GRAPH_TENSOR_NAMES_SIZE; i++) {
+            if (i > 0)
+                ss << ", ";
+            ss << "\"" << info.associated_tensor_names[i] << "\"";
+        }
+        ss << "]" << std::endl;
+    }
+
+    ss << "pNext: " << info.pNext << std::endl;
+
+    ss << "=================================" << std::endl;
+
+    return ss.str();
+}
+
 /**
  * @brief Checks that the metadata of the provided descriptor corresponds to the values registered in the Level Zero
  * structure.
@@ -118,6 +518,11 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
 
     size_t ioIndex = 0;
     for (const IODescriptor& inputDescriptor : _metadata.inputs) {
+        std::cout << "----inference-----inputDescriptor-------" << ioIndex << "-------" << std::endl;
+        std::cout << ioDescriptorToString(inputDescriptor, 1) << std::endl;
+        std::cout << "----inference-----inputDescriptor VS _graphInputDescriptors--------------" << std::endl;
+        std::cout << print_argument_descriptor(_graphInputDescriptors.at(ioIndex)) << std::endl;
+        std::cout << "----inference------end of _graphInputDescriptors----" << ioIndex << "---------" << std::endl;
         check_level_zero_attributes_match(inputDescriptor, _graphInputDescriptors.at(ioIndex));
 
         // Tensors for regular inputs will be allocated later, only for ports that were not set by the user.
@@ -138,6 +543,11 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
 
     ioIndex = 0;
     for (const IODescriptor& outputDescriptor : _metadata.outputs) {
+        std::cout << "----inference-----outputDescriptor-------" << ioIndex << "-------" << std::endl;
+        std::cout << ioDescriptorToString(outputDescriptor, 1) << std::endl;
+        std::cout << "----inference-----outputDescriptor VS _graphOutputDescriptors--------------" << std::endl;
+        std::cout << print_argument_descriptor(_graphOutputDescriptors.at(ioIndex)) << std::endl;
+        std::cout << "----inference------end of _graphOutputDescriptors----" << ioIndex << "---------" << std::endl;
         check_level_zero_attributes_match(outputDescriptor, _graphOutputDescriptors.at(ioIndex));
 
         // Tensors for regular outputs will be allocated later, only for ports that were not set by the user.

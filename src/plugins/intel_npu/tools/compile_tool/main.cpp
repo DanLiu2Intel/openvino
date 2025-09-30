@@ -101,6 +101,20 @@ DEFINE_string(shape, "", shape_message);
 DEFINE_uint32(override_model_batch_size, 1, override_model_batch_size_message);
 
 namespace {
+
+std::string print_node_vector(const ov::NodeVector& nodes) {
+    std::ostringstream ss;
+    ss << "    get_ordered_ops's size is " << nodes.size() << std::endl;
+    for (const auto& node : nodes) {
+        if (node) {
+            ss << node->get_type_name() << std::endl;
+        } else {
+            ss << "[null node]" << std::endl;
+        }
+    }
+    return ss.str();
+}
+
 std::vector<std::string> splitStringList(const std::string& str, char delim) {
     if (str.empty())
         return {};
@@ -503,6 +517,24 @@ int main(int argc, char* argv[]) {
             compiledModel.export_model(outputFile);
         }
         std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
+
+        std::cout << "------------Run compiledModel.get_runtime_model(start)------------" << std::endl;
+        auto modelRuntime = compiledModel.get_runtime_model();
+        std::cout << "------------Run core.import_model------------" << std::endl;
+        std::ifstream modelStream(outputName, std::ios_base::binary | std::ios_base::in);
+        if (!modelStream.is_open()) {
+            throw std::runtime_error("Cannot open model file " + outputName);
+        }
+
+        auto compiledModelFromImport = core.import_model(modelStream, FLAGS_d, {configs.begin(), configs.end()});
+        modelStream.close();
+        std::cout << "------------compare import_model------------" << std::endl;
+        auto modelRuntimeImportModel = compiledModelFromImport.get_runtime_model();
+        std::cout << "------------compare compiledModel.get_runtime_model() get_ordered_ops------------" << std::endl;
+        std::cout << print_node_vector(modelRuntime->get_ordered_ops());
+        std::cout << "------------compare import_model get_ordered_ops------------" << std::endl;
+        std::cout << print_node_vector(modelRuntimeImportModel->get_ordered_ops());
+        std::cout << "------------Done. compiledModel.get_runtime_model(end)------------" << std::endl;
     } catch (const std::exception& error) {
         std::cerr << error.what() << std::endl;
         return EXIT_FAILURE;
