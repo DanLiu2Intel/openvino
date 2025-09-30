@@ -5,6 +5,7 @@
 #include "compiled_model.hpp"
 
 #include <fstream>
+#include <stdexcept>
 #include <string_view>
 
 #include "async_infer_request.hpp"
@@ -12,17 +13,300 @@
 #include "intel_npu/config/config.hpp"
 #include "intel_npu/config/options.hpp"
 #include "metadata.hpp"
+#include "openvino/op/constant.hpp"
+#include "openvino/op/parameter.hpp"
+#include "openvino/op/result.hpp"
 #include "openvino/pass/constant_folding.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/executor_manager.hpp"
-#include "transformations/utils/utils.hpp"
 
+#if defined(__linux__)
+#    include "transformations/utils/utils.hpp"
+#endif
 namespace {
 
 const std::vector<size_t> CONSTANT_NODE_DUMMY_SHAPE{1};
 
+/**
+ * @brief Print basic model information
+ */
+std::string print_basic_info(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Model Basic Information ===" << std::endl;
+    ss << "Name: " << model->get_name() << std::endl;
+    ss << "Friendly Name: " << model->get_friendly_name() << std::endl;
+    ss << "Output Size: " << model->get_output_size() << std::endl;
+    ss << "Graph Size: " << model->get_graph_size() << " bytes" << std::endl;
+    ss << "Is Dynamic: " << (model->is_dynamic() ? "Yes" : "No") << std::endl;
+    ss << std::endl;
+    return ss.str();
 }
+
+/**
+ * @brief Print model parameters (inputs)
+ */
+std::string print_parameters(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Model Parameters (Inputs) ===" << std::endl;
+    const auto& parameters = model->get_parameters();
+    ss << "Total Parameters: " << parameters.size() << std::endl;
+
+    for (size_t i = 0; i < parameters.size(); ++i) {
+        const auto& param = parameters[i];
+        ss << "  [" << i << "] " << param->get_friendly_name() << "/(get_name is " << param->get_name()
+           << ") : " << param->get_element_type() << " " << param->get_partial_shape() << std::endl;
+
+        // Print additional parameter info
+        ss << "      Type: " << param->get_type_name() << std::endl;
+        if (param->get_output_size() > 0) {
+            ss << "      Output tensor names (may contains multi names): ";
+            for (size_t j = 0; j < param->get_output_size(); ++j) {
+                auto names = param->get_output_tensor(j).get_names();
+                for (const auto& name : names) {
+                    ss << name << " ";
+                }
+            }
+            ss << std::endl;
+        }
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print model results (outputs)
+ */
+std::string print_results(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Model Results (Outputs) ===" << std::endl;
+    const auto& results = model->get_results();
+    ss << "Total Results: " << results.size() << std::endl;
+
+    for (size_t i = 0; i < results.size(); ++i) {
+        const auto& result = results[i];
+        ss << "  [" << i << "] " << result->get_friendly_name() << "/(get_name is " << result->get_name()
+           << ") : " << std::endl;
+        ss << "      Type: " << result->get_type_name() << std::endl;
+
+        if (result->get_input_size() > 0) {
+            const auto& input = result->get_input_source_output(0);
+            ss << "      Element Type: " << input.get_element_type() << std::endl;
+            ss << "      Shape: " << input.get_partial_shape() << std::endl;
+
+            auto names = result->get_output_tensor(0).get_names();
+            if (!names.empty()) {
+                ss << "      Tensor names (may contains multi names):: ";
+                for (const auto& name : names) {
+                    ss << name << " ";
+                }
+                ss << std::endl;
+            }
+        }
+#if defined(__linux__)
+        /// new add test line
+        ss << "     Output tensor name (ov::op::util::get_ie_output_name(result->input_value(0))): "
+           << ov::op::util::get_ie_output_name(result->input_value(0)) << std::endl;
+#endif
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print model variables
+ */
+std::string print_variables(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Model Variables ===" << std::endl;
+    const auto& variables = model->get_variables();
+    ss << "Total Variables: " << variables.size() << std::endl;
+
+    for (size_t i = 0; i < variables.size(); ++i) {
+        const auto& var = variables[i];
+        const auto& info = var->get_info();
+        ss << "  [" << i << "] ID: " << info.variable_id << std::endl;
+        ss << "      Shape: " << info.data_shape << std::endl;
+        ss << "      Type: " << info.data_type << std::endl;
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print model sinks
+ */
+std::string print_sinks(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Model Sinks ===" << std::endl;
+    const auto& sinks = model->get_sinks();
+    ss << "Total Sinks: " << sinks.size() << std::endl;
+
+    for (size_t i = 0; i < sinks.size(); ++i) {
+        const auto& sink = sinks[i];
+        ss << "  [" << i << "] " << sink->get_friendly_name() << " (" << sink->get_type_name() << ")" << std::endl;
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print runtime information
+ */
+std::string print_runtime_info(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Model Runtime Information ===" << std::endl;
+    const auto& rt_info = model->get_rt_info();
+    ss << "Runtime Info Entries: " << rt_info.size() << std::endl;
+
+    for (const auto& kv : rt_info) {
+        ss << "  " << kv.first << " = ";
+        try {
+            // Try to convert to string
+            ss << kv.second.as<std::string>();
+        } catch (...) {
+            try {
+                // Try to convert to int
+                ss << kv.second.as<int>();
+            } catch (...) {
+                try {
+                    // Try to convert to bool
+                    ss << (kv.second.as<bool>() ? "true" : "false");
+                } catch (...) {
+                    ss << "[complex type]";
+                }
+            }
+        }
+        ss << std::endl;
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print all nodes in the model
+ */
+std::string print_all_nodes(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== All Nodes (Detailed) ===" << std::endl;
+    const auto& nodes = model->get_ordered_ops();
+    ss << "Total Nodes: " << nodes.size() << std::endl;
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        const auto& node = nodes[i];
+        ss << "  [" << std::setw(3) << i << "] " << std::setw(20) << std::left << node->get_friendly_name() << " ("
+           << node->get_type_name() << ")" << std::endl;
+
+        // Print inputs
+        if (node->get_input_size() > 0) {
+            ss << "       Inputs: ";
+            for (size_t j = 0; j < node->get_input_size(); ++j) {
+                const auto& input = node->get_input_source_output(j);
+                ss << input.get_element_type() << input.get_partial_shape();
+                if (j < node->get_input_size() - 1)
+                    ss << ", ";
+            }
+            ss << std::endl;
+        }
+
+        // Print outputs
+        if (node->get_output_size() > 0) {
+            ss << "       Outputs: ";
+            for (size_t j = 0; j < node->get_output_size(); ++j) {
+                const auto& output = node->get_output_tensor(j);
+                ss << output.get_element_type() << output.get_partial_shape();
+                if (j < node->get_output_size() - 1)
+                    ss << ", ";
+            }
+            ss << std::endl;
+        }
+
+        // Print node runtime info if exists
+        const auto& node_rt_info = node->get_rt_info();
+        if (!node_rt_info.empty()) {
+            ss << "       RT Info: ";
+            for (const auto& kv : node_rt_info) {
+                ss << kv.first << " ";
+            }
+            ss << std::endl;
+        }
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+/**
+ * @brief Print graph statistics
+ */
+std::string print_graph_statistics(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    ss << "=== Graph Statistics ===" << std::endl;
+    const auto& nodes = model->get_ops();
+
+    // Count nodes by type
+    std::map<std::string, int> node_type_count;
+    for (const auto& node : nodes) {
+        node_type_count[node->get_type_name()]++;
+    }
+
+    ss << "Node Type Distribution:" << std::endl;
+    for (const auto& kv : node_type_count) {
+        ss << "  " << std::setw(20) << std::left << kv.first << ": " << kv.second << std::endl;
+    }
+    ss << std::endl;
+    return ss.str();
+}
+
+std::string print_all_info(const std::shared_ptr<ov::Model>& model) {
+    std::ostringstream ss;
+    if (!model) {
+        ss << "Model is null!" << std::endl;
+        return ss.str();
+    }
+
+    ss << print_basic_info(model);
+    ss << print_parameters(model);
+    ss << print_results(model);
+    ss << print_variables(model);
+    ss << print_sinks(model);
+    ss << print_runtime_info(model);
+
+    const char* detail = std::getenv("DETAIL");
+    if (detail) {
+        ss << print_all_nodes(model);
+    }
+
+    ss << print_graph_statistics(model);
+    ss << std::endl;
+    return ss.str();
+}
+
+std::string compare_info(const std::shared_ptr<ov::Model>& model) {
+    if (!model) {
+        std::cout << "Model is null!" << std::endl;
+        return "";
+    }
+    std::ostringstream ss;
+    ss << "Output Size: " << model->get_output_size() << std::endl;
+    ss << "Graph Size: " << model->get_graph_size() << " bytes" << std::endl;
+    ss << "Is Dynamic: " << (model->is_dynamic() ? "Yes" : "No") << std::endl;
+    ss << std::endl;
+    ss << print_parameters(model);
+    ss << print_results(model);
+    ss << print_variables(model);
+    ss << print_sinks(model);
+    ss << print_runtime_info(model);
+    ss << print_all_nodes(model);
+    ss << print_graph_statistics(model);
+    return ss.str();
+}
+
+class NotEqualException : public std::runtime_error {
+public:
+    NotEqualException(const std::string& message) : std::runtime_error(message) {}
+};
+
+}  // namespace
 
 namespace intel_npu {
 
@@ -98,46 +382,100 @@ std::shared_ptr<const ov::Model> CompiledModel::get_runtime_model() const {
     ov::ParameterVector parameters;
     ov::ResultVector results;
 
+    for (const ov::Output<const ov::Node>& nodeOutput : inputs()) {
+        std::shared_ptr<ov::Node> clonedParameter =
+            std::dynamic_pointer_cast<const ov::op::v0::Parameter>(nodeOutput.get_node_shared_ptr())
+                ->clone_with_new_inputs({});
+        parameters.push_back(std::dynamic_pointer_cast<ov::op::v0::Parameter>(clonedParameter));
+    }
+
+    for (const ov::Output<const ov::Node>& nodeOutput : outputs()) {
+        const auto resultOriginal =
+            std::dynamic_pointer_cast<const ov::op::v0::Result>(nodeOutput.get_node_shared_ptr());
+        const ov::element::Type precision = nodeOutput.get_element_type();
+        const ov::Shape shape =
+            nodeOutput.get_partial_shape().is_dynamic() ? CONSTANT_NODE_DUMMY_SHAPE : nodeOutput.get_shape();
+
+        std::shared_ptr<ov::Node> constantDummy = std::make_shared<ov::op::v0::Constant>(precision, shape);
+        const std::shared_ptr<ov::descriptor::Tensor>& tensorDummy =
+            std::make_shared<ov::descriptor::Tensor>(precision, shape, nodeOutput.get_names());
+
+        auto& resultCopy = results.emplace_back(std::make_shared<ov::op::v0::Result>(constantDummy));
+        resultCopy->output(0).set_tensor_ptr(tensorDummy);
+        resultCopy->set_friendly_name(resultOriginal->get_friendly_name());
+    }
+
+    auto modelNoUseMetadata = std::make_shared<ov::Model>(results, parameters);
+
+    /////need compare the model generated by metadata
+    ov::ParameterVector parameterMetatdasMetatda;
+    ov::ResultVector resultMetatdasMetatda;
     for (const IODescriptor& inputDescriptor : _graph->get_metadata().inputs) {
         if (inputDescriptor.isStateInput || inputDescriptor.isStateOutput || inputDescriptor.isShapeTensor) {
             continue;
         }
 
-        std::shared_ptr<ov::op::v0::Parameter> parameter =
+        std::shared_ptr<ov::op::v0::Parameter> parameterMetatda =
             std::make_shared<ov::op::v0::Parameter>(inputDescriptor.precision, inputDescriptor.shapeFromCompiler);
 
-        parameter->set_friendly_name(inputDescriptor.nodeFriendlyName);
-        parameter->output(0).get_tensor().set_names(inputDescriptor.outputTensorNames);
-        parameters.push_back(std::move(parameter));
+        parameterMetatda->set_friendly_name(inputDescriptor.nodeFriendlyName);
+        parameterMetatda->output(0).get_tensor().set_names(inputDescriptor.outputTensorNames);
+        parameterMetatdasMetatda.push_back(std::move(parameterMetatda));
     }
 
-    // The "result" nodes require a parent node in order to satisfy the API conventions. Additionally, a dummy shape for
-    // the "Constant" node was required since the specific constructor does not accept "ov::PartialShape" values (a
-    // constant can't have dynamic shape). The dummy tensor was also brought in order to register the correct,
+    // The "resultMetatda" nodes require a parent node in order to satisfy the API conventions. Additionally, a dummy
+    // shape for the "Constant" node was required since the specific constructor does not accept "ov::PartialShape"
+    // values (a constant can't have dynamic shape). The dummy tensor was also brought in order to register the correct,
     // potentially dynamic, output shape.
     for (const IODescriptor& outputDescriptor : _graph->get_metadata().outputs) {
         if (outputDescriptor.isStateInput || outputDescriptor.isStateOutput || outputDescriptor.isShapeTensor) {
             continue;
         }
 
-        std::shared_ptr<ov::Node> constantDummy = std::make_shared<ov::op::v0::Constant>(
+        std::shared_ptr<ov::Node> constantDummyMetatda = std::make_shared<ov::op::v0::Constant>(
             outputDescriptor.precision,
             outputDescriptor.shapeFromCompiler.to_shape().empty() ? CONSTANT_NODE_DUMMY_SHAPE
                                                                   : outputDescriptor.shapeFromCompiler.to_shape());
 
-        const std::shared_ptr<ov::descriptor::Tensor>& tensorDummy =
+        const std::shared_ptr<ov::descriptor::Tensor>& tensorDummyMetatda =
             std::make_shared<ov::descriptor::Tensor>(outputDescriptor.precision,
                                                      outputDescriptor.shapeFromCompiler,
                                                      outputDescriptor.outputTensorNames);
 
-        auto& result = results.emplace_back(std::make_shared<ov::op::v0::Result>(constantDummy));
-        result->output(0).set_tensor_ptr(tensorDummy);
-        result->set_friendly_name(outputDescriptor.nodeFriendlyName);
+        auto& resultMetatda =
+            resultMetatdasMetatda.emplace_back(std::make_shared<ov::op::v0::Result>(constantDummyMetatda));
+        resultMetatda->output(0).set_tensor_ptr(tensorDummyMetatda);
+        resultMetatda->set_friendly_name(outputDescriptor.nodeFriendlyName);
     }
 
-    _logger.warning("Returning a dummy ov::Model object that contains only the given parameter and result nodes");
+    _logger.warning(
+        "   Returning a dummy ov::Model object that contains only the given parameterMetatda and resultMetatda nodes");
 
-    return std::make_shared<ov::Model>(results, parameters);
+    auto modelUseMetadata = std::make_shared<ov::Model>(resultMetatdasMetatda, parameterMetatdasMetatda);
+    try {
+        const char* compiledModelThrow = std::getenv("COMPILEDMODEL_THROW");
+        if (compiledModelThrow) {
+            std::cout << "COMPILEDMODEL_THROW is set, so throw exception in compileradapter manually." << std::endl;
+            throw NotEqualException(
+                "Runtime model using metadata and not using's result are NOT EQUAL in get_runtime_model() manually");
+        }
+        if (compare_info(modelNoUseMetadata) != compare_info(modelUseMetadata)) {
+            std::cout << "------------modelNoUseMetadata---Detail-------------" << std::endl;
+            std::cout << print_all_info(modelNoUseMetadata) << std::endl;
+            std::cout << "-----------modelNoUseMetadata VS modelUseMetadata-------Detail----------" << std::endl;
+            std::cout << print_all_info(modelUseMetadata) << std::endl;
+            std::cout << "------------modelUseMetadata-------Detail---------" << std::endl;
+            throw NotEqualException(
+                "Runtime model using metadata and not using's result are NOT EQUAL in get_runtime_model()");
+        } else {
+            _logger.warning("Runtime model using metadata and not using's result are equal in get_runtime_model()");
+        }
+    } catch (const NotEqualException& e) {
+        std::cerr << "Exception caught: " << e.what() << std::endl;
+        throw;
+    }
+
+    return modelNoUseMetadata;
 }
 
 void CompiledModel::set_property(const ov::AnyMap& properties) {
