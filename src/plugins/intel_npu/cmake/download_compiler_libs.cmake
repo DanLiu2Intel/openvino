@@ -95,12 +95,12 @@ if(ENABLE_VCL_FOR_COMPILER)
         message(STATUS "Downloading prebuilt NPU VCL compiler libraries")
         if(WIN32)
             set(VCL_COMPILER_LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/temp/vcl_compiler_lib/win")
-            set(VCL_COMPILER_LIBS_URL "https://downloadmirror.intel.com/854488/npu_win_32.0.100.4023.zip")
-            set(VCL_COMPILER_LIBS_ZIP "${VCL_COMPILER_LIBS_DIR}/npu_win_32.0.100.4023.zip")
-            set(VCL_COMPILER_LIBS_DIR_UNZIPPED "${VCL_COMPILER_LIBS_DIR}/npu_win_32.0.100.4023")
+            set(VCL_COMPILER_LIBS_URL "https://github.com/openvinotoolkit/npu_compiler/releases/download/npu_ud_2025_38_rc3/w_vpux_compiler_l0_win-7_4_3-Release_dyntbb_postcommit_cid_08db5c5b5f9071c2d7db500653a3678d4beefb13_251003_1852.zip")
+            set(VCL_COMPILER_LIBS_ZIP "${VCL_COMPILER_LIBS_DIR}/w_vpux_compiler_l0_win-7_4_3-Release_dyntbb_postcommit_cid_08db5c5b5f9071c2d7db500653a3678d4beefb13_251003_1852.zip")
+            set(VCL_COMPILER_LIBS_DIR_UNZIPPED "${VCL_COMPILER_LIBS_DIR}/w_vpux_compiler_l0_win-7_4_3-Release_dyntbb_postcommit_cid_08db5c5b5f9071c2d7db500653a3678d4beefb13_251003_1852")
 
             download_and_extract("${VCL_COMPILER_LIBS_URL}" "${VCL_COMPILER_LIBS_DIR}" "${VCL_COMPILER_LIBS_ZIP}" "${VCL_COMPILER_LIBS_DIR_UNZIPPED}" "MODIFY")
-            set(VCL_COMPILER_LIB_PATH "${VCL_COMPILER_LIBS_DIR_UNZIPPED}/npu_win_32.0.100.4023/drivers/x64/")
+            set(VCL_COMPILER_LIB_PATH "${VCL_COMPILER_LIBS_DIR_UNZIPPED}/w_vpux_compiler_l0_win-7_4_3-Release_dyntbb_postcommit_cid_08db5c5b5f9071c2d7db500653a3678d4beefb13_251003_1852/cid/lib")
 
 
             configure_file(
