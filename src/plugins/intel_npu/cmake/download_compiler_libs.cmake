@@ -100,7 +100,7 @@ if(ENABLE_VCL_FOR_COMPILER)
             set(VCL_COMPILER_LIBS_DIR_UNZIPPED "${VCL_COMPILER_LIBS_DIR}/w_vpux_compiler_l0_win-7_4_3-Release_dyntbb_postcommit_cid_08db5c5b5f9071c2d7db500653a3678d4beefb13_251003_1852")
 
             download_and_extract("${VCL_COMPILER_LIBS_URL}" "${VCL_COMPILER_LIBS_DIR}" "${VCL_COMPILER_LIBS_ZIP}" "${VCL_COMPILER_LIBS_DIR_UNZIPPED}" "MODIFY")
-            set(VCL_COMPILER_LIB_PATH "${VCL_COMPILER_LIBS_DIR_UNZIPPED}/w_vpux_compiler_l0_win-7_4_3-Release_dyntbb_postcommit_cid_08db5c5b5f9071c2d7db500653a3678d4beefb13_251003_1852/cid/lib")
+            set(VCL_COMPILER_LIB_PATH "${VCL_COMPILER_LIBS_DIR_UNZIPPED}/cid/lib")
 
 
             configure_file(
