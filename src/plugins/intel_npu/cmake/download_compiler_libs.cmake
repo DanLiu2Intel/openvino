@@ -41,6 +41,8 @@ function(download_and_extract url dest_dir zip_file extracted_dir modify_proxy)
         # Determine extraction method based on file extension
         if("${zip_file}" MATCHES "\\.zip$")
             file(ARCHIVE_EXTRACT INPUT "${zip_file}" DESTINATION "${extracted_dir}")
+        elseif("${zip_file}" MATCHES "\\.tar.gz$")
+            execute_process(COMMAND tar -xzf "${zip_file}" -C "${extracted_dir}")
         elseif("${zip_file}" MATCHES "\\.deb$")
             execute_process(COMMAND dpkg-deb -x "${zip_file}" "${extracted_dir}")
         elseif("${zip_file}" MATCHES "\\.exe$")
