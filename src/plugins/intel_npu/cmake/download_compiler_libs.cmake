@@ -3,7 +3,7 @@
 #
 
 # Function to download and extract files
-function(download_and_extract url dest_dir zip_file extracted_dir modify_proxy)
+function(download_and_extract url zip_file extracted_dir modify_proxy)
     message(" ----[DEBUG]--- extracted_dir is -- ${extracted_dir}")
     # Check if the prebuilt VCL compiler libraries not exist
     if(NOT EXISTS "${extracted_dir}")
@@ -103,11 +103,10 @@ if(ENABLE_VCL_FOR_COMPILER)
             set(VCL_COMPILER_LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/temp/vcl_compiler_lib/win")
             set(VCL_COMPILER_LIBS_URL "https://github.com/openvinotoolkit/npu_compiler/releases/download/npu_ud_2025_38_rc4/w_vpux_compiler_l0_win-7_4_3-Release_dyntbb_postcommit_cid_a826bd92b5e02af092e4d706a762252b1845f777_251010_2218.zip")
             set(VCL_COMPILER_LIBS_ZIP "${VCL_COMPILER_LIBS_DIR}/w_vpux_compiler_l0_win-7_4_3-Release_dyntbb_postcommit_cid_a826bd92b5e02af092e4d706a762252b1845f777_251010_2218.zip")
-            set(VCL_COMPILER_LIBS_DIR_UNZIPPED "${VCL_COMPILER_LIBS_DIR}/w_vpux_compiler_l0_win-7_4_3-Release_dyntbb_postcommit_cid_a826bd92b5e02af092e4d706a762252b1845f777_251010_2218")
+            set(VCL_COMPILER_LIBS_DIR_UNZIPPED "${VCL_COMPILER_LIBS_DIR}/cid_a826bd92b5e02af092e4d706a762252b1845f777_251010_2218")
 
-            download_and_extract("${VCL_COMPILER_LIBS_URL}" "${VCL_COMPILER_LIBS_DIR}" "${VCL_COMPILER_LIBS_ZIP}" "${VCL_COMPILER_LIBS_DIR_UNZIPPED}" "MODIFY")
+            download_and_extract("${VCL_COMPILER_LIBS_URL}" "${VCL_COMPILER_LIBS_ZIP}" "${VCL_COMPILER_LIBS_DIR_UNZIPPED}" "MODIFY")
             set(VCL_COMPILER_LIB_PATH "${VCL_COMPILER_LIBS_DIR_UNZIPPED}/cid/lib")
-
 
             configure_file(
                 ${VCL_COMPILER_LIB_PATH}/npu_driver_compiler.dll
@@ -131,9 +130,9 @@ if(ENABLE_VCL_FOR_COMPILER)
                         set(VCL_COMPILER_LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/temp/vcl_compiler_libs/ubuntu")
                         set(VCL_COMPILER_LIBS_URL "https://github.com/openvinotoolkit/npu_compiler/releases/download/npu_ud_2025_38_rc4/l_vpux_compiler_l0_linux-7_4_3-Release_dyntbb_postcommit_cid_a826bd92b5e02af092e4d706a762252b1845f777_251010_2217.tar.gz")
                         set(VCL_COMPILER_LIBS_DEB "${VCL_COMPILER_LIBS_DIR}/l_vpux_compiler_l0_linux-7_4_3-Release_dyntbb_postcommit_cid_a826bd92b5e02af092e4d706a762252b1845f777_251010_2217.tar.gz")
-                        set(VCL_COMPILER_LIBS_DIR_EXTRACTED "${VCL_COMPILER_LIBS_DIR}/l_vpux_compiler_l0_linux-7_4_3-Release_dyntbb_postcommit_cid_a826bd92b5e02af092e4d706a762252b1845f777_251010_2217")
+                        set(VCL_COMPILER_LIBS_DIR_EXTRACTED "${VCL_COMPILER_LIBS_DIR}/cid_a826bd92b5e02af092e4d706a762252b1845f777_251010_2217")
 
-                        download_and_extract("${VCL_COMPILER_LIBS_URL}" "${VCL_COMPILER_LIBS_DIR}" "${VCL_COMPILER_LIBS_DEB}" "${VCL_COMPILER_LIBS_DIR_EXTRACTED}" "NONE")
+                        download_and_extract("${VCL_COMPILER_LIBS_URL}" "${VCL_COMPILER_LIBS_DEB}" "${VCL_COMPILER_LIBS_DIR_EXTRACTED}" "NONE")
 
                         set(VCL_COMPILER_LIB_PATH "${VCL_COMPILER_LIBS_DIR_EXTRACTED}/cid/lib/")
                         configure_file(
