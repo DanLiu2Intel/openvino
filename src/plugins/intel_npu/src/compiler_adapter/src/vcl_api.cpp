@@ -220,15 +220,15 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
     ze_graph_compiler_version_info_t compilerVersion;
     compilerVersion.major = _compilerProperties.version.major;
     compilerVersion.minor = _compilerProperties.version.minor;
-    auto serializedIR = intel_npu::driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion);
-
+    driver_compiler_utils::IRSerializer irSerializer(model, maxOpsetVersion);
+    auto serializedIR = irSerializer.serializeIR(model, compilerVersion, maxOpsetVersion);
     std::string buildFlags;
     const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
 
     _logger.debug("create build flags");
-    buildFlags += intel_npu::driver_compiler_utils::serializeIOInfo(model, useIndices);
+    buildFlags += irSerializer.serializeIOInfo(model, useIndices);
     buildFlags += " ";
-    buildFlags += intel_npu::driver_compiler_utils::serializeConfig(config, compilerVersion);
+    buildFlags += irSerializer.serializeConfig(config, compilerVersion);
     _logger.debug("final build flags to compiler: %s", buildFlags.c_str());
     vcl_executable_desc_t exeDesc = {serializedIR.second.get(),
                                      serializedIR.first,
@@ -432,10 +432,11 @@ ov::SupportedOpsMap VCLCompilerImpl::query(const std::shared_ptr<const ov::Model
     ze_graph_compiler_version_info_t compilerVersion;
     compilerVersion.major = _compilerProperties.version.major;
     compilerVersion.minor = _compilerProperties.version.minor;
-    auto serializedIR = intel_npu::driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion);
-
+    driver_compiler_utils::IRSerializer irSerializer(model, maxOpsetVersion);
+    auto serializedIR = irSerializer.serializeIR(model, compilerVersion, maxOpsetVersion);
     std::string buildFlags;
-    buildFlags += intel_npu::driver_compiler_utils::serializeConfig(config, compilerVersion);
+
+    buildFlags += irSerializer.serializeConfig(config, compilerVersion);
     _logger.debug("queryImpl build flags : %s", buildFlags.c_str());
 
     vcl_query_handle_t queryHandle;
