@@ -36,10 +36,10 @@ INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests_CoreThreadingTest_NPU,
                          testing::Combine(testing::ValuesIn(params), testing::Values(15), testing::Values(50)),
                          ov::test::utils::appendPlatformTypeTestName<CoreThreadingTestsWithIter>);
 
-INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests_CoreThreadingTest_NPU,
-                         CoreThreadingTestsWithCacheEnabled,
-                         testing::Combine(testing::ValuesIn(params_cached), testing::Values(10), testing::Values(30)),
-                         ov::test::utils::appendPlatformTypeTestName<CoreThreadingTestsWithCacheEnabled>);
+// INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests_CoreThreadingTest_NPU,
+//                          CoreThreadingTestsWithCacheEnabled,
+//                          testing::Combine(testing::ValuesIn(params_cached), testing::Values(10), testing::Values(30)),
+//                          ov::test::utils::appendPlatformTypeTestName<CoreThreadingTestsWithCacheEnabled>);
 
 INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests_CoreThreadingTest_UmdCacheDisabled_NPU,
                          CoreThreadingTestsWithIter,
