@@ -260,18 +260,6 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
                             _vclVersion.major,
                             _vclVersion.minor,
                             supportVclCompiler(usedMajor, usedMinor));
-        }    
-
-    if (usedMajor >= 7 && usedMinor >= 4) {
-        if (VCL_COMPILER_VERSION_MAJOR < _vclVersion.major) {
-            _logger.warning("inside supported VCL version is lower than used VCL api:\n plugin was built with VCL "
-                            "%d.%d, \n      but loaded VCL is %d.%d.\n"
-                            "Will downwise to form %s to use vclAllocatedExecutableCreate2",
-                            VCL_COMPILER_VERSION_MAJOR,
-                            VCL_COMPILER_VERSION_MINOR,
-                            _vclVersion.major,
-                            _vclVersion.minor,
-                            supportVclCompiler(usedMajor, usedMinor));
         }
         // For VCL 7.4 and later, we can use vclAllocatedExecutableCreate2
         _logger.debug("Using vclAllocatedExecutableCreate2 for 7.4 <= VCL < 7.5");
