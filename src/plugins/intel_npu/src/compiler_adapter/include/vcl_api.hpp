@@ -104,6 +104,11 @@ public:
     bool get_supported_options(std::vector<char>& options) const;
 
     bool is_option_supported(const std::string& option) const;
+    
+    // //new add for check the compiler issue.
+    // void checkVCLCompilerCreate(vcl_compiler_desc_t compilerDesc, vcl_compiler_handle_t _compilerHandle, vcl_compiler_properties_t _compilerProperties);
+    void updateVCLCompilerCreate(const std::string platform);
+
 
 private:
     std::shared_ptr<VCLApi> _vclApi;

@@ -544,6 +544,7 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
+    std::cout << "plugin's _globalConfig is "<< _globalConfig.getString() << std::endl;
 
     // Before going any further: if
     // ... 1 - NPUW mode is activated
@@ -568,14 +569,15 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     const std::map<std::string, std::string> localPropertiesMap = any_copy(localProperties);
     update_log_level(localPropertiesMap);
-
+                                      
     // create compiler
     CompilerAdapterFactory compilerAdapterFactory;
     auto compiler = compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, properties));
+    std::cout << "plugin's _globalConfig2 is "<< _globalConfig.getString() << std::endl;
 
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "fork_local_config");
     auto localConfig = fork_local_config(localPropertiesMap, compiler);
-
+    std::cout << "plugin's localConfig3 is "<< _globalConfig.getString() << std::endl;
 #ifndef VCL_FOR_COMPILER
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
@@ -584,6 +586,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             OPENVINO_THROW("Option 'CACHE_DIR' is not supported with MLIR compiler type");
         }
     }
+    compiler.update_CompilerPlatform(resolveCompilerType(_globalConfig, properties), platform);
 #endif
 
     const auto platform =
@@ -592,6 +595,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
                                       _backend == nullptr ? std::vector<std::string>() : _backend->getDeviceNames());
     auto device = _backend == nullptr ? nullptr : _backend->getDevice(localConfig.get<DEVICE_ID>());
     localConfig.update({{ov::intel_npu::platform.name(), platform}});
+#ifndef VCL_FOR_COMPILER
+    compiler.update_CompilerPlatform(resolveCompilerType(_globalConfig, properties), platform);
+#endif
 
     if (localConfig.isAvailable(ov::intel_npu::batch_mode.name()) &&
         !localConfig.has(ov::intel_npu::batch_mode.name())) {
@@ -651,7 +657,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
         localConfig.update({{ov::intel_npu::weightless_blob.name(), cacheModeOptimizeSize ? "YES" : "NO"}});
     }
-
+    std::cout << "plugin's localConfig4 is "<< _globalConfig.getString() << std::endl;
     std::shared_ptr<intel_npu::IGraph> graph;
 
     try {
