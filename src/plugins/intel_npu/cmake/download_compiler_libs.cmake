@@ -163,7 +163,8 @@ if(ENABLE_VCL_FOR_COMPILER)
                         set(VCL_COMPILER_LIB "${VCL_COMPILER_LIB_PATH}/libnpu_vcl_compiler.so")
                         file(COPY "${VCL_COMPILER_LIB}"
                             DESTINATION "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-                        message(STATUS "Copying prebuilt VCL compiler libraries libnpu_vcl_compiler.so to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} for Ubuntu 24.04")    else()
+                        message(STATUS "Copying prebuilt VCL compiler libraries libnpu_vcl_compiler.so to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} for Ubuntu 24.04")
+                    else()
                         message(STATUS "This is another version of Ubuntu: ${OS_VERSION}")
                         # Other Ubuntu-specific settings or actions
                     endif()
