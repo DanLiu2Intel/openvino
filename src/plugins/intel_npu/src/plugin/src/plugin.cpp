@@ -122,7 +122,22 @@ void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
     }
 }
 
-static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& base_conf, const ov::AnyMap& local_conf) {
+static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& base_conf, const ov::AnyMap& local_conf, ov::SoPtr<IEngineBackend> _backend, FilteredConfig localConfig) {
+    std::cout << "-----base_conf.getString()------" << base_conf.getString() << std::endl;
+    const auto platform =
+    utils::getCompilationPlatform(localConfig.get<PLATFORM>(),
+                                    localConfig.get<DEVICE_ID>(),
+                                    _backend == nullptr ? std::vector<std::string>() : _backend->getDeviceNames());
+    std::cout << "-----platform------: " << platform << std::endl;
+#ifndef VCL_FOR_COMPILER
+    if (platform == "NPU.3720") 
+        return ov::intel_npu::CompilerType::DRIVER;
+    else if (platform == "NPU.4000")
+        return ov::intel_npu::CompilerType::MLIR;
+    else 
+        return base_conf.get<COMPILER_TYPE>();
+#endif
+
     // first look if provided config changes compiler type
     auto it = local_conf.find(std::string(COMPILER_TYPE::key()));
     if (it != local_conf.end()) {
@@ -131,6 +146,7 @@ static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& bas
     }
     // if there is no compiler_type provided = use base_config value
     return base_conf.get<COMPILER_TYPE>();
+    //if platform is auto
 }
 
 /**
