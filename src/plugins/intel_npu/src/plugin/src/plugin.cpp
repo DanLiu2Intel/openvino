@@ -123,7 +123,7 @@ void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
 }
 
 static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& base_conf, const ov::AnyMap& local_conf, ov::SoPtr<IEngineBackend> _backend, FilteredConfig localConfig) {
-    std::cout << "-----base_conf.getString()------" << base_conf.getString() << std::endl;
+    std::cout << "-----base_conf.toString()------" << base_conf.toString() << std::endl;
     const auto platform =
     utils::getCompilationPlatform(localConfig.get<PLATFORM>(),
                                     localConfig.get<DEVICE_ID>(),
@@ -560,7 +560,7 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
-    std::cout << "plugin's _globalConfig is "<< _globalConfig.getString() << std::endl;
+    std::cout << "plugin's _globalConfig is "<< _globalConfig.toString() << std::endl;
 
     // Before going any further: if
     // ... 1 - NPUW mode is activated
@@ -589,11 +589,11 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     // create compiler
     CompilerAdapterFactory compilerAdapterFactory;
     auto compiler = compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, properties));
-    std::cout << "plugin's _globalConfig2 is "<< _globalConfig.getString() << std::endl;
+    std::cout << "plugin's _globalConfig2 is "<< _globalConfig.toString() << std::endl;
 
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "fork_local_config");
     auto localConfig = fork_local_config(localPropertiesMap, compiler);
-    std::cout << "plugin's localConfig3 is "<< _globalConfig.getString() << std::endl;
+    std::cout << "plugin's localConfig3 is "<< _globalConfig.toString() << std::endl;
 #ifndef VCL_FOR_COMPILER
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
@@ -673,7 +673,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
         localConfig.update({{ov::intel_npu::weightless_blob.name(), cacheModeOptimizeSize ? "YES" : "NO"}});
     }
-    std::cout << "plugin's localConfig4 is "<< _globalConfig.getString() << std::endl;
+    std::cout << "plugin's localConfig4 is "<< _globalConfig.toString() << std::endl;
     std::shared_ptr<intel_npu::IGraph> graph;
 
     try {
