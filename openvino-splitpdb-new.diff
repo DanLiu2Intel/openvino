@@ -1,0 +1,42 @@
+diff --git a/cmake/developer_package/OpenVINODeveloperScriptsConfig.cmake b/cmake/developer_package/OpenVINODeveloperScriptsConfig.cmake
+index 7240a76eb3..8a2c244b71 100644
+--- a/cmake/developer_package/OpenVINODeveloperScriptsConfig.cmake
++++ b/cmake/developer_package/OpenVINODeveloperScriptsConfig.cmake
+@@ -187,11 +187,11 @@ message("---OV p1-- ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+ message("---OV p2-- ${OUTPUT_ROOT}")
+ message("---OV p3-- ${BIN_FOLDER}")
+ ov_set_if_not_defined(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_ROOT}/${BIN_FOLDER})
+-ov_set_if_not_defined(CMAKE_PDB_OUTPUT_DIRECTORY ${OUTPUT_ROOT}/${BIN_FOLDER})
++# ov_set_if_not_defined(CMAKE_PDB_OUTPUT_DIRECTORY ${OUTPUT_ROOT}/${BIN_FOLDER})
+ ov_set_if_not_defined(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_ROOT}/${BIN_FOLDER})
+ set(OV_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+ set(OV_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
+-set(OV_PDB_OUTPUT_DIRECTORY ${CMAKE_PDB_OUTPUT_DIRECTORY})
++# set(OV_PDB_OUTPUT_DIRECTORY ${CMAKE_PDB_OUTPUT_DIRECTORY})
+ set(OV_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+ 
+ include(packaging/packaging)
+diff --git a/cmake/templates/OpenVINODeveloperPackageConfig.cmake.in b/cmake/templates/OpenVINODeveloperPackageConfig.cmake.in
+index 4d707859e8..e1a9f4d3e0 100644
+--- a/cmake/templates/OpenVINODeveloperPackageConfig.cmake.in
++++ b/cmake/templates/OpenVINODeveloperPackageConfig.cmake.in
+@@ -105,5 +105,5 @@ ov_deprecated_no_errors()
+ 
+ unset(CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+ unset(CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
+-unset(CMAKE_PDB_OUTPUT_DIRECTORY)
++# unset(CMAKE_PDB_OUTPUT_DIRECTORY)
+ unset(CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+diff --git a/src/bindings/python/CMakeLists.txt b/src/bindings/python/CMakeLists.txt
+index 830df464d4..eeedb31591 100644
+--- a/src/bindings/python/CMakeLists.txt
++++ b/src/bindings/python/CMakeLists.txt
+@@ -37,7 +37,7 @@ endif()
+ 
+ ov_set_if_not_defined(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OV_LIBRARY_OUTPUT_DIRECTORY})
+ ov_set_if_not_defined(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OV_ARCHIVE_OUTPUT_DIRECTORY})
+-ov_set_if_not_defined(CMAKE_PDB_OUTPUT_DIRECTORY ${OV_PDB_OUTPUT_DIRECTORY})
++# ov_set_if_not_defined(CMAKE_PDB_OUTPUT_DIRECTORY ${OV_PDB_OUTPUT_DIRECTORY})
+ ov_set_if_not_defined(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OV_RUNTIME_OUTPUT_DIRECTORY})
+ 
+ #
