@@ -114,9 +114,9 @@ if(ENABLE_VCL_FOR_COMPILER)
                 COPYONLY
             )
             set(VCL_COMPILER_LIB "${VCL_COMPILER_LIB_PATH}/npu_vcl_compiler.dll")
-            file(COPY "${VCL_COMPILER_LIB}"
-                DESTINATION "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}")
-            message(STATUS "Copying prebuilt VCL compiler libraries npu_vcl_compiler.dll to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} for windows")
+            # file(COPY "${VCL_COMPILER_LIB}"
+            #     DESTINATION "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_BUILD_TYPE}")
+            message(STATUS "Not Copying prebuilt VCL compiler libraries npu_vcl_compiler.dll to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} for windows")
         else()
             # Check if the operating system is Linux and not macOS
             if(UNIX AND NOT APPLE)
@@ -141,9 +141,9 @@ if(ENABLE_VCL_FOR_COMPILER)
                             COPYONLY
                         )
                         set(VCL_COMPILER_LIB "${VCL_COMPILER_LIB_PATH}/libnpu_vcl_compiler.so")
-                        file(COPY "${VCL_COMPILER_LIB}"
-                            DESTINATION "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-                        message(STATUS "Copying prebuilt VCL compiler libraries libnpu_vcl_compiler.so to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} for Ubuntu 22.04")
+                        # file(COPY "${VCL_COMPILER_LIB}"
+                        #     DESTINATION "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+                        message(STATUS "Not Copying prebuilt VCL compiler libraries libnpu_vcl_compiler.so to ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} for Ubuntu 22.04")
                     elseif(OS_VERSION STREQUAL "24.04")
                         message(STATUS "This is Ubuntu 24.04")
                         # Ubuntu 24.04-specific settings or actions
