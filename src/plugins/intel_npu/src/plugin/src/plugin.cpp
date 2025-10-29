@@ -642,6 +642,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             OPENVINO_THROW("Option 'CACHE_DIR' is not supported with MLIR compiler type");
         }
     }
+    compiler.update_CompilerPlatform(resolveCompilerType(_globalConfig, properties), platform);
 #endif
 
     const auto platform =
@@ -732,6 +733,11 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
         localConfig.update({{ov::intel_npu::weightless_blob.name(), cacheModeOptimizeSize ? "YES" : "NO"}});
     }
+
+    std::cout << "---1---platform is " << platform << std::endl;
+#ifndef VCL_FOR_COMPILER
+    compiler.update_CompilerPlatform(resolveCompilerType(_globalConfig, properties), platform);
+#endif
 
     std::shared_ptr<intel_npu::IGraph> graph;
     std::cout << "---1---plugin print localConfig: \n" << "    " <<localConfig.toString() << std::endl;
