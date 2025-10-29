@@ -96,6 +96,7 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
 
 #ifndef VCL_FOR_COMPILER
     void update_CompilerPlatform(const std::string platform) {
+        std::cout << "---3---update_CompilerPlatform in adapter.cpp " << std::endl;
         _compiler->updateVCLCompilerCreate(platform);
     }
 #endif

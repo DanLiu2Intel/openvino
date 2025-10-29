@@ -195,14 +195,16 @@ VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerIm
 }
 
 void VCLCompilerImpl::updateVCLCompilerCreate(const std::string platform) {
+    std::cout << "---4---update_CompilerPlatform in adapter.cpp " << std::endl;
+    std::cout << "  ====> updateVCLCompilerCreate called, platform: " << platform << std::endl;
     std::map<std::string, vcl_device_desc_t> device_configs = {
         {"NPU.4000",{sizeof(vcl_device_desc_t), 0x643E, 0, 5}}, //4000
-        {"NPU.3720",{sizeof(vcl_device_desc_t), 0x7D1D, 0, 1}} // 3720, need to be updated tile
+        {"NPU.3720",{sizeof(vcl_device_desc_t), 0x7D1D, 0 1}} // 3720, need to be updated tile
         //error: narrowing conversion of ‘-1’ from ‘int’ to ‘uint16_t’ {aka ‘short unsigned int’} [-Wnarrowing]
         //{{sizeof(vcl_device_desc_t), 0xAD1D, -1, 1}}  // 3720, need to be updated tile
     };
 
-    std::cout << "updateVCLCompilerCreate:: platform is " << platform << std::endl;
+    std::cout << " =====> updateVCLCompilerCreate:: platform is " << platform << std::endl;
     vcl_compiler_desc_t compilerDesc;
     compilerDesc.version = _vclVersion;
     compilerDesc.debugLevel = static_cast<__vcl_log_level_t>(static_cast<int>(Logger::global().level()) - 1);
@@ -215,14 +217,13 @@ void VCLCompilerImpl::updateVCLCompilerCreate(const std::string platform) {
     THROW_ON_FAIL_FOR_VCL("vclCompilerGetProperties",
                           vclCompilerGetProperties(_compilerHandle, &_compilerProperties),
                           _logHandle);
-
+    std::cout << "-- Update VCL Compiler successfully" << std::endl;
     _logger.info("-- Update VCL Compiler successfully");
     _logger.info("-- Finally VCL Compiler Properties: ID: %s, Version: %d.%d, Supported Opsets: %u",
                  _compilerProperties.id,
                  _compilerProperties.version.major,
                  _compilerProperties.version.minor,
                  _compilerProperties.supportedOpsets);
-
 }
 
 VCLCompilerImpl::~VCLCompilerImpl() {

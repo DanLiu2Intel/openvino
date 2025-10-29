@@ -736,6 +736,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     std::cout << "---1---platform is " << platform << std::endl;
 #ifndef VCL_FOR_COMPILER
+    std::cout << "---2---call update_CompilerPlatform " << std::endl;
     compiler.update_CompilerPlatform(resolveCompilerType(_globalConfig, properties), platform);
 #endif
 
