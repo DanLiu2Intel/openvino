@@ -146,6 +146,7 @@ void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
 }
 
 static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& base_conf, const ov::AnyMap& local_conf) {
+    std::cout << "  ==== Compiler type" << std::endl;
     // first look if provided config changes compiler type
     auto it = local_conf.find(std::string(COMPILER_TYPE::key()));
     if (it != local_conf.end()) {
@@ -165,7 +166,7 @@ static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& bas
     //     }
     // }
     
-    std::cout << "  ==== Compiler type provided by default config: " << it->second.as<std::string>() << std::endl;
+    std::cout << "  ==== Compiler type provided by default config: " << base_conf.get<COMPILER_TYPE>() << std::endl;
     // if there is no compiler_type provided = use base_config value
     return base_conf.get<COMPILER_TYPE>();
 }
@@ -642,7 +643,6 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             OPENVINO_THROW("Option 'CACHE_DIR' is not supported with MLIR compiler type");
         }
     }
-    compiler.update_CompilerPlatform(resolveCompilerType(_globalConfig, properties), platform);
 #endif
 
     const auto platform =
