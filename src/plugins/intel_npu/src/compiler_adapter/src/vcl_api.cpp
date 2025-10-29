@@ -199,7 +199,7 @@ void VCLCompilerImpl::updateVCLCompilerCreate(const std::string platform) {
     std::cout << "  ====> updateVCLCompilerCreate called, platform: " << platform << std::endl;
     std::map<std::string, vcl_device_desc_t> device_configs = {
         {"NPU.4000",{sizeof(vcl_device_desc_t), 0x643E, 0, 5}}, //4000
-        {"NPU.3720",{sizeof(vcl_device_desc_t), 0x7D1D, 0 1}} // 3720, need to be updated tile
+        {"NPU.3720",{sizeof(vcl_device_desc_t), 0x7D1D, 0, 1}} // 3720, need to be updated tile
         //error: narrowing conversion of ‘-1’ from ‘int’ to ‘uint16_t’ {aka ‘short unsigned int’} [-Wnarrowing]
         //{{sizeof(vcl_device_desc_t), 0xAD1D, -1, 1}}  // 3720, need to be updated tile
     };
