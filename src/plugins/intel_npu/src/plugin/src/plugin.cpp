@@ -149,9 +149,23 @@ static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& bas
     // first look if provided config changes compiler type
     auto it = local_conf.find(std::string(COMPILER_TYPE::key()));
     if (it != local_conf.end()) {
+        std::cout << "  ==== Compiler type provided by user config: " << it->second.as<std::string>() << std::endl;
         // if compiler_type is provided by local config = use that
         return COMPILER_TYPE::parse(it->second.as<std::string>());
     }
+
+    // // update the compilerType by platform:
+    // //  3720 -> DRIVER
+    // //    4000 and later -> MLIR (default value)
+    // auto it_platform = local_conf.find(std::string(PLATFORM::key()));
+    // if (it_platform != local_conf.end()) {
+    //     // if platform is provided by local config = use that
+    //     if (it_platform->second.as<std::string>() == ov::intel_npu::Platform::NPU3720) {
+    //         return ov::intel_npu::CompilerType::DRIVER;
+    //     }
+    // }
+    
+    std::cout << "  ==== Compiler type provided by default config: " << it->second.as<std::string>() << std::endl;
     // if there is no compiler_type provided = use base_config value
     return base_conf.get<COMPILER_TYPE>();
 }
@@ -226,6 +240,18 @@ std::shared_ptr<const ov::Model> exclude_model_ptr_from_map(ov::AnyMap& properti
         properties.erase(ov::hint::model.name());
     }
     return modelPtr;
+}
+
+void print_any_map(const ov::AnyMap& amap) {
+    for (const auto& kv : amap) {
+        std::cout << kv.first << ": ";
+        if (!kv.second.empty()) {
+            std::cout << kv.second.as<std::string>();
+        } else {
+            std::cout << "<empty>";
+        }
+        std::cout << std::endl;
+    }
 }
 
 }  // namespace
@@ -570,6 +596,8 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
+    std::cout << "---1---plugin print _globalConfig: \n" << "    " <<_globalConfig.toString() << std::endl;
+    print_any_map(properties);
 
     // Before going any further: if
     // ... 1 - NPUW mode is activated
@@ -594,6 +622,10 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     const std::map<std::string, std::string> localPropertiesMap = any_copy(localProperties);
     update_log_level(localPropertiesMap);
+
+
+    std::cout << "--2--plugin print _globalConfig: \n" << "    " <<_globalConfig.toString() << std::endl;
+    print_any_map(properties);
 
     // create compiler
     CompilerAdapterFactory compilerAdapterFactory;
@@ -702,7 +734,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     }
 
     std::shared_ptr<intel_npu::IGraph> graph;
-
+    std::cout << "---1---plugin print localConfig: \n" << "    " <<localConfig.toString() << std::endl;
     try {
         _logger.debug("performing compile");
 
