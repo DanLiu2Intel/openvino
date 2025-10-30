@@ -230,6 +230,8 @@ void Graph::initialize(const Config& config) {
     //  _zeGraphExt->initializeGraph(). The driver will not access the original blob from this moment on, so we are
     //  releasing it here to avoid unnecessary memory usage.
     _blobIsReleased = release_blob(config);
+    std::cout << " ------export----------- config is " << config.toString() <<std::endl;
+    std::cout << " ------export----------- _blobIsReleased is " << _blobIsReleased <<std::endl;
 
     if (!_batchSize.has_value()) {
         _batchSize = determine_batch_size();
@@ -244,9 +246,12 @@ void Graph::initialize(const Config& config) {
 }
 
 bool Graph::release_blob(const Config& config) {
+    std::cout  << "-----release_blob 1-----" << std::endl;
+    //maybe related to _graphDesc
     if ((_zeGraphExt != nullptr && _zeGraphExt->isBlobDataImported(_graphDesc)) || _blobIsPersistent ||
         _blob == std::nullopt || _zeroInitStruct->getGraphDdiTable().version() < ZE_MAKE_VERSION(1, 8) ||
         config.get<PERF_COUNT>()) {
+        std::cout  << "-----release_blob 2-----" << std::endl;
         return false;
     }
 
@@ -255,11 +260,12 @@ bool Graph::release_blob(const Config& config) {
     _zeroInitStruct->getGraphDdiTable().pfnGetProperties2(_graphDesc._handle, &properties);
 
     if (~properties.initStageRequired & ZE_GRAPH_STAGE_INITIALIZE) {
+        std::cout  << "-----release_blob 3-----" << std::endl;
         return false;
     }
 
     _blob = std::nullopt;
-    _logger.debug("Blob is released");
+    _logger.debug("Blob is released");  //call here
 
     return true;
 };
