@@ -13,6 +13,79 @@
 
 namespace intel_npu {
 
+const char* structure_type_to_string(ze_structure_type_graph_ext_t stype) {
+    switch(stype) {
+        case ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES: return "ZE_STRUCTURE_TYPE_DEVICE_GRAPH_PROPERTIES";
+        case ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_DESC_PROPERTIES";
+        case ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES";
+        case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES: return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_PROPERTIES";
+        case ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL: return "ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL";
+        case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA: return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA";
+        case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED";
+        case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC";
+        default: return "UNKNOWN";
+    }
+}
+
+const char* init_stage_to_string(ze_graph_init_stage_t stage) {
+    switch(stage) {
+        case ZE_GRAPH_STAGE_COMMAND_LIST_INITIALIZE: return "ZE_GRAPH_STAGE_COMMAND_LIST_INITIALIZE";
+        case ZE_GRAPH_STAGE_INITIALIZE: return "ZE_GRAPH_STAGE_INITIALIZE";
+        default: return "UNKNOWN";
+    }
+}
+
+void print_ze_graph_properties_2(const ze_graph_properties_2_t& props) {
+    std::cout << "========================================" << std::endl;
+    std::cout << "ze_graph_properties_2_t Structure:" << std::endl;
+    std::cout << "========================================" << std::endl;
+    
+
+    std::cout << std::left << std::setw(30) << "Member Name" 
+              << std::setw(40) << "Type" 
+              << "Value" << std::endl;
+    std::cout << std::string(100, '-') << std::endl;
+    
+    // stype
+    std::cout << std::setw(30) << "stype" 
+              << std::setw(40) << "ze_structure_type_graph_ext_t" 
+              << props.stype << " (" << structure_type_to_string(props.stype) << ")" << std::endl;
+    
+    // pNext
+    std::cout << std::setw(30) << "pNext" 
+              << std::setw(40) << "void*" 
+              << props.pNext;
+    if (props.pNext == nullptr) {
+        std::cout << " (nullptr)";
+    } else {
+        std::cout << " (0x" << std::hex << reinterpret_cast<uintptr_t>(props.pNext) << std::dec << ")";
+    }
+    std::cout << std::endl;
+    
+    // numGraphArgs
+    std::cout << std::setw(30) << "numGraphArgs" 
+              << std::setw(40) << "uint32_t" 
+              << props.numGraphArgs << std::endl;
+    
+    // initStageRequired
+    std::cout << std::setw(30) << "initStageRequired" 
+              << std::setw(40) << "ze_graph_init_stage_t" 
+              << "0x" << std::hex << props.initStageRequired << std::dec 
+              << " (" << init_stage_to_string(props.initStageRequired) << ")" << std::endl;
+    
+    std::cout << "========================================" << std::endl;
+    
+
+    std::cout << "\nStructure Size Information:" << std::endl;
+    std::cout << "  sizeof(ze_graph_properties_2_t): " << sizeof(ze_graph_properties_2_t) << " bytes" << std::endl;
+    std::cout << "  sizeof(stype):                   " << sizeof(props.stype) << " bytes" << std::endl;
+    std::cout << "  sizeof(pNext):                   " << sizeof(props.pNext) << " bytes" << std::endl;
+    std::cout << "  sizeof(numGraphArgs):            " << sizeof(props.numGraphArgs) << " bytes" << std::endl;
+    std::cout << "  sizeof(initStageRequired):       " << sizeof(props.initStageRequired) << " bytes" << std::endl;
+    std::cout << "========================================" << std::endl;
+}
+
+
 Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
              const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct,
              const GraphDescriptor& graphDesc,
@@ -246,21 +319,37 @@ void Graph::initialize(const Config& config) {
 }
 
 bool Graph::release_blob(const Config& config) {
-    std::cout  << "-----release_blob 1-----" << std::endl;
-    //maybe related to _graphDesc
-    if ((_zeGraphExt != nullptr && _zeGraphExt->isBlobDataImported(_graphDesc)) || _blobIsPersistent ||
-        _blob == std::nullopt || _zeroInitStruct->getGraphDdiTable().version() < ZE_MAKE_VERSION(1, 8) ||
-        config.get<PERF_COUNT>()) {
-        std::cout  << "-----release_blob 2-----" << std::endl;
+    std::cout << "------(1)- _graphDesc._memoryPersistent is " << _graphDesc._memoryPersistent << std::endl;
+    std::cout << "------(2)- _blobIsPersistent is " << _blobIsPersistent << std::endl;
+    if(_blob == std::nullopt) {
+        std::cout << "------(3)- _blob is empty" << std::endl;
+    } else {
+        std::cout << "------(3)- _blob is NOT empty" << std::endl;
+    }
+    std::cout << "------(4.1)- _zeroInitStruct is ->getGraphDdiTable().version()  is " << _zeroInitStruct->getGraphDdiTable().version() << std::endl;
+    std::cout << "------(4.2)- ZE_MAKE_VERSION(1, 8) " << _blobIsPersistent << std::endl;
+    print_ze_graph_properties_2(properties);
+    std::cout << "-------(5)---------config.get<PERF_COUNT>() is " << config.get<PERF_COUNT>() << std::endl;
+
+    if (_graphDesc._memoryPersistent || _blobIsPersistent || _blob == std::nullopt ||
+        _zeroInitStruct->getGraphDdiTable().version() < ZE_MAKE_VERSION(1, 8) || config.get<PERF_COUNT>()) {
+        std::cout << "----------Run here 1-----------" << std::endl;
         return false;
     }
 
     ze_graph_properties_2_t properties = {};
     properties.stype = ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES;
+    std::cout << "----------------6---------------" << std::endl;
+    print_ze_graph_properties_2(properties);
+    std::cout << "----------------7---------------" << std::endl;
     _zeroInitStruct->getGraphDdiTable().pfnGetProperties2(_graphDesc._handle, &properties);
+    std::cout << "----------------8---------------" << std::endl;
+    print_ze_graph_properties_2(properties);
+    std::cout << "----------------9---------------" << std::endl;
 
+    std::cout << "----------(10) ~properties.initStageRequired & ZE_GRAPH_STAGE_INITIALIZE is " << (~properties.initStageRequired & ZE_GRAPH_STAGE_INITIALIZE) << std::endl;
     if (~properties.initStageRequired & ZE_GRAPH_STAGE_INITIALIZE) {
-        std::cout  << "-----release_blob 3-----" << std::endl;
+        std::cout << "----------Run here 2-----------" << std::endl;
         return false;
     }
 
