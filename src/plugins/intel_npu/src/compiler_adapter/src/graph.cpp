@@ -10,6 +10,7 @@
 #include "intel_npu/utils/utils.hpp"
 #include "intel_npu/utils/zero/zero_api.hpp"
 #include "openvino/runtime/make_tensor.hpp"
+#include <ze_graph_ext.h>
 
 namespace intel_npu {
 
