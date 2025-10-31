@@ -23,7 +23,8 @@ const char* structure_type_to_string(ze_structure_type_graph_ext_t stype) {
         case ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL: return "ZE_STRUCTURE_TYPE_GRAPH_ACTIVATION_KERNEL";
         case ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA: return "ZE_STRUCTURE_TYPE_GRAPH_ARGUMENT_METADATA";
         case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_ARGUMENT_EXP_DESC_DEPRECATED";
-        case ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC: return "ZE_STRUCTURE_TYPE_MUTABLE_GRAPH_PROFILING_QUERY_EXP_DESC";
+        case ZE_STRUCTURE_TYPE_GRAPH_INPUT_HASH: return "ZE_STRUCTURE_TYPE_GRAPH_INPUT_HASH";
+        case ZE_STRUCTURE_TYPE_GRAPH_FORCE_UINT32: return "ZE_STRUCTURE_TYPE_GRAPH_FORCE_UINT32";
         default: return "UNKNOWN";
     }
 }
@@ -329,7 +330,6 @@ bool Graph::release_blob(const Config& config) {
     }
     std::cout << "------(4.1)- _zeroInitStruct is ->getGraphDdiTable().version()  is " << _zeroInitStruct->getGraphDdiTable().version() << std::endl;
     std::cout << "------(4.2)- ZE_MAKE_VERSION(1, 8) " << _blobIsPersistent << std::endl;
-    print_ze_graph_properties_2(properties);
     std::cout << "-------(5)---------config.get<PERF_COUNT>() is " << config.get<PERF_COUNT>() << std::endl;
 
     if (_graphDesc._memoryPersistent || _blobIsPersistent || _blob == std::nullopt ||
