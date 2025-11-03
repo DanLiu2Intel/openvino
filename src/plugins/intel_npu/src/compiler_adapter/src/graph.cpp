@@ -106,6 +106,8 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
       _blobIsPersistent(blobIsPersistent),
       _compiler(compiler),
       _logger("Graph", config.get<LOG_LEVEL>()) {
+
+    std::cout << "Graph constructor called. blobIsPersistent=" << blobIsPersistent << std::endl;
     if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()) {
         _logger.info("Graph initialize is deferred from the \"Graph\" constructor");
         return;
@@ -330,7 +332,8 @@ bool Graph::release_blob(const Config& config) {
         std::cout << "------(3)- _blob is NOT empty" << std::endl;
     }
     std::cout << "------(4.1)- _zeroInitStruct is ->getGraphDdiTable().version()  is " << _zeroInitStruct->getGraphDdiTable().version() << std::endl;
-    std::cout << "------(4.2)- ZE_MAKE_VERSION(1, 8) " << _blobIsPersistent << std::endl;
+    std::cout << "------(4.2)- ZE_MAKE_VERSION(1, 8) " << ZE_MAKE_VERSION(1, 8) << std::endl;
+    std::cout << "------(4.3)- _zeroInitStruct->getGraphDdiTable().version() < ZE_MAKE_VERSION(1, 8) is  " << (_zeroInitStruct->getGraphDdiTable().version() < ZE_MAKE_VERSION(1, 8)) << std::endl;
     std::cout << "-------(5)---------config.get<PERF_COUNT>() is " << config.get<PERF_COUNT>() << std::endl;
 
     if (_graphDesc._memoryPersistent || _blobIsPersistent || _blob == std::nullopt ||

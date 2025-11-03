@@ -489,6 +489,7 @@ int main(int argc, char* argv[]) {
         auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
         loadNetworkTimeElapsed =
             std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
+        std::cout << "------compile_tool  to save blob-------" << std::endl;
         std::string outputName = FLAGS_o;
         if (outputName.empty()) {
             outputName = getFileNameFromPath(fileNameNoExt(FLAGS_m)) + ".blob";

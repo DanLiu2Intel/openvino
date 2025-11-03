@@ -705,8 +705,11 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         _logger.debug("performing compile");
 
         if (!localConfig.get<WEIGHTLESS_BLOB>()) {
+            std::cout << "------(0.1) Plugin:: compile_model graph -------, localConfig is " << localConfig.toString() << std::endl;
+
             graph = compiler->compile(successfullyDebatched ? batchedModel : model->clone(), localConfig);
         } else {
+            std::cout << "------(0.2) Plugin:: compile_model graph -------, localConfig is " << localConfig.toString() << std::endl;
             check_weightless_cache_attribute_occurrence(model);
             graph = compiler->compileWS(successfullyDebatched ? batchedModel : model->clone(), localConfig);
         }

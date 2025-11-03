@@ -59,6 +59,9 @@ public:
     uint32_t get_unique_id() override;
     void set_last_submitted_id(uint32_t id_index) override;
     uint32_t get_last_submitted_id() const override;
+    bool get__blobIsPersistent() const {
+        return _blobIsPersistent;
+    }
 
     ~Graph() override;
 

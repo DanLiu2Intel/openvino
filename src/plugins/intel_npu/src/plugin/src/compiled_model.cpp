@@ -34,6 +34,8 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _device(device),
       _graph(graph),
       _batchSize(batchSize) {
+    
+    std::cout << "------(1) CompiledModel::CompiledModel -------get_graph().get_blobIsPersistent()" << get_graph().get_blobIsPersistent() << std::endl;
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
 
     OV_ITT_TASK_CHAIN(COMPILED_MODEL, itt::domains::NPUPlugin, "CompiledModel::CompiledModel", "initialize_properties");
