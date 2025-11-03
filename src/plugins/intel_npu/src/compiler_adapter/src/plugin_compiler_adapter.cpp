@@ -111,7 +111,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
                          "allowed. Only exports are available");
         }
     }
-
+    std::cout << "will format the graph,  _memoryPersistent is "<< graphDesc._memoryPersistent << std::endl;
     return std::make_shared<Graph>(
         _zeGraphExt,
         _zeroInitStruct,

@@ -19,15 +19,17 @@ public:
         switch (type) {
         case ov::intel_npu::CompilerType::MLIR: {
             if (engineBackend == nullptr || engineBackend->getName() != "LEVEL0") {
+                std::cout << "(1)PluginCompilerAdapter  will be used" << std::endl;
                 return std::make_unique<PluginCompilerAdapter>(nullptr);
             }
             return std::make_unique<PluginCompilerAdapter>(engineBackend->getInitStructs());
         }
         case ov::intel_npu::CompilerType::DRIVER: {
             if (engineBackend == nullptr || engineBackend->getName() != "LEVEL0") {
+                std::cout << "(2)PluginCompilerAdapter  will be used" << std::endl;
                 OPENVINO_THROW("NPU Compiler Adapter must be used with LEVEL0 backend");
             }
-
+            std::cout << "(3)DriverCompilerAdapter  will be used" << std::endl;
             return std::make_unique<DriverCompilerAdapter>(engineBackend->getInitStructs());
         }
         default:
