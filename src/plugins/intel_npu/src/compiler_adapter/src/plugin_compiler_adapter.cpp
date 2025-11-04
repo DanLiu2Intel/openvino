@@ -135,7 +135,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
 #endif
                                    std::move(tensor),
                                    config,
-                                   /* blobAllocatedByPlugin = */ false,
+                                   /* blobAllocatedByPlugin = */ true,
                                    _compiler);
 }
 
