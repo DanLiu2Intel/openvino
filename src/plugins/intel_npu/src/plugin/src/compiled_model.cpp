@@ -17,6 +17,7 @@
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/executor_manager.hpp"
 #include "transformations/utils/utils.hpp"
+#include "graph.hpp"
 
 namespace intel_npu {
 
@@ -34,6 +35,14 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _device(device),
       _graph(graph),
       _batchSize(batchSize) {
+    std::cout << "------(1) CompiledModel::CompiledModel -------get_graph().get_blobIsPersistent()" << std::endl;
+    auto graphPtr = std::dynamic_pointer_cast<Graph>(get_graph());
+    if (graphPtr) {
+        std::cout << "   ====> get_blobIsPersistent is " << graphPtr->get_blobIsPersistent() << std::endl;
+    } else {
+        std::cout << "get_graph() is not a Graph instance" << std::endl;
+    }
+
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
 
     OV_ITT_TASK_CHAIN(COMPILED_MODEL, itt::domains::NPUPlugin, "CompiledModel::CompiledModel", "initialize_properties");

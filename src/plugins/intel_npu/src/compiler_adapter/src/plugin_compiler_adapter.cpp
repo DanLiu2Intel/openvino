@@ -112,15 +112,22 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
         }
     }
 
-    return std::make_shared<Graph>(
-        _zeGraphExt,
-        _zeroInitStruct,
-        graphDesc,
-        std::move(networkDesc.metadata),
-        std::move(tensor),
-        config,
-        /* persistentBlob = */ true,  // exporting the blob shall be available in such a scenario
-        _compiler);
+    std::cout << "will format the graph,  _memoryPersistent is " << graphDesc._memoryPersistent << std::endl;
+    std::cout
+        << "------(1) PluginCompilerAdapter::compile to return Graph, /* blobAllocatedByPlugin = */ false, -------"
+        << std::endl;
+    return std::make_shared<Graph>(_zeGraphExt,
+                                   _zeroInitStruct,
+                                   graphDesc,
+#ifdef VCL_FOR_COMPILER
+                                   std::move(networkMeta),
+#else
+                                   std::move(networkDesc.metadata),
+#endif
+                                   std::move(tensor),
+                                   config,
+                                   /* blobAllocatedByPlugin = */ false,
+                                   _compiler);
 }
 
 std::shared_ptr<IGraph> PluginCompilerAdapter::compileWS(const std::shared_ptr<ov::Model>& model,
@@ -240,6 +247,9 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compileWS(const std::shared_ptr<o
         initNetworkMetadata.push_back(std::move(networkDesc->metadata));
     }
 
+    std::cout
+        << "------(2) PluginCompilerAdapter::compileWS to return WeightlessGraph, /* persistentBlob = */ true, -------"
+        << std::endl;
     return std::make_shared<WeightlessGraph>(
         _zeGraphExt,
         _zeroInitStruct,
@@ -283,6 +293,8 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
     const bool blobIsPersistent = config.has<COMPILED_BLOB>()       ? true
                                   : config.has<LOADED_FROM_CACHE>() ? config.get<LOADED_FROM_CACHE>()
                                                                     : false;
+    std::cout << "------(2) PluginCompilerAdapter::parse to return Graph or WeightlessGraph blobIsPersistent is "
+              << blobIsPersistent << "-------" << std::endl;
 
     if (!initBlobs.has_value()) {
         return std::make_shared<Graph>(_zeGraphExt,
@@ -314,6 +326,8 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
             initGraphDescriptors.push_back(initGraphDesc);
         }
     }
+    std::cout << "------(2) PluginCompilerAdapter::parse to return Graph or WeightlessGraph blobIsPersistent is "
+              << blobIsPersistent << "-------" << std::endl;
 
     _logger.debug("init schedules parse end");
     return std::make_shared<WeightlessGraph>(_zeGraphExt,

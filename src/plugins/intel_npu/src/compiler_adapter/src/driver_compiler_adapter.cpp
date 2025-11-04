@@ -64,6 +64,7 @@ namespace intel_npu {
 DriverCompilerAdapter::DriverCompilerAdapter(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct)
     : _zeroInitStruct(zeroInitStruct),
       _logger("DriverCompilerAdapter", Logger::global().level()) {
+    std::cout << "DriverCompilerAdapter  will be used" << std::endl;
     _logger.debug("initialize DriverCompilerAdapter start");
 
     uint32_t graphExtVersion = _zeroInitStruct->getGraphDdiTable().version();

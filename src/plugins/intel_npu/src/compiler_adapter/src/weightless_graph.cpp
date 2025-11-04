@@ -618,6 +618,7 @@ void WeightlessGraph::release_init_blob(const size_t initIndex) {
 }
 
 void WeightlessGraph::release_graphs() {
+    std::cout << "------(3) WeightlessGraph::release_graphs -------" << std::endl;
     size_t initIndex = 0;
     if (_zeGraphExt != nullptr) {
         for (auto& initGraphDesc : _initsGraphDesc) {
