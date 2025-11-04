@@ -17,6 +17,7 @@
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/executor_manager.hpp"
 #include "transformations/utils/utils.hpp"
+#include "graph.hpp"
 
 namespace intel_npu {
 
