@@ -713,10 +713,6 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         localConfig.update({{ov::intel_npu::weightless_blob.name(), cacheModeOptimizeSize ? "YES" : "NO"}});
     }
 
-#ifndef VCL_FOR_COMPILER
-    compiler.update_CompilerPlatform(resolveCompilerType(_globalConfig, properties), platform);
-#endif
-
     std::shared_ptr<intel_npu::IGraph> graph;
     try {
         _logger.debug("performing compile");
