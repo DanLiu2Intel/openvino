@@ -110,30 +110,6 @@ const std::shared_ptr<VCLApi>& VCLApi::getInstance() {
     return instance;
 }
 
-// void checkVCLCompilerCreate(vcl_version_info_t vclVersion, vcl_log_handle_t _logHandle, const Logger& _logger) {
-//     vcl_compiler_desc_t compilerDesc;
-//     compilerDesc.version = vclVersion;  
-//     compilerDesc.debugLevel = static_cast<__vcl_log_level_t>(static_cast<int>(Logger::global().level()) - 1);
-//     vcl_device_desc_t device_desc;
-//     device_desc.size = sizeof(vcl_device_desc_t);
-//     vcl_compiler_handle_t compilerHandle;
-//     vcl_compiler_properties_t compilerProperties;
-//     THROW_ON_FAIL_FOR_VCL("vclCompilerCreate",
-//                           vclCompilerCreate(&compilerDesc, &device_desc, &compilerHandle, &_logHandle),
-//                           nullptr);
-
-//     THROW_ON_FAIL_FOR_VCL("vclCompilerGetProperties",
-//                           vclCompilerGetProperties(compilerHandle, &compilerProperties),
-//                           _logHandle);
-
-//     _logger.info("VCL Compiler created successfully");
-//     _logger.info("VCL Compiler Properties: ID: %s, Version: %d.%d, Supported Opsets: %u",
-//                  compilerProperties.id,
-//                  compilerProperties.version.major,
-//                  compilerProperties.version.minor,
-//                  compilerProperties.supportedOpsets);
-// }
-
 VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerImpl", ov::log::Level::DEBUG) {
     _logger.debug("VCLCompilerImpl constructor start");
     // Initialize the VCL API
@@ -176,48 +152,6 @@ VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerIm
 
     _logger.info("VCL Compiler created successfully");
     _logger.info("VCL Compiler Properties: ID: %s, Version: %d.%d, Supported Opsets: %u",
-                 _compilerProperties.id,
-                 _compilerProperties.version.major,
-                 _compilerProperties.version.minor,
-                 _compilerProperties.supportedOpsets);
-
-    // // check support compiler create
-    // std::vector<vcl_device_desc_t> device_configs = {
-    //     {sizeof(vcl_device_desc_t), 0x643E, -1, 5}, //4000
-    //     {sizeof(vcl_device_desc_t), 0x7D1D, -1, 1}, // 3720, need to be updated tile
-    //     {sizeof(vcl_device_desc_t), 0xAD1D, -1, 1}  // 3720, need to be updated tile
-    // };
-
-    // for(auto it : device_configs) {
-    //     checkVCLCompilerCreate(_vclVersion, _logHandle, _logger);
-    // }
-
-}
-
-void VCLCompilerImpl::updateVCLCompilerCreate(const std::string platform) {
-
-    std::map<std::string, vcl_device_desc_t> device_configs = {
-        {"NPU.4000",{sizeof(vcl_device_desc_t), 0x643E, 0, 5}}, //4000
-        {"NPU.3720",{sizeof(vcl_device_desc_t), 0x7D1D, 0, 1}} // 3720, need to be updated tile
-        //error: narrowing conversion of ‘-1’ from ‘int’ to ‘uint16_t’ {aka ‘short unsigned int’} [-Wnarrowing]
-        // how to support new platform?
-    };
-
-    vcl_compiler_desc_t compilerDesc;
-    compilerDesc.version = _vclVersion;
-    compilerDesc.debugLevel = static_cast<__vcl_log_level_t>(static_cast<int>(Logger::global().level()) - 1);
-
-    vcl_device_desc_t new_device_desc = device_configs[platform];
-    THROW_ON_FAIL_FOR_VCL("vclCompilerCreate",
-                          vclCompilerCreate(&compilerDesc, &new_device_desc, &_compilerHandle, &_logHandle),
-                          nullptr);
-
-    THROW_ON_FAIL_FOR_VCL("vclCompilerGetProperties",
-                          vclCompilerGetProperties(_compilerHandle, &_compilerProperties),
-                          _logHandle);
-    std::cout << "-- Update VCL Compiler successfully" << std::endl;
-    _logger.info("-- Update VCL Compiler successfully");
-    _logger.info("-- Finally VCL Compiler Properties: ID: %s, Version: %d.%d, Supported Opsets: %u",
                  _compilerProperties.id,
                  _compilerProperties.version.major,
                  _compilerProperties.version.minor,
