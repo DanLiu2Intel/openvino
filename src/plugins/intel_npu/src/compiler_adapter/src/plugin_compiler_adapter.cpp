@@ -294,7 +294,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
     _logger.debug("parse start");
     network.assign(reinterpret_cast<const uint8_t*>(mainBlob.data()),
                    reinterpret_cast<const uint8_t*>(mainBlob.data()) + mainBlob.get_byte_size());
-    auto networkMeta = _compiler->parse(network, config);
+    networkMeta = _compiler->parse(network, config);
     network.clear();
     network.shrink_to_fit();
 
