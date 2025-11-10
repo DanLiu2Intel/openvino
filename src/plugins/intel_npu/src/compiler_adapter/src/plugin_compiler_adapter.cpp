@@ -65,19 +65,23 @@ ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
 
 namespace intel_npu {
 
-PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct)
+PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct,  bool forceVCL)
     : _zeroInitStruct(zeroInitStruct),
       _logger("PluginCompilerAdapter", Logger::global().level()) {
     _logger.debug("initialize PluginCompilerAdapter start");
 
 #ifdef VCL_FOR_COMPILER
-    _logger.info("VCL driver compiler will be used.");
-    _compiler = ov::SoPtr<intel_npu::ICompiler>(VCLCompilerImpl::getInstance(), VCLApi::getInstance()->getLibrary());
+    if(forceVCL) {
+        _logger.info("VCL driver compiler will be used.");
+        _compiler = ov::SoPtr<intel_npu::ICompiler>(VCLCompilerImpl::getInstance(), VCLApi::getInstance()->getLibrary());
+    }
 #else
-    _logger.info("PLUGIN compiler will be used.");
-    std::string baseName = "npu_mlir_compiler";
-    auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
-    _compiler = load_compiler(libPath);
+    if(!forceVCL) {
+        _logger.info("PLUGIN compiler will be used.");
+        std::string baseName = "npu_mlir_compiler";
+        auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
+        _compiler = load_compiler(libPath);
+    }
 #endif
     if (_zeroInitStruct == nullptr) {
         return;
