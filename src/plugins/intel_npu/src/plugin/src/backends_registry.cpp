@@ -53,7 +53,7 @@ ov::SoPtr<IEngineBackend> BackendsRegistry::initializeBackend(const AvailableBac
     } catch (...) {
         _logger.warning("Got an unknown error during backend '%s' loading", backendNameToString.c_str());
     }
-
+    std::cout << "===check point1=== Failed to initialize backend: " << backendNameToString << std::endl;
     return {nullptr};
 }
 

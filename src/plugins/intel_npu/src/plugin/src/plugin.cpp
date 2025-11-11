@@ -146,10 +146,18 @@ void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
 }
 
 static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& base_conf, const ov::AnyMap& local_conf) {
+    std::cout << "===check point3=== resolveCompilerType start1, base_conf is " << base_conf.toString() << std::endl;
+    if(local_conf.size() > 0) {
+        std::cout << "===check point3=== resolveCompilerType passed local_conf is not empty" << std::endl;
+        for(auto it : local_conf) {
+            std::cout << "===check point3=== resolveCompilerType key: " << it.first << " value: " << it.second.as<std::string>() << std::endl;
+        }
+    }
     // first look if provided config changes compiler type
     auto it = local_conf.find(std::string(COMPILER_TYPE::key()));
     if (it != local_conf.end()) {
         // if compiler_type is provided by local config = use that
+        std::cout << "===check point3=== resolveCompilerType 2" << std::endl;
         return COMPILER_TYPE::parse(it->second.as<std::string>());
     }
 
@@ -159,11 +167,14 @@ static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& bas
     //    4000 and later -> MLIR (default value)
     auto it_platform = local_conf.find(std::string(PLATFORM::key()));
     if (it_platform != local_conf.end()) {
+        std::cout << "===check point3=== resolveCompilerType 3 get platform" << std::endl;
         // if platform is provided by local config = use that
         if (it_platform->second.as<std::string>() == ov::intel_npu::Platform::NPU3720) {
+            std::cout << "===check point3=== resolveCompilerType start3" << std::endl;
             return ov::intel_npu::CompilerType::DRIVER;
         }
     }
+    std::cout << "===check point3=== resolveCompilerType end" << std::endl;
     return base_conf.get<COMPILER_TYPE>();
 }
 
@@ -247,6 +258,8 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
+    std::cout << "===check point1=== Plugin init1" << std::endl;
+
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -258,8 +271,11 @@ Plugin::Plugin()
 
     OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "GetBackend");
     // backend registry shall be created after configs are updated
+    std::cout << "===check point1=== Plugin init2" << std::endl;
     _backendsRegistry = std::make_unique<BackendsRegistry>();
+    std::cout << "===check point1=== Plugin init3" << std::endl;
     _backend = _backendsRegistry->getEngineBackend();
+    std::cout << "===check point1=== Plugin init4" << std::endl;
 
     if (_backend) {
         OV_ITT_TASK_NEXT(PLUGIN, "registerBackendOptions");
@@ -276,6 +292,7 @@ Plugin::Plugin()
     OV_ITT_TASK_NEXT(PLUGIN, "RegisterProperties");
     _properties = std::make_unique<Properties>(PropertiesType::PLUGIN, _globalConfig, _metrics, _backend);
     _properties->registerProperties();
+    std::cout << "===check point1=== Plugin init5 end" << std::endl;
 }
 
 void Plugin::init_options() {
@@ -346,6 +363,8 @@ void Plugin::init_options() {
     _globalConfig.parseEnvVars();
 
     // filter out unsupported options
+    std::cout << "===check point2=== filter_config_by_compiler_support: " << _globalConfig.toString() << std::endl;
+    // will move this part to compiled_model
     filter_config_by_compiler_support(_globalConfig);
 
     // NPUW properties are requested by OV Core during caching and have no effect on the NPU plugin. But we still need
@@ -416,6 +435,7 @@ void Plugin::filter_config_by_compiler_support(FilteredConfig& cfg) const {
 
     try {
         CompilerAdapterFactory compilerAdapterFactory;
+        std::cout << "===check point2=== Plugin filter_config_by_compiler_support start: cfg is "<< cfg.toString() << std::endl;
         compiler = compilerAdapterFactory.getCompiler(_backend, cfg.get<COMPILER_TYPE>());
     } catch (...) {
         // assuming getCompiler failed, meaning we are offline
@@ -580,6 +600,7 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    std::cout << "===check point2=== Plugin compile_model1" << std::endl;
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
 
     // Before going any further: if
@@ -607,8 +628,10 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     update_log_level(localPropertiesMap);
 
     // create compiler
+    std::cout << "===check point2=== Plugin compile_model2" << std::endl;
     CompilerAdapterFactory compilerAdapterFactory;
     auto compiler = compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, properties));
+    std::cout << "===check point2=== Plugin compile_model3" << std::endl;
 
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "fork_local_config");
     auto localConfig = fork_local_config(localPropertiesMap, compiler);
@@ -622,13 +645,20 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         }
     }
 #endif
-
+    std::cout << "===check point2=== Plugin compile_model4" << std::endl;
     const auto platform =
         utils::getCompilationPlatform(localConfig.get<PLATFORM>(),
                                       localConfig.get<DEVICE_ID>(),
                                       _backend == nullptr ? std::vector<std::string>() : _backend->getDeviceNames());
+
     auto device = _backend == nullptr ? nullptr : _backend->getDevice(localConfig.get<DEVICE_ID>());
     localConfig.update({{ov::intel_npu::platform.name(), platform}});
+    std::cout << "===check point2=== Plugin compile_model5, platform is " << platform << std::endl;
+    if(device) {
+        std::cout << "===check point2=== Plugin compile_model5, device is " << device->getName() << std::endl;
+    } else {
+        std::cout << "===check point2=== Plugin compile_model5, device is empty" << std::endl;
+    }
 
     auto updateBatchMode = [&](ov::intel_npu::BatchMode mode) {
         std::stringstream strStream;
@@ -643,7 +673,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     bool shouldHandleBatching = false;
     bool successfullyDebatched = false;
-
+    std::cout << "===check point2=== Plugin compile_model5" << std::endl;
     if (localConfig.isAvailable(ov::intel_npu::batch_mode.name())) {
         // Set default batch mode if not configured
         if (!localConfig.has(ov::intel_npu::batch_mode.name())) {
@@ -713,7 +743,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     }
 
     std::shared_ptr<intel_npu::IGraph> graph;
-
+    std::cout << "===check point2=== Plugin compile_model4" << std::endl;
     try {
         _logger.debug("performing compile");
 

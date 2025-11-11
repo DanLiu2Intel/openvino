@@ -69,33 +69,44 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
     : _zeroInitStruct(zeroInitStruct),
       _logger("PluginCompilerAdapter", Logger::global().level()) {
     _logger.debug("initialize PluginCompilerAdapter start");
+    std::cout << "===check point6=== PPluginCompilerAdapter 1" << std::endl;
 
 #ifdef VCL_FOR_COMPILER
+    std::cout << "===check point6=== PPluginCompilerAdapter 2" << std::endl;
     if(forceVCL) {
+        std::cout << "===check point6=== PPluginCompilerAdapter 2.2" << std::endl;
         _logger.info("VCL driver compiler will be used.");
         _compiler = ov::SoPtr<intel_npu::ICompiler>(VCLCompilerImpl::getInstance(), VCLApi::getInstance()->getLibrary());
+        std::cout << "===check point6=== PPluginCompilerAdapter 2.3" << std::endl;
     }
 #else
+    std::cout << "===check point6=== PPluginCompilerAdapter 3" << std::endl;
     if(!forceVCL) {
+        std::cout << "===check point6=== PPluginCompilerAdapter 3.1" << std::endl;
         _logger.info("PLUGIN compiler will be used.");
         std::string baseName = "npu_mlir_compiler";
+        std::cout << "===check point6=== PPluginCompilerAdapter 3.2" << std::endl;
         auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
+        std::cout << "===check point6=== PPluginCompilerAdapter 3.3" << std::endl;
         _compiler = load_compiler(libPath);
+        std::cout << "===check point6=== PPluginCompilerAdapter 3.4" << std::endl;
     }
 #endif
     if (_zeroInitStruct == nullptr) {
+        std::cout << "===check point6=== PPluginCompilerAdapter 4" << std::endl;
         return;
     }
-
+    std::cout << "===check point6=== PPluginCompilerAdapter 5" << std::endl;
     uint32_t graphExtVersion = _zeroInitStruct->getGraphDdiTable().version();
 
     _logger.info("PluginCompilerAdapter creating adapter using graphExtVersion");
-
+    std::cout << "===check point6=== PPluginCompilerAdapter 6" << std::endl;
     _zeGraphExt = std::make_shared<ZeGraphExtWrappers>(_zeroInitStruct);
 
     _logger.info("initialize PluginCompilerAdapter complete, using graphExtVersion: %d.%d",
                  ZE_MAJOR_VERSION(graphExtVersion),
                  ZE_MINOR_VERSION(graphExtVersion));
+    std::cout << "===check point6=== PPluginCompilerAdapter 7" << std::endl;
 }
 
 std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<const ov::Model>& model,
