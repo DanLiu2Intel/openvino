@@ -146,13 +146,35 @@ void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
 }
 
 static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& base_conf, const ov::AnyMap& local_conf) {
+    std::cout << "===check point3=== resolveCompilerType start1, base_conf is " << base_conf.toString() << std::endl;
+    if(local_conf.size() > 0) {
+        std::cout << "===check point3=== resolveCompilerType passed local_conf is not empty" << std::endl;
+        for(auto it : local_conf) {
+            std::cout << "===check point3=== resolveCompilerType key: " << it.first << " value: " << it.second.as<std::string>() << std::endl;
+        }
+    }
     // first look if provided config changes compiler type
     auto it = local_conf.find(std::string(COMPILER_TYPE::key()));
     if (it != local_conf.end()) {
         // if compiler_type is provided by local config = use that
+        std::cout << "===check point3=== resolveCompilerType 2" << std::endl;
         return COMPILER_TYPE::parse(it->second.as<std::string>());
     }
+
     // if there is no compiler_type provided = use base_config value
+    // update the compilerType by platform:
+    //  3720 -> DRIVER
+    //    4000 and later -> MLIR (default value)
+    auto it_platform = local_conf.find(std::string(PLATFORM::key()));
+    if (it_platform != local_conf.end()) {
+        std::cout << "===check point3=== resolveCompilerType 3 get platform" << std::endl;
+        // if platform is provided by local config = use that
+        if (it_platform->second.as<std::string>() == ov::intel_npu::Platform::NPU3720) {
+            std::cout << "===check point3=== resolveCompilerType start3" << std::endl;
+            return ov::intel_npu::CompilerType::DRIVER;
+        }
+    }
+    std::cout << "===check point3=== resolveCompilerType end" << std::endl;
     return base_conf.get<COMPILER_TYPE>();
 }
 
@@ -236,6 +258,8 @@ Plugin::Plugin()
     : _options(std::make_shared<OptionsDesc>()),
       _globalConfig(_options),
       _logger("NPUPlugin", Logger::global().level()) {
+    std::cout << "===check point1=== Plugin init1" << std::endl;
+
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -247,8 +271,11 @@ Plugin::Plugin()
 
     OV_ITT_TASK_CHAIN(PLUGIN, itt::domains::NPUPlugin, "Plugin::Plugin", "GetBackend");
     // backend registry shall be created after configs are updated
+    std::cout << "===check point1=== Plugin init2" << std::endl;
     _backendsRegistry = std::make_unique<BackendsRegistry>();
+    std::cout << "===check point1=== Plugin init3" << std::endl;
     _backend = _backendsRegistry->getEngineBackend();
+    std::cout << "===check point1=== Plugin init4" << std::endl;
 
     if (_backend) {
         OV_ITT_TASK_NEXT(PLUGIN, "registerBackendOptions");
@@ -265,6 +292,7 @@ Plugin::Plugin()
     OV_ITT_TASK_NEXT(PLUGIN, "RegisterProperties");
     _properties = std::make_unique<Properties>(PropertiesType::PLUGIN, _globalConfig, _metrics, _backend);
     _properties->registerProperties();
+    std::cout << "===check point1=== Plugin init5 end" << std::endl;
 }
 
 void Plugin::init_options() {
@@ -335,6 +363,8 @@ void Plugin::init_options() {
     _globalConfig.parseEnvVars();
 
     // filter out unsupported options
+    std::cout << "===check point2=== filter_config_by_compiler_support: " << _globalConfig.toString() << std::endl;
+    // will move this part to compiled_model
     filter_config_by_compiler_support(_globalConfig);
 
     // NPUW properties are requested by OV Core during caching and have no effect on the NPU plugin. But we still need
@@ -395,6 +425,93 @@ void Plugin::init_options() {
     REGISTER_OPTION(NPUW_LLM_ADDITIONAL_SHARED_LM_HEAD_CONFIG);
 }
 
+// void Plugin::filter_config_by_compiler_support_pass_compiler(FilteredConfig& cfg, const std::unique_ptr<ICompilerAdapter>& compiler) const {
+//     bool legacy = false;
+//     bool nocompiler = false;
+//     std::unique_ptr<ICompilerAdapter> compiler = nullptr;
+//     std::vector<std::string> compiler_support_list{};
+//     uint32_t compiler_version = 0;
+//     // create a dummy compiler to fetch version and supported options
+
+//     try {
+//         CompilerAdapterFactory compilerAdapterFactory;
+//         std::cout << "===check point2=== Plugin filter_config_by_compiler_support start: cfg is "<< cfg.toString() << std::endl;
+//         // compiler = compilerAdapterFactory.getCompiler(_backend, cfg.get<COMPILER_TYPE>());
+//     } catch (...) {
+//         // assuming getCompiler failed, meaning we are offline
+//         _logger.warning("No available compiler. Enabling only runtime options ");
+//         nocompiler = true;
+//     }
+
+//     if (!nocompiler || (compiler != nullptr)) {
+//         compiler_version = compiler->get_version();
+//         compiler_support_list = compiler->get_supported_options();
+//     }
+//     if (compiler_support_list.size() == 0) {
+//         _logger.info("No compiler support options list received! Fallback to version-based option registration");
+//         legacy = true;
+//     }
+
+//     // Logs
+//     _logger.debug("Compiler version: %ld", compiler_version);
+//     _logger.debug("Compiler supported options list (%ld): ", compiler_support_list.size());
+//     for (const auto& str : compiler_support_list) {
+//         _logger.debug("    %s ", str.c_str());
+//     }
+//     _logger.debug("Legacy registration: %s", legacy ? "true" : "false");
+
+//     // Parse enables
+//     cfg.walkEnables([&](const std::string& key) {
+//         bool isEnabled = false;
+//         auto opt = cfg.getOpt(key);
+//         // Runtime (plugin-only) options are always enabled
+//         if (opt.mode() == OptionMode::RunTime) {
+//             isEnabled = true;
+//         } else {  // Compiler and common options
+//             if (nocompiler && (opt.mode() == OptionMode::CompileTime)) {
+//                 // we do not register compileTime options if there is no compiler
+//                 isEnabled = false;
+//             } else if (legacy) {
+//                 // Compiler or common option in Legacy mode? Checking its supported version
+//                 if (compiler_version >= opt.compilerSupportVersion()) {
+//                     isEnabled = true;
+//                 }
+//             } else {
+//                 // We have compiler, we are not in legacy mode = we have a valid list of supported options
+//                 // Searching in the list
+//                 auto it = std::find(compiler_support_list.begin(), compiler_support_list.end(), key);
+//                 if (it != compiler_support_list.end()) {
+//                     isEnabled = true;
+//                 } else {
+//                     // Not found in the supported options list.
+//                     if (compiler != nullptr) {
+//                         // Checking if it is a private option?
+//                         isEnabled = compiler->is_option_supported(key);
+//                     } else {
+//                         // Not in the list and not a private option = disabling
+//                         isEnabled = false;
+//                     }
+//                 }
+//             }
+//         }
+//         if (!isEnabled) {
+//             _logger.debug("Config option %s not supported! Requirements not met.", key.c_str());
+//         } else {
+//             _logger.debug("Enabled config option %s", key.c_str());
+//         }
+//         // update enable flag
+//         cfg.enable(key, isEnabled);
+//     });
+
+//     // Special case for NPU_TURBO which might not be supported by compiler, but driver will still use it
+//     // if it exists in config = driver supports it
+//     // if compiler->is_option_suported is false = compiler doesn't support it and gets marked disabled by default logic
+//     // however, if driver supports it, we still need it (and will skip giving it to compiler) = force-enable
+//     if (_backend && _backend->isCommandQueueExtSupported()) {
+//         cfg.enable(ov::intel_npu::turbo.name(), true);
+//     }
+// }
+
 void Plugin::filter_config_by_compiler_support(FilteredConfig& cfg) const {
     bool legacy = false;
     bool nocompiler = false;
@@ -405,6 +522,7 @@ void Plugin::filter_config_by_compiler_support(FilteredConfig& cfg) const {
 
     try {
         CompilerAdapterFactory compilerAdapterFactory;
+        std::cout << "===check point2=== Plugin filter_config_by_compiler_support start: cfg is "<< cfg.toString() << std::endl;
         compiler = compilerAdapterFactory.getCompiler(_backend, cfg.get<COMPILER_TYPE>());
     } catch (...) {
         // assuming getCompiler failed, meaning we are offline
@@ -487,6 +605,7 @@ FilteredConfig Plugin::fork_local_config(const std::map<std::string, std::string
     update_log_level(rawConfig);
     // create a copy of the global config
     FilteredConfig localConfig = _globalConfig;
+    std::cout << "   ====> fork_local_config's _globalConfig is " << _globalConfig.toString() << std::endl;
     bool compiler_changed = false;
 
     // Check if compiler was changed
@@ -569,6 +688,7 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    std::cout << "===check point2=== Plugin compile_model1" << std::endl;
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
 
     // Before going any further: if
@@ -596,12 +716,21 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     update_log_level(localPropertiesMap);
 
     // create compiler
+    std::cout << "===check point2=== Plugin compile_model2" << std::endl;
     CompilerAdapterFactory compilerAdapterFactory;
     auto compiler = compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, properties));
+    std::cout << "===check point2=== Plugin compile_model3" << std::endl;
 
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "fork_local_config");
+    if (localPropertiesMap.size() > 0) {
+        std::cout << " localPropertiesMap is :" << std::endl; 
+        for (auto it : localPropertiesMap) {
+            std::cout << "   key is " << it.first << "   value is " << it.second << std::endl;
+        }
+    }
     auto localConfig = fork_local_config(localPropertiesMap, compiler);
 
+#ifndef VCL_FOR_COMPILER
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
         const auto compilerType = localConfig.get<COMPILER_TYPE>();
@@ -609,13 +738,21 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             OPENVINO_THROW("Option 'CACHE_DIR' is not supported with MLIR compiler type");
         }
     }
-
+#endif
+    std::cout << "===check point2=== Plugin compile_model4" << std::endl;
     const auto platform =
         utils::getCompilationPlatform(localConfig.get<PLATFORM>(),
                                       localConfig.get<DEVICE_ID>(),
                                       _backend == nullptr ? std::vector<std::string>() : _backend->getDeviceNames());
+
     auto device = _backend == nullptr ? nullptr : _backend->getDevice(localConfig.get<DEVICE_ID>());
     localConfig.update({{ov::intel_npu::platform.name(), platform}});
+    std::cout << "===check point2=== Plugin compile_model5, platform is " << platform << std::endl;
+    if(device) {
+        std::cout << "===check point2=== Plugin compile_model5, device is " << device->getName() << std::endl;
+    } else {
+        std::cout << "===check point2=== Plugin compile_model5, device is empty" << std::endl;
+    }
 
     auto updateBatchMode = [&](ov::intel_npu::BatchMode mode) {
         std::stringstream strStream;
@@ -630,7 +767,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     bool shouldHandleBatching = false;
     bool successfullyDebatched = false;
-
+    std::cout << "===check point2=== Plugin compile_model5" << std::endl;
     if (localConfig.isAvailable(ov::intel_npu::batch_mode.name())) {
         // Set default batch mode if not configured
         if (!localConfig.has(ov::intel_npu::batch_mode.name())) {
@@ -700,7 +837,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     }
 
     std::shared_ptr<intel_npu::IGraph> graph;
-
+    std::cout << "===check point2=== Plugin compile_model4" << std::endl;
     try {
         _logger.debug("performing compile");
 
@@ -878,6 +1015,12 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
     update_log_level(propertiesMap);
     auto compiler =
         compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, npu_plugin_properties));
+    if (propertiesMap.size() > 0) {
+        std::cout << " (query)propertiesMap is :" << std::endl; 
+        for (auto it : propertiesMap) {
+            std::cout << "   key is " << it.first << "   value is " << it.second << std::endl;
+        }
+    }
     auto localConfig = fork_local_config(propertiesMap, compiler, OptionMode::CompileTime);
     _logger.setLevel(localConfig.get<LOG_LEVEL>());
     const auto platform =
@@ -916,6 +1059,12 @@ std::shared_ptr<ov::ICompiledModel> Plugin::parse(const ov::Tensor& tensorBig,
         compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, npu_plugin_properties));
 
     OV_ITT_TASK_CHAIN(PLUGIN_PARSE_MODEL, itt::domains::NPUPlugin, "Plugin::parse", "fork_local_config");
+    if (propertiesMap.size() > 0) {
+        std::cout << " (parses)propertiesMap is :" << std::endl; 
+        for (auto it : propertiesMap) {
+            std::cout << "   key is " << it.first << "   value is " << it.second << std::endl;
+        }
+    }
     auto localConfig = fork_local_config(propertiesMap, compiler, OptionMode::RunTime);
     _logger.setLevel(localConfig.get<LOG_LEVEL>());
     const auto platform =
