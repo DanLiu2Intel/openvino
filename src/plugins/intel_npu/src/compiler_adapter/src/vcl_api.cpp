@@ -113,8 +113,24 @@ const std::shared_ptr<VCLApi>& VCLApi::getInstance() {
     return instance;
 }
 
-VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerImpl", ov::log::Level::DEBUG) {
+void setDeviceDesc(vcl_device_desc_t& device_desc, const std::string& device) {
+    std::unordered_map<std::string, vcl_device_desc_t> devicesDescsMap = {
+        {"3720", {sizeof(vcl_device_desc_t), 0xAD1D, static_cast<uint16_t>(-1), 2}},
+        {"4000", {sizeof(vcl_device_desc_t), 0x643E, static_cast<uint16_t>(-1), 5}},
+        // for other devices, need pass from user config
+    };
+
+    auto it = devicesDescsMap.find(device);
+    if(it != devicesDescsMap.end()) {
+        device_desc = it->second;
+    } else {
+        device_desc = devicesDescsMap["4000"];
+    }
+}
+
+VCLCompilerImpl::VCLCompilerImpl(const std::string& device) : _logHandle(nullptr), _logger("VCLCompilerImpl", ov::log::Level::DEBUG) {
     _logger.debug("VCLCompilerImpl constructor start");
+    std::cout << "=====update platform  by config pfrom plugin, device is" << device << std::endl;
     // Initialize the VCL API
     THROW_ON_FAIL_FOR_VCL("vclGetVersion", vclGetVersion(&_vclVersion, &_vclProfilingVersion), nullptr);
 
@@ -139,11 +155,17 @@ VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerIm
     compilerDesc.version = _vclVersion;
     compilerDesc.debugLevel = static_cast<__vcl_log_level_t>(static_cast<int>(Logger::global().level()) - 1);
     vcl_device_desc_t device_desc;
-    device_desc.size = sizeof(vcl_device_desc_t);
+    setDeviceDesc(device_desc, device);
+    std::cout << "check desc for device " << device << "   size is " << device_desc.size 
+    << "    deviceID : " << device_desc.deviceID 
+    << "   revision is " << device_desc.revision 
+    << "  tileCount is " << device_desc.tileCount << std::endl;
+    // device_desc.size = sizeof(vcl_device_desc_t);
 
-    device_desc.deviceID = 0x643E;  // Value from intel_npu/src/backend/src/zero_device.cpp
-    device_desc.revision = -1;      // -1 to skip the config
-    device_desc.tileCount = 5;      // 1 as init value
+    // device_desc.deviceID = 0xB03E;  // Value from intel_npu/src/backend/src/zero_device.cpp  //PTL
+    // device_desc.revision = -1;      // -1 to skip the config
+    // device_desc.tileCount = 5;      // 1 as init value
+
 
     THROW_ON_FAIL_FOR_VCL("vclCompilerCreate",
                           vclCompilerCreate(&compilerDesc, &device_desc, &_compilerHandle, &_logHandle),
@@ -251,14 +273,15 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
     _logger.debug("compiler vcl version: %d.%d", _vclVersion.major, _vclVersion.minor);
 
     /// Check the linked vcl version whether supported in plugin
-    int usedMajor = 0;
-    bool isDowngrade = false;
-    if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) < _vclVersion.major) {
-        usedMajor = VCL_COMPILER_VERSION_MAJOR;
-        isDowngrade = true;
+    uint16_t usedMajor = VCL_COMPILER_VERSION_MAJOR, usedMinor = VCL_COMPILER_VERSION_MINOR;
+    if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) == _vclVersion.major) {
+        usedMinor = std::min(static_cast<uint16_t>(VCL_COMPILER_VERSION_MINOR), _vclVersion.minor);
+    } else if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) > _vclVersion.major) {
+        usedMajor = _vclVersion.major;
+        usedMinor = _vclVersion.minor;
     }
-    int usedMinor = isDowngrade ? VCL_COMPILER_VERSION_MINOR : _vclVersion.minor;
 
+    std::cout << "====usedMajor4: " << usedMajor << ", usedMinor: " << usedMinor << std::endl;
     _logger.info("[Debug] Used VCL API Version: %d.%d", usedMajor, usedMinor);
     _logger.info("[Debug] compiler vcl version: %d.%d", _vclVersion.major, _vclVersion.minor);
     _logger.info("[Debug] embedding compiler vcl version: %d.%d",

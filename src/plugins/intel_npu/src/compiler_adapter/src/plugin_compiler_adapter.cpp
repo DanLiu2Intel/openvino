@@ -24,7 +24,7 @@
 #include "weightless_graph.hpp"
 
 namespace {
-#ifndef VCL_FOR_COMPILER
+
 std::shared_ptr<void> load_library(const std::string& libpath) {
 #    if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
     return ov::util::load_shared_object(ov::util::string_to_wstring(libpath).c_str());
@@ -51,7 +51,7 @@ ov::SoPtr<intel_npu::ICompiler> load_compiler(const std::string& libpath) {
 
     return ov::SoPtr<intel_npu::ICompiler>(compiler, compilerSO);
 }
-#endif
+
 ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
     auto tensor = ov::Tensor(ov::element::u8, ov::Shape{vector.size()}, vector.data());
     auto impl = ov::get_tensor_impl(std::move(tensor));
@@ -65,20 +65,47 @@ ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
 
 namespace intel_npu {
 
-PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct)
+PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct, const std::string& deviceId)
     : _zeroInitStruct(zeroInitStruct),
       _logger("PluginCompilerAdapter", Logger::global().level()) {
     _logger.debug("initialize PluginCompilerAdapter start");
 
 #ifdef VCL_FOR_COMPILER
-    _logger.info("VCL driver compiler will be used.");
-    _compiler = ov::SoPtr<intel_npu::ICompiler>(VCLCompilerImpl::getInstance(), VCLApi::getInstance()->getLibrary());
+    _logger.info("PLUGIN VCL compiler will be used.");
+    try {
+        std::cout << "=== check vcl library loading" << std::endl;
+        auto vclCompilerPtr = VCLCompilerImpl::getInstance(deviceId);
+        auto vclLib = VCLApi::getInstance()->getLibrary();
+        if (vclCompilerPtr && vclLib) {
+            _compiler = ov::SoPtr<intel_npu::ICompiler>(vclCompilerPtr, vclLib);
+        } else {
+            throw std::runtime_error("VCL compiler or library is nullptr");
+        }
+    } catch (const std::exception& vcl_exception) {
+        std::cout << "=== check mlir library loading" << std::endl;
+        _logger.warning("VCL compiler load failed: %s. Trying to load MLIR compiler...", vcl_exception.what());
+        std::string baseName = "npu_mlir_compiler";
+        auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
+        try {
+            _compiler = load_compiler(libPath);
+            if (!_compiler) {
+                throw std::runtime_error("MLIR compiler load returned nullptr");
+            } else {
+                _logger.info("MLIR compiler loaded successfully. PLUGIN compiler will be used.");
+            }
+        } catch (const std::exception& mlir_exception) {
+            _logger.error("MLIR compiler load failed: %s", mlir_exception.what());
+            throw std::runtime_error("Both VCL and MLIR compiler load failed, aborting.");
+        }
+    }
 #else
     _logger.info("PLUGIN compiler will be used.");
     std::string baseName = "npu_mlir_compiler";
     auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
     _compiler = load_compiler(libPath);
 #endif
+
+
     if (_zeroInitStruct == nullptr) {
         return;
     }

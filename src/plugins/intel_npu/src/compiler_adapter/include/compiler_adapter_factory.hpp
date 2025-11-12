@@ -15,15 +15,18 @@ namespace intel_npu {
 class CompilerAdapterFactory final {
 public:
     std::unique_ptr<ICompilerAdapter> getCompiler(const ov::SoPtr<IEngineBackend>& engineBackend,
-                                                  const ov::intel_npu::CompilerType type) const {
+                                                  const ov::intel_npu::CompilerType type,
+                                                  std::string deviceID = "4000") const {
         switch (type) {
         case ov::intel_npu::CompilerType::PLUGIN: {
+            std::cout << "===getCompiler==Using PLUGIN compiler adapter" << std::endl;
             if (engineBackend == nullptr || engineBackend->getName() != "LEVEL0") {
-                return std::make_unique<PluginCompilerAdapter>(nullptr);
+                return std::make_unique<PluginCompilerAdapter>(nullptr, deviceID);
             }
-            return std::make_unique<PluginCompilerAdapter>(engineBackend->getInitStructs());
+            return std::make_unique<PluginCompilerAdapter>(engineBackend->getInitStructs(), deviceID);
         }
         case ov::intel_npu::CompilerType::DRIVER: {
+            std::cout << "===getCompiler==Using DRIVER compiler adapter" << std::endl;
             if (engineBackend == nullptr || engineBackend->getName() != "LEVEL0") {
                 OPENVINO_THROW("NPU Compiler Adapter must be used with LEVEL0 backend");
             }
