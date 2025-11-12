@@ -11,25 +11,29 @@
 #include "intel_npu/utils/logger/logger.hpp"
 #include "intel_npu/utils/zero/zero_init.hpp"
 #include "openvino/runtime/so_ptr.hpp"
+#include "vcl_api.hpp"
 #include "ze_graph_ext_wrappers.hpp"
 
 namespace intel_npu {
 
 class PluginCompilerAdapter final : public ICompilerAdapter {
 public:
-    PluginCompilerAdapter(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct);
+    PluginCompilerAdapter(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct, const std::string& deviceId);
 
-    std::shared_ptr<IGraph> compile(const std::shared_ptr<const ov::Model>& model, const Config& config) const override;
+    std::shared_ptr<IGraph> compile(const std::shared_ptr<const ov::Model>& model,
+                                    const FilteredConfig& config) const override;
 
-    std::shared_ptr<IGraph> compileWS(const std::shared_ptr<ov::Model>& model, const Config& config) const override;
+    std::shared_ptr<IGraph> compileWS(const std::shared_ptr<ov::Model>& model,
+                                      const FilteredConfig& config) const override;
 
     std::shared_ptr<IGraph> parse(
         ov::Tensor mainBlob,
-        const Config& config,
+        const FilteredConfig& config,
         std::optional<std::vector<ov::Tensor>> initBlobs = std::nullopt,
         const std::optional<std::shared_ptr<const ov::Model>>& model = std::nullopt) const override;
 
-    ov::SupportedOpsMap query(const std::shared_ptr<const ov::Model>& model, const Config& config) const override;
+    ov::SupportedOpsMap query(const std::shared_ptr<const ov::Model>& model,
+                              const FilteredConfig& config) const override;
 
     std::vector<std::string> get_supported_options() const override;
 

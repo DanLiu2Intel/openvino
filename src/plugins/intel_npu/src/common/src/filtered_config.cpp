@@ -33,6 +33,7 @@ void FilteredConfig::update(const ConfigMap& options, OptionMode mode) {
         if (isAvailable(p.first)) {
             const auto opt = _desc->get(p.first, mode);
             _impl[opt.key().data()] = opt.validateAndParse(p.second);
+            std::cout << "Update option " << p.first << " to value " << p.second << std::endl;
         } else {
             OPENVINO_THROW("[ NOT_FOUND ] Option '" + p.first + "' is not supported for current configuration");
         }

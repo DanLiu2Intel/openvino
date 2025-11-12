@@ -10,7 +10,7 @@
 #include "intel_npu/network_metadata.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
 #include "intel_npu/utils/zero/zero_init.hpp"
-#include "ir_serializer.hpp"
+#include "vcl_serializer.hpp"
 
 namespace intel_npu {
 
@@ -35,7 +35,7 @@ public:
 
     GraphDescriptor getGraphDescriptor(SerializedIR serializedIR,
                                        const std::string& buildFlags,
-                                       const uint32_t& flags) const;
+                                       const bool bypassUmdCache = false) const;
 
     GraphDescriptor getGraphDescriptor(void* data, size_t size) const;
 
@@ -74,5 +74,8 @@ private:
 
     Logger _logger;
 };
+
+// Parse the result string of query from foramt <name_0><name_1><name_2> to unordered_set of string
+std::unordered_set<std::string> parseQueryResult(std::vector<char>& data);
 
 }  // namespace intel_npu
