@@ -446,13 +446,19 @@ ov::SupportedOpsMap VCLCompilerImpl::query(const std::shared_ptr<const ov::Model
     ze_graph_compiler_version_info_t compilerVersion;
     compilerVersion.major = _compilerProperties.version.major;
     compilerVersion.minor = _compilerProperties.version.minor;
+    const FilteredConfig* filteredConfig = dynamic_cast<const FilteredConfig*>(&config);
+    if (filteredConfig == nullptr) {
+        OPENVINO_THROW("config is not FilteredConfig");
+    }
+    FilteredConfig updatedConfig = *filteredConfig;
+
     auto serializedIR = driver_compiler_utils::serializeIR(
         model,
         compilerVersion,
         maxOpsetVersion,
-        config.isAvailable(ov::intel_npu::use_base_model_serializer.name()) ? config.get<USE_BASE_MODEL_SERIALIZER>()
+        updatedConfig.isAvailable(ov::intel_npu::use_base_model_serializer.name()) ? updatedConfig.get<USE_BASE_MODEL_SERIALIZER>()
                                                                             : true,
-        config.get<SERIALIZATION_WEIGHTS_SIZE_THRESHOLD>());
+        updatedConfig.get<SERIALIZATION_WEIGHTS_SIZE_THRESHOLD>());
 
     std::string buildFlags;
     buildFlags += driver_compiler_utils::serializeConfig(config, compilerVersion);
