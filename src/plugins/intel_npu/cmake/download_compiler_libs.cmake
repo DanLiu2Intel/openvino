@@ -24,7 +24,7 @@ function(download_and_extract url zip_file extracted_dir modify_proxy)
 
         if(modify_proxy STREQUAL "MODIFY")
             # Restore proxy
-	    set(ENV{NO_PROXY} ${original_NO_PROXY})
+            set(ENV{NO_PROXY} ${original_NO_PROXY})
             set(ENV{no_proxy} ${original_no_proxy})
         endif()
 
