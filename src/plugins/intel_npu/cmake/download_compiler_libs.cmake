@@ -8,7 +8,7 @@ function(download_and_extract url zip_file extracted_dir modify_proxy)
     if(NOT EXISTS "${extracted_dir}")
         if(modify_proxy STREQUAL "MODIFY")
             # Update proxy to enable download for windows url
-	    set(original_NO_PROXY $ENV{NO_PROXY})
+            set(original_NO_PROXY $ENV{NO_PROXY})
             set(original_no_proxy $ENV{no_proxy})
             set(ENV{NO_PROXY} "")
             set(ENV{no_proxy} "")
