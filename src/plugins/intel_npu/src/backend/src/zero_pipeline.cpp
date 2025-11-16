@@ -33,7 +33,7 @@ Pipeline::Pipeline(const Config& config,
     ///试着检查 _graph中的compiler内容
     std::cout << "[Test Point]========Zero Pipeline Constructor started========" << std::endl;
     auto batchSize = _graph->get_batch_size();
-    if(batchSize.has_value()){ {
+    if(batchSize.has_value()) {
         std::cout << "[Test Point]========ZeroPipeline Constructor, batchSize is " << batchSize.value() << "========" << std::endl;
     } else {
         std::cout << "[Test Point]========ZeroPipeline Constructor, batchSize is not set========" << std::endl;
