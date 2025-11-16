@@ -6,6 +6,7 @@
 
 #include <fstream>
 
+#include "graph.hpp"
 #include "compiled_model.hpp"
 #include "compiler_adapter_factory.hpp"
 #include "driver_compiler_adapter.hpp"
@@ -597,11 +598,14 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     update_log_level(localPropertiesMap);
 
     // create compiler
+    std::cout << " [check point] ======create compiler adapter==" << std::endl;
     CompilerAdapterFactory compilerAdapterFactory;
     auto compiler = compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, properties));
 
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "fork_local_config");
+    std::cout << "====== [check point]============fork_local_config 1=====================" <<std::endl;
     auto localConfig = fork_local_config(localPropertiesMap, compiler);
+    std::cout << "====== [check point]============fork_local_config 2=====================" <<std::endl;
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
@@ -724,10 +728,13 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             std::stringstream strStream;
             strStream << ov::hint::PerformanceMode::THROUGHPUT;
             modifiedConfig.update({{ov::hint::performance_mode.name(), strStream.str()}});
-
+            std::cout << "====== [check point]============compile 1=====================" <<std::endl;
             graph = compileWithConfig(modelToCompile, modifiedConfig);
+            std::cout << "====== [check point]============compile 2=====================" <<std::endl;
         } else {
+            std::cout << "====== [check point]============compile 3=====================" <<std::endl;
             graph = compileWithConfig(modelToCompile, localConfig);  // No copy
+            std::cout << "====== [check point]============compile 4=====================" <<std::endl;
         }
     } catch (const std::exception& ex) {
         OPENVINO_THROW(ex.what());
@@ -747,6 +754,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
     try {
+        std::cout << "====== [check point]============create CompiledModel 1=====================" <<std::endl;
+        auto batchsize = std::dynamic_pointer_cast<Graph>(graph)->get_batch_size();
+        std::cout << "====== [check point]============create CompiledModel 2=====================" <<std::endl;
         compiledModel = std::make_shared<CompiledModel>(model, shared_from_this(), device, graph, localConfig, batch);
     } catch (const std::exception& ex) {
         OPENVINO_THROW(ex.what());

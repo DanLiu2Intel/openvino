@@ -31,6 +31,13 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
       _blobIsPersistent(blobIsPersistent),
       _compiler(compiler),
       _logger("Graph", config.get<LOG_LEVEL>()) {
+
+    if(_compiler) {
+        std::cout << "_compiler in graph construct is not empty" << std::endl;
+    } else {
+        std::cout << "_compiler in graph construct is empty" << std::endl;
+    }
+
     if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()) {
         _logger.info("Graph initialize is deferred from the \"Graph\" constructor");
         return;
@@ -346,6 +353,11 @@ std::optional<size_t> Graph::determine_batch_size() {
 }
 
 const std::optional<std::size_t> Graph::get_batch_size() const {
+    if(_compiler) {
+        std::cout << "_compiler in graph::get_batch_size is not empty" << std::endl;
+    } else {
+        std::cout << "_compiler in graph::get_batch_size is empty" << std::endl;
+    }
     return _batchSize;
 }
 

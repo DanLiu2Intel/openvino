@@ -118,6 +118,11 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
       _levelZeroOutputTensors(_metadata.outputs.size(), nullptr) {
     _logger.debug("ZeroInferRequest::ZeroInferRequest - checking level zero attributes and allocating tensors");
 
+    std::cout << "====== [check point]============create ZeroInferRequest construct 1=====================" <<std::endl;
+    auto batchsize = std::dynamic_pointer_cast<Graph>(_graph)->get_batch_size();
+    std::cout << "====== [check point]============create ZeroInferRequest construct 2=====================" <<std::endl;
+
+
     size_t ioIndex = 0;
     for (const IODescriptor& inputDescriptor : _metadata.inputs) {
         check_level_zero_attributes_match(inputDescriptor, _graphInputDescriptors.at(ioIndex));

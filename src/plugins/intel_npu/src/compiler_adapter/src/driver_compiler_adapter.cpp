@@ -125,7 +125,7 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
                                    graphDesc,
                                    std::move(networkMeta),
                                    /* blob = */ std::nullopt,
-                                   config);
+                                   config);  /////compiler is default nullptr
 }
 
 std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<ov::Model>& model,

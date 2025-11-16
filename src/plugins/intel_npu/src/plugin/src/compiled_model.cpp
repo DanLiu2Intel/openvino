@@ -36,6 +36,10 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _batchSize(batchSize) {
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
 
+    std::cout << "====== [check point]============create CompiledModel construct 1=====================" <<std::endl;
+    auto batchsize = std::dynamic_pointer_cast<Graph>(_graph)->get_batch_size();
+    std::cout << "====== [check point]============create CompiledModel construct 2=====================" <<std::endl;
+
     OV_ITT_TASK_CHAIN(COMPILED_MODEL, itt::domains::NPUPlugin, "CompiledModel::CompiledModel", "initialize_properties");
     _properties = std::make_unique<Properties>(PropertiesType::COMPILED_MODEL, _config);
     _properties->registerProperties();
@@ -66,7 +70,7 @@ std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() co
     }
 
     const std::shared_ptr<SyncInferRequest>& syncInferRequest =
-        _device->createInferRequest(shared_from_this(), _config);
+        _device->createInferRequest(shared_from_this(), _config);/////
     syncInferRequest->initialize_states();
 
     return std::make_shared<AsyncInferRequest>(syncInferRequest,

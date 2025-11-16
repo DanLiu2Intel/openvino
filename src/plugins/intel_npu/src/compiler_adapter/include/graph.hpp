@@ -25,7 +25,7 @@ public:
           std::optional<ov::Tensor> blob,
           const Config& config,
           const bool blobIsPersistent = false,
-          const ov::SoPtr<ICompiler>& compiler = {nullptr},
+          const ov::SoPtr<ICompiler>& compiler = {nullptr},  ///default value is nullptr
           const bool calledFromWeightlessGraph = false);
 
     std::pair<uint64_t, std::optional<std::vector<uint64_t>>> export_blob(std::ostream& stream) const override;
@@ -96,7 +96,7 @@ protected:
      */
     std::optional<std::size_t> _batchSize = std::nullopt;
 
-    const ov::SoPtr<ICompiler> _compiler;
+    const ov::SoPtr<ICompiler> _compiler; ///need to check this value is nullptr or not
     Logger _logger;
 };
 
