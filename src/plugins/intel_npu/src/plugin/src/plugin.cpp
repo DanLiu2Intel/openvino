@@ -635,11 +635,15 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     // create compiler
     std::string device_id = getDeviceFromProperties(localPropertiesMap);
+    std::cout << " [check point] ======create compiler adapter1==" << std::endl;
     CompilerAdapterFactory compilerAdapterFactory;
     auto compiler = compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, properties));
+    std::cout << " [check point] ======create compiler adapter2==" << std::endl;
 
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "fork_local_config");
+    std::cout << "====== [check point]============fork_local_config 1=====================" <<std::endl;
     auto localConfig = fork_local_config(localPropertiesMap, compiler);
+    std::cout << "====== [check point]============fork_local_config 2=====================" <<std::endl;
 
 #ifndef VCL_FOR_COMPILER
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();

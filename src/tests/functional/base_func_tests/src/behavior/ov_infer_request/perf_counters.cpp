@@ -16,6 +16,8 @@ void OVInferRequestPerfCountersTest::SetUp() {
     APIBaseTest::SetUp();
     function = ov::test::utils::make_concat_with_params();
     configuration.insert(ov::enable_profiling(true));
+    std::cout << "[Test Point]====###====OVInferRequestPerfCountersTest setup to update log_level========" <<std::endl;
+    configuration.insert( ov::log::level(ov::log::Level::DEBUG));
     std::cout << "[Test Point]========OVInferRequestPerfCountersTest setup to compile========" <<std::endl;
     execNet = core->compile_model(function, target_device, configuration);
     std::cout << "[Test Point]========OVInferRequestPerfCountersTest setup to  done========" <<std::endl;
