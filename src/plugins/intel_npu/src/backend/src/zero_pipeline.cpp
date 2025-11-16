@@ -33,8 +33,11 @@ Pipeline::Pipeline(const Config& config,
     ///试着检查 _graph中的compiler内容
     std::cout << "[Test Point]========Zero Pipeline Constructor started========" << std::endl;
     auto batchSize = _graph->get_batch_size();
-    std::cout << "[Test Point]========Zero Pipeline Constructor 1, batchSize is " << batchSize << "========" << std::endl;
-
+    if(batchSize.has_value()){ {
+        std::cout << "[Test Point]========ZeroPipeline Constructor, batchSize is " << batchSize.value() << "========" << std::endl;
+    } else {
+        std::cout << "[Test Point]========ZeroPipeline Constructor, batchSize is not set========" << std::endl;
+    }
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "Zero_infer_request::Pipeline::Pipeline");
 
     _logger.debug("Pipeline - initialize started, number_of_command_lists %i", _number_of_command_lists);

@@ -121,7 +121,11 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
     ///试着检查 _graph中的compiler内容
     std::cout << "[Test Point]========Zero Infer Request Constructor started========" << std::endl;
     auto batchSize = _graph->get_batch_size();
-    std::cout << "[Test Point]========Zero Infer Request Constructor 1, batchSize is " << batchSize << "========" << std::endl;
+    if(batchSize.has_value()){
+        std::cout << "[Test Point]========Zero Infer Request Constructor, batchSize is " << batchSize.value() << "========" << std::endl;
+    } else {
+        std::cout << "[Test Point]========Zero Infer Request Constructor, batchSize is not set========" << std::endl;
+    }
 
     size_t ioIndex = 0;
     for (const IODescriptor& inputDescriptor : _metadata.inputs) {
@@ -174,7 +178,11 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
     }
     std::cout << "[Test Point]========Zero Infer Request Constructor 2========" << std::endl;
     auto batchSize2 = _graph->get_batch_size();
-    std::cout << "[Test Point]========Zero Infer Request Constructor 2, batchSize is " << batchSize2 << "========" << std::endl;
+    if(batchSize2.has_value()){
+        std::cout << "[Test Point]========Zero Infer Request Constructor 2, batchSize is " << batchSize2.value() << "========" << std::endl;
+    } else {
+        std::cout << "[Test Point]========Zero Infer Request Constructor 2, batchSize is not set========" << std::endl;
+    }
     
     _logger.debug("ZeroInferRequest::ZeroInferRequest - SyncInferRequest completed");
 }
@@ -183,7 +191,11 @@ void ZeroInferRequest::create_pipeline() {
     _logger.debug("ZeroInferRequest::create_pipeline");
     std::cout << "[Test Point]========ZeroInferRequest::create_pipeline 1====== check compiler==" << std::endl;
     auto batchSize = _graph->get_batch_size();
-    std::cout << "[Test Point]========ZeroInferRequest::create_pipeline 1 done====== check compiler==" << std::endl;
+    if(batchSize.has_value()){
+        std::cout << "[Test Point]=========ZeroInferRequest::create_pipeline 1 check compiler, batchSize is " << batchSize.value() << "========" << std::endl;
+    } else {
+        std::cout << "[Test Point]=========ZeroInferRequest::create_pipeline 1 done====== check compile========" << std::endl;
+    }
 
     for (size_t inputIndex = 0; inputIndex < _metadata.inputs.size(); ++inputIndex) {
         if (_metadata.inputs.at(inputIndex).isMainInputWeights) {
@@ -417,6 +429,11 @@ void ZeroInferRequest::set_tensor(const ov::Output<const ov::Node>& port, const 
                 OV_ITT_TASK_NEXT(ZERO_SET_TENSOR, "allocate tensor");
 
                 auto batch = _graph->get_batch_size();
+                if(batch.has_value()){
+                    std::cout << "[Test Point]========Zero Infer set_tensor, batchSize is " << batch.value() << "========" << std::endl;
+                } else {
+                    std::cout << "[Test Point]========Zero Infer set_tensor, batchSize is not set========" << std::endl;
+                }
                 levelZeroTensor = allocate_tensor(foundPort.idx, foundPort.is_input(), batch);
                 updateCommandListArg = true;
             } else {
@@ -482,6 +499,11 @@ void ZeroInferRequest::set_tensors(const ov::Output<const ov::Node>& port,
         }
     } else {
         batchSizeCandidate = _graph->get_batch_size();
+        if(batchSizeCandidate.has_value()){
+            std::cout << "[Test Point]========Zero Infe  ZeroInferRequest::set_tensors(co, batchSize is " << batchSizeCandidate.value() << "========" << std::endl;
+        } else {
+            std::cout << "[Test Point]========Zero Infe ZeroInferRequest::set_tensors(co, batchSize is not set========" << std::endl;
+        }
     }
 
     get_user_inputs(foundPort.idx).resize(tensors.size());
@@ -536,6 +558,11 @@ ov::SoPtr<ov::ITensor> ZeroInferRequest::get_tensor(const ov::Output<const ov::N
     auto& userTensor = isInput ? get_user_input(ioIndex) : _userOutputTensors.at(ioIndex);
 
     auto batchSize = _graph->get_batch_size();
+    if(batchSize.has_value()){
+        std::cout << "[Test Point]========Zero Infe  ZeroInferRequest::get_tensor(3, batchSize is " << batchSize.value() << "========" << std::endl;
+    } else {
+        std::cout << "[Test Point]========Zero Infe  ZeroInferRequest::get_tensor(3, batchSize is not set========" << std::endl;
+    }
 
     // LIMITATION for dynamic batch implementation:
     // Output tensors must have the same batch size as input tensors, so input batch sizes must be determined first.
@@ -739,7 +766,12 @@ void ZeroInferRequest::infer_async() {
     }
     std::cout << "[Test Point]========ZeroInferRequest::infer_async 1====== check compiler==" << std::endl;
     auto batch_size = _graph->get_batch_size();
-    std::cout << "[Test Point]========ZeroInferRequest::infer_async 1 done====== check compiler==" << std::endl;
+    if(batch_size.has_value()){
+        std::cout << "[Test Point]========Zero Infe  ZeroInferRequest::infer_async()(3, batchSize is " << batch_size.value() << "========" << std::endl;
+    } else {
+        std::cout << "[Test Point]========Zero Infe  ZeroInferRequest::infer_async()(3, batchSize is not set========" << std::endl;
+    }
+
     size_t inputIndex = 0;
     for (const auto& userTensor : _userInputTensors) {
         const IODescriptor inputDescriptor = _metadata.inputs.at(inputIndex);
