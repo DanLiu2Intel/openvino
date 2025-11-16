@@ -764,10 +764,13 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             std::stringstream strStream;
             strStream << ov::hint::PerformanceMode::THROUGHPUT;
             modifiedConfig.update({{ov::hint::performance_mode.name(), strStream.str()}});
-
+            std::cout << "[Test Point]========plugin compile : Creating compileWithConfig and graph object ===1===" << std::endl;
             graph = compileWithConfig(modelToCompile, modifiedConfig);
+            std::cout << "[Test Point]========plugin compile : Creating compileWithConfig and graph object done===1=====" << std::endl;
         } else {
+            std::cout << "[Test Point]========plugin compile : Creating compileWithConfig and graph object ===1===" << std::endl;
             graph = compileWithConfig(modelToCompile, localConfig);  // No copy
+            std::cout << "[Test Point]========plugin compile : Creating compileWithConfig and graph object ===2===" << std::endl;
         }
     } catch (const std::exception& ex) {
         OPENVINO_THROW(ex.what());
@@ -787,7 +790,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
     try {
+        std::cout << "[Test Point]========plugin compile : Creating CompiledModel object" << std::endl;
         compiledModel = std::make_shared<CompiledModel>(model, shared_from_this(), device, graph, localConfig, batch);
+        std::cout << "[Test Point]========plugin compile : Creating CompiledModel object done========" << std::endl;
     } catch (const std::exception& ex) {
         OPENVINO_THROW(ex.what());
     } catch (...) {

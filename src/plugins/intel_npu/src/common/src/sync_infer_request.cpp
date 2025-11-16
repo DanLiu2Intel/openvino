@@ -103,6 +103,7 @@ const std::shared_ptr<const ov::ICompiledModel>& SyncInferRequest::get_compiled_
 }
 
 void SyncInferRequest::initialize_states() {
+    std::cout << " ===[Test Point]===== SyncInferRequest::initialize_states(): _variableStates size = " << _variableStates.size() << std::endl;
     for (const ov::SoPtr<ov::IVariableState>& variableState : _variableStates) {
         variableState->reset();
     }

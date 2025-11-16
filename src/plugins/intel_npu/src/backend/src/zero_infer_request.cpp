@@ -109,7 +109,7 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
                                    const Config& config)
     : SyncInferRequest(compiledModel, config),
       _initStructs(initStructs),
-      _graph(compiledModel->get_graph()),
+      _graph(compiledModel->get_graph()),/////
       _config(config),
       _logger("ZeroInferRequest", config.get<LOG_LEVEL>()),
       _graphInputDescriptors(_graph->get_input_descriptors()),
@@ -117,6 +117,11 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
       _levelZeroInputTensors(_metadata.inputs.size(), std::vector<std::shared_ptr<ZeroTensor>>(1, nullptr)),
       _levelZeroOutputTensors(_metadata.outputs.size(), nullptr) {
     _logger.debug("ZeroInferRequest::ZeroInferRequest - checking level zero attributes and allocating tensors");
+    
+    ///试着检查 _graph中的compiler内容
+    std::cout << "[Test Point]========Zero Infer Request Constructor started========" << std::endl;
+    auto batchSize = _graph->get_batch_size();
+    std::cout << "[Test Point]========Zero Infer Request Constructor 1, batchSize is " << batchSize << "========" << std::endl;
 
     size_t ioIndex = 0;
     for (const IODescriptor& inputDescriptor : _metadata.inputs) {
@@ -167,13 +172,18 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
 
         ++ioIndex;
     }
-
+    std::cout << "[Test Point]========Zero Infer Request Constructor 2========" << std::endl;
+    auto batchSize2 = _graph->get_batch_size();
+    std::cout << "[Test Point]========Zero Infer Request Constructor 2, batchSize is " << batchSize2 << "========" << std::endl;
+    
     _logger.debug("ZeroInferRequest::ZeroInferRequest - SyncInferRequest completed");
 }
 
 void ZeroInferRequest::create_pipeline() {
     _logger.debug("ZeroInferRequest::create_pipeline");
+    std::cout << "[Test Point]========ZeroInferRequest::create_pipeline 1====== check compiler==" << std::endl;
     auto batchSize = _graph->get_batch_size();
+    std::cout << "[Test Point]========ZeroInferRequest::create_pipeline 1 done====== check compiler==" << std::endl;
 
     for (size_t inputIndex = 0; inputIndex < _metadata.inputs.size(); ++inputIndex) {
         if (_metadata.inputs.at(inputIndex).isMainInputWeights) {
@@ -704,13 +714,14 @@ void ZeroInferRequest::infer() {
     if (_config.get<RUN_INFERENCES_SEQUENTIALLY>()) {
         OPENVINO_THROW("Only start async is supported when RUN_INFERENCES_SEQUENTIALLY is enabled!");
     }
-
+    std::cout << "[Test Point]========ZeroInferRequest::infer called========" << std::endl;
     infer_async();
     get_result();
 }
 
 void ZeroInferRequest::infer_async() {
     _logger.debug("InferRequest::infer_async started");
+    std::cout << "[Test Point]========ZeroInferRequest::infer_async called========" << std::endl;
     OV_ITT_TASK_CHAIN(ZERO_INFER, itt::domains::LevelZeroBackend, "infer_async", "start");
 
     {
@@ -726,8 +737,9 @@ void ZeroInferRequest::infer_async() {
             update_states_if_memory_changed();
         }
     }
-
+    std::cout << "[Test Point]========ZeroInferRequest::infer_async 1====== check compiler==" << std::endl;
     auto batch_size = _graph->get_batch_size();
+    std::cout << "[Test Point]========ZeroInferRequest::infer_async 1 done====== check compiler==" << std::endl;
     size_t inputIndex = 0;
     for (const auto& userTensor : _userInputTensors) {
         const IODescriptor inputDescriptor = _metadata.inputs.at(inputIndex);
@@ -834,6 +846,7 @@ void ZeroInferRequest::infer_async() {
 
     OV_ITT_TASK_NEXT(ZERO_INFER, "push");
     _pipeline->push();
+    std::cout << "[Test Point]========ZeroInferRequest::infer_async done========" << std::endl;
 }
 
 void ZeroInferRequest::get_result() {
@@ -934,7 +947,7 @@ void ZeroInferRequest::check_network_precision(const ov::element::Type_t precisi
 
 std::vector<ov::ProfilingInfo> ZeroInferRequest::get_profiling_info() const {
     OPENVINO_ASSERT(_pipeline, "Profiling information isn't available before running an inference!");
-
+    std::cout << "[Test Point]========ZeroInferRequest::get_profiling_info called========" << std::endl;
     return _pipeline->get_profiling_info();
 }
 

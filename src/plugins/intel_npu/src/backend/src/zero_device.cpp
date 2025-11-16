@@ -172,5 +172,6 @@ ov::device::Type ZeroDevice::getDeviceType() const {
 std::shared_ptr<SyncInferRequest> ZeroDevice::createInferRequest(
     const std::shared_ptr<const ICompiledModel>& compiledModel,
     const Config& config) {
+    std::cout << "[Test Point]========ZeroDevice::createInferRequest called========" << std::endl;
     return std::make_shared<ZeroInferRequest>(_initStructs, compiledModel, config);
 }

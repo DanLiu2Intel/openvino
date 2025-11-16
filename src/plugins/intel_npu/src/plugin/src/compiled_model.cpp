@@ -51,6 +51,7 @@ CompiledModel::~CompiledModel() {
 }
 
 std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() const {
+    std::cout << "[Test Point]========CompiledModel::create_infer_request called========" << std::endl;
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
 
     // sanity check
@@ -65,9 +66,11 @@ std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() co
         _graph->initialize(_config);
     }
 
+    std::cout << "[Test Point]========CompiledModel::create_infer_request syncInferRequest 1========" << std::endl;
     const std::shared_ptr<SyncInferRequest>& syncInferRequest =
         _device->createInferRequest(shared_from_this(), _config);
-    syncInferRequest->initialize_states();
+    syncInferRequest->initialize_states();  /// 似乎这一部分没有内容可以更啊？
+    std::cout << "[Test Point]========CompiledModel::create_infer_request done========" << std::endl;
 
     return std::make_shared<AsyncInferRequest>(syncInferRequest,
                                                get_task_executor(),

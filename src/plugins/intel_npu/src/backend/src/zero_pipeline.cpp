@@ -28,6 +28,13 @@ Pipeline::Pipeline(const Config& config,
       _id(_graph->get_unique_id()),
       _number_of_command_lists(batch_size),
       _logger("Pipeline", _config.get<LOG_LEVEL>()) {
+    std::cout << "[Test Point]========Zero Pipeline Constructor started========" << std::endl;
+    
+    ///试着检查 _graph中的compiler内容
+    std::cout << "[Test Point]========Zero Pipeline Constructor started========" << std::endl;
+    auto batchSize = _graph->get_batch_size();
+    std::cout << "[Test Point]========Zero Pipeline Constructor 1, batchSize is " << batchSize << "========" << std::endl;
+
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "Zero_infer_request::Pipeline::Pipeline");
 
     _logger.debug("Pipeline - initialize started, number_of_command_lists %i", _number_of_command_lists);
@@ -42,15 +49,18 @@ Pipeline::Pipeline(const Config& config,
                     "In-order execution doesn't work in case synchronization of the inferences is done using events");
 
     if (_config.has<PERF_COUNT>() && _config.get<PERF_COUNT>()) {
+        std::cout << "[Test Point]========Zero Pipeline Constructor profiling enabled 1========" << std::endl;
         auto profiling_pool =
             std::make_shared<zeroProfiling::ProfilingPool>(_init_structs, _graph, zeroProfiling::POOL_SIZE);
         _profiling_query = std::make_unique<zeroProfiling::ProfilingQuery>(_init_structs, 0);
 
         if (profiling_pool->create()) {
+            std::cout << "[Test Point]========Zero Pipeline Constructor profiling enabled 2========" << std::endl;
             _profiling_query->create(profiling_pool);
         }
 
         if (_config.get<PROFILING_TYPE>() == ov::intel_npu::ProfilingType::INFER) {
+            std::cout << "[Test Point]========Zero Pipeline Constructor profiling enabled 3========" << std::endl;
             _logger.debug("ZeroInferRequest::ZeroInferRequest - profiling type == ov::intel_npu::ProfilingType::INFER");
             _npu_profiling =
                 std::make_shared<zeroProfiling::NpuInferProfiling>(_init_structs, _config.get<LOG_LEVEL>());
@@ -158,6 +168,7 @@ Pipeline::Pipeline(const Config& config,
         }
     }
     _logger.debug("Pipeline - initialize completed");
+    std::cout << "[Test Point]========Zero Pipeline Constructor done========" << std::endl;
 }
 
 void Pipeline::push() {
@@ -265,7 +276,9 @@ std::vector<ov::ProfilingInfo> Pipeline::get_profiling_info() const {
         // For plugin compiler retreive raw profiling data from backend and delegate
         // processing to the compiler
         _logger.debug("InferRequest::get_profiling_info complete with compiler->process_profiling_output().");
+        std::cout << "[Test Point]========plugin get_profiling_info : Calling process_profiling_output" << std::endl;
         return _graph->process_profiling_output(_profiling_query->getData<uint8_t>(), _config);
+        std::cout << "[Test Point]========plugin get_profiling_info : Calling ====done" << std::endl;
     } else {
         _logger.debug("InferRequest::get_profiling_info complete with _profiling_query.getLayerStatistics().");
         return _profiling_query->getLayerStatistics();

@@ -16,8 +16,11 @@ void OVInferRequestPerfCountersTest::SetUp() {
     APIBaseTest::SetUp();
     function = ov::test::utils::make_concat_with_params();
     configuration.insert(ov::enable_profiling(true));
+    std::cout << "[Test Point]========OVInferRequestPerfCountersTest setup to compile========" <<std::endl;
     execNet = core->compile_model(function, target_device, configuration);
+    std::cout << "[Test Point]========OVInferRequestPerfCountersTest setup to  done========" <<std::endl;
     req = execNet.create_infer_request();
+    std::cout << "[Test Point]========OVInferRequestPerfCountersTest setup to create_infer_request done========" <<std::endl;
 }
 
 std::string OVInferRequestPerfCountersTest::getTestCaseName(testing::TestParamInfo<InferRequestParams> obj) {
@@ -45,7 +48,9 @@ TEST_P(OVInferRequestPerfCountersTest, NotEmptyAfterAsyncInfer) {
 }
 
 TEST_P(OVInferRequestPerfCountersTest, NotEmptyAfterSyncInfer) {
+    std::cout << "[Test Point]========OVInferRequestPerfCountersTest NotEmptyAfterSyncInfer infer()========" << std::endl;
     OV_ASSERT_NO_THROW(req.infer());
+    std::cout << "[Test Point]========OVInferRequestPerfCountersTest NotEmptyAfterSyncInfer called get_profiling_info========" << std::endl;
     std::vector<ov::ProfilingInfo> perf;
     OV_ASSERT_NO_THROW(perf = req.get_profiling_info());
     ASSERT_FALSE(perf.empty());
