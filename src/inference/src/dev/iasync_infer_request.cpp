@@ -210,7 +210,10 @@ void ov::IAsyncInferRequest::check_cancelled_state() const {
 }
 
 std::vector<ov::ProfilingInfo> ov::IAsyncInferRequest::get_profiling_info() const {
+    std::cout << "[Test Point]========src/inference IAsyncInferRequest::get_profiling_info started========" << std::endl;
+
     check_state();
+    std::cout << "[Test Point]========src/inference IAsyncInferRequest::get_profiling_info 1========" << std::endl;
     return m_sync_request->get_profiling_info();
 }
 
@@ -257,6 +260,7 @@ void ov::IAsyncInferRequest::stop_and_wait() {
 }
 
 void ov::IAsyncInferRequest::infer() {
+    std::cout << "[Test Point]========src/inference IAsyncInferRequest::infer called========" << std::endl;
     DisableCallbackGuard disableCallbackGuard{this};
     infer_impl([this] {
         infer_thread_unsafe();

@@ -152,7 +152,30 @@ static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& bas
         // if compiler_type is provided by local config = use that
         return COMPILER_TYPE::parse(it->second.as<std::string>());
     }
+
     // if there is no compiler_type provided = use base_config value
+    // update the compilerType by device id:
+    //  3720 -> DRIVER
+    //    4000 and later -> MLIR (default value)
+    auto it_device = local_conf.find(std::string(DEVICE_ID::key()));
+    if (it_device != local_conf.end()) {
+        // if platform is provided by local config = use that
+        if (it_device->second.as<std::string>() == ov::intel_npu::Platform::NPU3720) {
+            return ov::intel_npu::CompilerType::DRIVER;
+        }
+    }
+
+    // if there is no compiler_type provided = use base_config value
+    // update the compilerType by platform:
+    //  3720 -> DRIVER
+    //    4000 and later -> MLIR (default value)
+    auto it_platform = local_conf.find(std::string(PLATFORM::key()));
+    if (it_platform != local_conf.end()) {
+        // if platform is provided by local config = use that
+        if (it_platform->second.as<std::string>() == ov::intel_npu::Platform::NPU3720) {
+            return ov::intel_npu::CompilerType::DRIVER;
+        }
+    }
     return base_conf.get<COMPILER_TYPE>();
 }
 
@@ -226,6 +249,20 @@ std::shared_ptr<const ov::Model> exclude_model_ptr_from_map(ov::AnyMap& properti
         properties.erase(ov::hint::model.name());
     }
     return modelPtr;
+}
+
+std::string getDeviceFromProperties(const std::map<std::string, std::string>& propertiesMap) {
+    const std::string defaultDevice = "4000";
+    auto it = propertiesMap.find(std::string(DEVICE_ID::key()));
+    if (it != propertiesMap.end()) {
+        return it->second;
+    }
+
+    it = propertiesMap.find(std::string(PLATFORM::key()));
+    if (it != propertiesMap.end()) {
+        return it->second;
+    }
+    return defaultDevice;
 }
 
 }  // namespace
@@ -598,12 +635,14 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     update_log_level(localPropertiesMap);
 
     // create compiler
+    std::string device_id = getDeviceFromProperties(localPropertiesMap);
     CompilerAdapterFactory compilerAdapterFactory;
     auto compiler = compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, properties));
 
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "fork_local_config");
     auto localConfig = fork_local_config(localPropertiesMap, compiler);
 
+#ifndef VCL_FOR_COMPILER
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
         const auto compilerType = localConfig.get<COMPILER_TYPE>();
@@ -611,6 +650,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             OPENVINO_THROW("Option 'CACHE_DIR' is not supported with PLUGIN compiler type");
         }
     }
+#endif
 
     const auto platform =
         utils::getCompilationPlatform(localConfig.get<PLATFORM>(),
@@ -725,10 +765,13 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             std::stringstream strStream;
             strStream << ov::hint::PerformanceMode::THROUGHPUT;
             modifiedConfig.update({{ov::hint::performance_mode.name(), strStream.str()}});
-
+            std::cout << "[Test Point]========plugin compile : Creating compileWithConfig and graph object ===1===" << std::endl;
             graph = compileWithConfig(modelToCompile, modifiedConfig);
+            std::cout << "[Test Point]========plugin compile : Creating compileWithConfig and graph object done===1=====" << std::endl;
         } else {
+            std::cout << "[Test Point]========plugin compile : Creating compileWithConfig and graph object ===1===" << std::endl;
             graph = compileWithConfig(modelToCompile, localConfig);  // No copy
+            std::cout << "[Test Point]========plugin compile : Creating compileWithConfig and graph object ===2===" << std::endl;
         }
     } catch (const std::exception& ex) {
         OPENVINO_THROW(ex.what());
@@ -748,7 +791,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
     try {
+        std::cout << "[Test Point]========plugin compile : Creating CompiledModel object" << std::endl;
         compiledModel = std::make_shared<CompiledModel>(model, shared_from_this(), device, graph, localConfig, batch);
+        std::cout << "[Test Point]========plugin compile : Creating CompiledModel object done========" << std::endl;
     } catch (const std::exception& ex) {
         OPENVINO_THROW(ex.what());
     } catch (...) {
@@ -896,6 +941,7 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
     exclude_model_ptr_from_map(npu_plugin_properties);
     const std::map<std::string, std::string> propertiesMap = any_copy(npu_plugin_properties);
     update_log_level(propertiesMap);
+    std::string device_id = getDeviceFromProperties(propertiesMap);
     auto compiler =
         compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, npu_plugin_properties));
     auto localConfig = fork_local_config(propertiesMap, compiler, OptionMode::CompileTime);
@@ -932,6 +978,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::parse(const ov::Tensor& tensorBig,
     CompilerAdapterFactory compilerAdapterFactory;
     const auto propertiesMap = any_copy(npu_plugin_properties);
     update_log_level(propertiesMap);
+    std::string device_id = getDeviceFromProperties(propertiesMap);
     auto compiler =
         compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, npu_plugin_properties));
 

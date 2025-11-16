@@ -31,6 +31,13 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
       _blobIsPersistent(blobIsPersistent),
       _compiler(compiler),
       _logger("Graph", config.get<LOG_LEVEL>()) {
+
+    if(_compiler) {
+        std::cout << "_compiler in graph is not empty" << std::endl;
+    } else {
+        std::cout << "_compiler in graph is empty" << std::endl;
+    }
+
     if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()) {
         _logger.info("Graph initialize is deferred from the \"Graph\" constructor");
         return;
@@ -94,6 +101,12 @@ std::pair<uint64_t, std::optional<std::vector<uint64_t>>> Graph::export_blob(std
     const uint8_t* blobPtr = nullptr;
     size_t blobSize;
     std::vector<uint8_t> blobVec;  // plugin needs to keep a copy of the blob for older drivers
+    
+    if(_compiler) {
+        std::cout << "_compiler in graph export_blob() is not empty" << std::endl;
+    } else {
+        std::cout << "_compiler in graph export_blob() is empty" << std::endl;
+    }
 
     if (_blobIsReleased) {
         OPENVINO_THROW("Model was imported and released after initialization. Model export is not allowed anymore.");
@@ -166,6 +179,11 @@ void Graph::set_argument_value(uint32_t argi, const void* argv) const {
 
 void Graph::initialize(const Config& config) {
     _logger.debug("Graph initialize start");
+    if(_compiler) {
+        std::cout << "_compiler in graph initialize() is not empty" << std::endl;
+    } else {
+        std::cout << "_compiler in graph initialize() is empty" << std::endl;
+    }
 
     if (_zeGraphExt == nullptr || _graphDesc._handle == nullptr) {
         return;
@@ -346,6 +364,11 @@ std::optional<size_t> Graph::determine_batch_size() {
 }
 
 const std::optional<std::size_t> Graph::get_batch_size() const {
+    if(_compiler) {
+        std::cout << "_compiler in graph get_batch_size() is not empty" << std::endl;
+    } else {
+        std::cout << "_compiler in graph get_batch_size() is empty" << std::endl;
+    }
     return _batchSize;
 }
 

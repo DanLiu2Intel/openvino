@@ -221,6 +221,7 @@ Tensor InferRequest::get_output_tensor() {
 }
 
 void InferRequest::infer() {
+    std::cout << "[Test Point]========src/inference InferRequest::infer called========" << std::endl;
     OV_INFER_REQ_CALL_STATEMENT(_impl->infer());
 }
 
@@ -229,6 +230,7 @@ void InferRequest::cancel() {
 }
 
 std::vector<ProfilingInfo> InferRequest::get_profiling_info() const {
+    std::cout << "[Test Point]========src/inference InferRequest::get_profiling_info called========" << std::endl;
     OV_INFER_REQ_CALL_STATEMENT(return _impl->get_profiling_info());
 }
 

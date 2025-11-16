@@ -222,7 +222,7 @@ struct LOG_LEVEL final : OptionBase<LOG_LEVEL, ov::log::Level> {
 
     static ov::log::Level defaultValue() {
 #if defined(NPU_PLUGIN_DEVELOPER_BUILD) || !defined(NDEBUG)
-        return ov::log::Level::WARNING;
+        return ov::log::Level::DEBUG;
 #else
         return ov::log::Level::ERR;
 #endif
@@ -842,7 +842,7 @@ struct COMPILER_TYPE final : OptionBase<COMPILER_TYPE, ov::intel_npu::CompilerTy
     }
 
     static ov::intel_npu::CompilerType defaultValue() {
-        return ov::intel_npu::CompilerType::DRIVER;
+        return ov::intel_npu::CompilerType::MLIR;
     }
 
     static ov::intel_npu::CompilerType parse(std::string_view val) {
