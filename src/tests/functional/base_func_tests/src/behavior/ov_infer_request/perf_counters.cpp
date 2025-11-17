@@ -47,9 +47,13 @@ TEST_P(OVInferRequestPerfCountersTest, NotEmptyAfterAsyncInfer) {
 }
 
 TEST_P(OVInferRequestPerfCountersTest, NotEmptyAfterSyncInfer) {
+    std::cout << "[Test Point]====###====OVInferRequestPerfCountersTest NotEmptyAfterSyncInfer testP1========" <<std::endl;
     OV_ASSERT_NO_THROW(req.infer());
+    std::cout << "[Test Point]====###====OVInferRequestPerfCountersTest NotEmptyAfterSyncInfer testP2========" <<std::endl;
     std::vector<ov::ProfilingInfo> perf;
+    std::cout << "[Test Point]====###====OVInferRequestPerfCountersTest NotEmptyAfterSyncInfer testP3========" <<std::endl;
     OV_ASSERT_NO_THROW(perf = req.get_profiling_info());
+    std::cout << "[Test Point]====###====OVInferRequestPerfCountersTest NotEmptyAfterSyncInfer testP4========" <<std::endl;
     ASSERT_FALSE(perf.empty());
 }
 

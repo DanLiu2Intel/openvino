@@ -3,6 +3,7 @@
 //
 
 #include "compiled_model.hpp"
+#include "graph.hpp"
 
 #include <fstream>
 #include <string_view>

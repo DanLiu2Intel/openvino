@@ -154,9 +154,13 @@ std::pair<uint64_t, std::optional<std::vector<uint64_t>>> Graph::export_blob(std
 
 std::vector<ov::ProfilingInfo> Graph::process_profiling_output(const std::vector<uint8_t>& profData,
                                                                const Config& config) const {
+    std::cout << "====== [check point]============Graph::process_profiling_output=====================" << std::endl;
     if (_compiler == nullptr) {
         OPENVINO_THROW("Profiling post-processing is not supported.");
+    } else {
+        std::cout << "  Graph::process_profiling_output _compiler is NOT EMPTY" << std::endl;
     }
+    std::cout << "====== [check point]============Graph::process_profiling_output 2=====================" << std::endl;
 
     std::vector<uint8_t> blob(_blob->get_byte_size());
     blob.assign(reinterpret_cast<const uint8_t*>(_blob->data()),

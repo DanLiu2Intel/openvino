@@ -598,9 +598,10 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     update_log_level(localPropertiesMap);
 
     // create compiler
-    std::cout << " [check point] ======create compiler adapter==" << std::endl;
+    std::cout << " [check point] ======create compiler adapter=1=" << std::endl;
     CompilerAdapterFactory compilerAdapterFactory;
     auto compiler = compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, properties));
+    std::cout << " [check point] ======create compiler adapter=2=" << std::endl;
 
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "fork_local_config");
     std::cout << "====== [check point]============fork_local_config 1=====================" <<std::endl;

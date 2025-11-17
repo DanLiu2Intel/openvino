@@ -250,6 +250,7 @@ void Pipeline::update_graph_arguments_batching(uint32_t arg_index, const void* a
 };
 
 std::vector<ov::ProfilingInfo> Pipeline::get_profiling_info() const {
+    std::cout << "====== [check point]============Pipeline::get_profiling_info=====================" << std::endl;
     _logger.debug("InferRequest::get_profiling_info started");
     if (!_config.has<PERF_COUNT>() || !_config.get<PERF_COUNT>()) {
         _logger.warning("InferRequest::get_profiling_info complete with empty {}.");
@@ -262,12 +263,13 @@ std::vector<ov::ProfilingInfo> Pipeline::get_profiling_info() const {
     }
     /// PROFILING_TYPE = MODEL or undefined = fallback to model profiling
     if (_config.get<COMPILER_TYPE>() == ov::intel_npu::CompilerType::PLUGIN) {
+        std::cout << "====== [check point]============Pipeline::get_profiling_info=====================" << std::endl;
         // For plugin compiler retreive raw profiling data from backend and delegate
         // processing to the compiler
         _logger.debug("InferRequest::get_profiling_info complete with compiler->process_profiling_output().");
         return _graph->process_profiling_output(_profiling_query->getData<uint8_t>(), _config);
     } else {
-        _logger.debug("InferRequest::get_profiling_info complete with _profiling_query.getLayerStatistics().");
+        _logger.debug("InferRequest::get_profiling_info complete with _profiling_query.getLayerStatistics().");/// call this ones
         return _profiling_query->getLayerStatistics();
     }
 }
