@@ -535,6 +535,7 @@ FilteredConfig Plugin::fork_local_config(const std::map<std::string, std::string
             // Compiler type has changed!
             // Set new compiler type
             localConfig.update({{std::string(COMPILER_TYPE::key()), it->second}});
+            std::cout << "====!!!plugin::fork_local_config (1) = localConfig.compilertype is " << localConfig.get<COMPILER_TYPE>() << std::endl;
             // enable/disable config keys based on what the new compiler supports
             filter_config_by_compiler_support(localConfig);
             compiler_changed = true;
@@ -567,6 +568,7 @@ FilteredConfig Plugin::fork_local_config(const std::map<std::string, std::string
 
     // 3. If all good so far, update values
     localConfig.update(cfgs_to_set, mode);
+    std::cout << "====!!!plugin::fork_local_config (2) = localConfig.compilertype is " << localConfig.get<COMPILER_TYPE>() << std::endl;
     return localConfig;
 }
 
@@ -644,6 +646,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     std::cout << "====== [check point]============fork_local_config 1=====================" <<std::endl;
     auto localConfig = fork_local_config(localPropertiesMap, compiler);
     std::cout << "====== [check point]============fork_local_config 2=====================" <<std::endl;
+    std::cout << "====!!!plugin::compile_model (1) = localConfig.compilertype is " << localConfig.get<COMPILER_TYPE>() << std::endl;
 
 #ifndef VCL_FOR_COMPILER
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
@@ -661,6 +664,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
                                       _backend == nullptr ? std::vector<std::string>() : _backend->getDeviceNames());
     auto device = _backend == nullptr ? nullptr : _backend->getDevice(localConfig.get<DEVICE_ID>());
     localConfig.update({{ov::intel_npu::platform.name(), platform}});
+    std::cout << "====!!!plugin::compile_model (2)= localConfig.compilertype is " << localConfig.get<COMPILER_TYPE>() << std::endl;
 
     auto updateBatchMode = [&](ov::intel_npu::BatchMode mode) {
         std::stringstream strStream;
@@ -701,6 +705,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         std::tie(batchedModel, successfullyDebatched) =
             intel_npu::batch_helpers::handlePluginBatching(model, localConfig, updateBatchMode, originalBatch, _logger);
     }
+    std::cout << "====!!!plugin::compile_model (3)= localConfig.compilertype is " << localConfig.get<COMPILER_TYPE>() << std::endl;
 
     // Update stepping w/ information from driver, unless provided by user or we are off-device
     // Ignore, if compilation was requested for platform, different from current
@@ -761,6 +766,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         // Determine which model to use
         auto modelToCompile = successfullyDebatched ? batchedModel : model->clone();
 
+        std::cout << "====!!!plugin::compile_model (4)= localConfig.compilertype is " << localConfig.get<COMPILER_TYPE>() << std::endl;
         if (successfullyDebatched && localConfig.get<PERFORMANCE_HINT>() == ov::hint::PerformanceMode::LATENCY) {
             _logger.info("Override performance mode to THROUGHPUT for compilation");
 
@@ -793,6 +799,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     }
 
     std::shared_ptr<ov::ICompiledModel> compiledModel;
+    std::cout << "====!!!plugin::compile_model (5)= localConfig.compilertype is " << localConfig.get<COMPILER_TYPE>() << std::endl;
     try {
         std::cout << "[Test Point]========plugin compile : Creating CompiledModel object" << std::endl;
         compiledModel = std::make_shared<CompiledModel>(model, shared_from_this(), device, graph, localConfig, batch);

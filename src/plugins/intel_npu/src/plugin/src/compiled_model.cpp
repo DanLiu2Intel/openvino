@@ -34,6 +34,8 @@ CompiledModel::CompiledModel(const std::shared_ptr<const ov::Model>& model,
       _device(device),
       _graph(graph),
       _batchSize(batchSize) {
+    std::cout << "[Test Point]========CompiledModelconstruct !!!! _config.get<COMPILER_TYPE>() is " << _config.get<COMPILER_TYPE>() << "========" << std::endl;
+
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::CompiledModel");
 
     OV_ITT_TASK_CHAIN(COMPILED_MODEL, itt::domains::NPUPlugin, "CompiledModel::CompiledModel", "initialize_properties");
@@ -67,6 +69,7 @@ std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() co
     }
 
     std::cout << "[Test Point]========CompiledModel::create_infer_request syncInferRequest 1========" << std::endl;
+    std::cout << "[Test Point]========CompiledModel::create_infer_request syncInferRequest 1 !!!!  _config.get<COMPILER_TYPE>() is " << _config.get<COMPILER_TYPE>() << "========" << std::endl;
     const std::shared_ptr<SyncInferRequest>& syncInferRequest =
         _device->createInferRequest(shared_from_this(), _config);
     syncInferRequest->initialize_states();  /// 似乎这一部分没有内容可以更啊？

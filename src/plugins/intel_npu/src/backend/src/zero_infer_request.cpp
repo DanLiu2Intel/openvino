@@ -116,6 +116,8 @@ ZeroInferRequest::ZeroInferRequest(const std::shared_ptr<ZeroInitStructsHolder>&
       _graphOutputDescriptors(_graph->get_output_descriptors()),
       _levelZeroInputTensors(_metadata.inputs.size(), std::vector<std::shared_ptr<ZeroTensor>>(1, nullptr)),
       _levelZeroOutputTensors(_metadata.outputs.size(), nullptr) {
+    std::cout << "===!!!==ZeroInferRequest::ZeroInferRequest======= _config.get<COMPILER_TYPE>() is " << _config.get<COMPILER_TYPE>() << std::endl;
+
     _logger.debug("ZeroInferRequest::ZeroInferRequest - checking level zero attributes and allocating tensors");
     
     ///试着检查 _graph中的compiler内容
