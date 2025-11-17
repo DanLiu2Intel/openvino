@@ -144,6 +144,20 @@ void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
     }
 }
 
+std::string getDeviceFromProperties(const ov::AnyMap& propertiesMap) {
+    const std::string defaultDevice = std::string(ov::intel_npu::Platform::NPU4000);
+    auto it = propertiesMap.find(std::string(DEVICE_ID::key()));
+    if (it != propertiesMap.end()) {
+        return it->second.as<std::string>();
+    }
+
+    it = propertiesMap.find(std::string(PLATFORM::key()));
+    if (it != propertiesMap.end()) {
+        return it->second.as<std::string>();
+    }
+    return defaultDevice;
+}
+
 void  checkUpdateforspecialPlatform(const FilteredConfig& base_conf, ov::AnyMap& propertiesMap, Logger& log) {
     // if there is no compiler_type provided, use base_config value, check and update by the device
     // update the compilerType by device:
@@ -151,28 +165,30 @@ void  checkUpdateforspecialPlatform(const FilteredConfig& base_conf, ov::AnyMap&
     //  4000 and later -> MLIR
     std::cout << "(1)checkUpdateforspecialPlatform called, propertiesMap's size() is "<< propertiesMap.size() << std::endl;
     for(auto item : propertiesMap) {
-        std::cout << "  key: " << item.first << ", value: " << item.second << std::endl;
+        std::cout << "  key: " << item.first << ", value: " << item.second.as<std::string>() << std::endl;
     }
-    auto it_device = propertiesMap.find(std::string(DEVICE_ID::key()));
-    auto it_platform = propertiesMap.find(std::string(PLATFORM::key()));
     auto it_compiler_type = propertiesMap.find(std::string(COMPILER_TYPE::key()));
-    if ((it_device != propertiesMap.end() || it_platform != propertiesMap.end()) && it_compiler_type == propertiesMap.end()) {
+    if (it_compiler_type == propertiesMap.end()) {
         // if platform is provided by local config = use that
-        if (propertiesMap.at(DEVICE_ID::key()) == ov::intel_npu::Platform::NPU3720 ||
-                propertiesMap.at(PLATFORM::key()) == ov::intel_npu::Platform::NPU3720) {
+        std::cout << "run here to test1" << std::endl;
+        const ov::AnyMap localProperties = propertiesMap;
+        std::string getdevice = getDeviceFromProperties(localProperties);
+        if (getdevice == std::string((ov::intel_npu::Platform::NPU3720))) {
+            std::cout << "run here to test2, get device is " << getdevice << std::endl;
             if(base_conf.get<COMPILER_TYPE>() != ov::intel_npu::CompilerType::DRIVER) {
+                std::cout << "run here to test3" << std::endl;
                 log.warning(
                     "Platform '3720' is selected, but the used compiler_type is not set to 'DRIVER'. Forcely use the "
                     "compiler_type to 'DRIVER'. Maybe cause the compilerType inconsistency issues.");
             }
-
+            std::cout << "run here to test4" << std::endl;
             // To avoid compilerType inconsistency issues, only set DRIVER if compiler_type is not set by user
-            propertiesMap[COMPILER_TYPE::key()] = COMPILER_TYPE::toString(ov::intel_npu::CompilerType::DRIVER);
+            propertiesMap[std::string(COMPILER_TYPE::key())] = COMPILER_TYPE::toString(ov::intel_npu::CompilerType::DRIVER);
         }
     }
     std::cout << "(2)checkUpdateforspecialPlatform called, propertiesMap's size() is "<< propertiesMap.size() << std::endl;
     for(auto item : propertiesMap) {
-        std::cout << "  key: " << item.first << ", value: " << item.second << std::endl;
+        std::cout << "  key: " << item.first << ", value: " << item.second.as<std::string>() << std::endl;
     }
 }
 
@@ -257,20 +273,6 @@ std::shared_ptr<const ov::Model> exclude_model_ptr_from_map(ov::AnyMap& properti
         properties.erase(ov::hint::model.name());
     }
     return modelPtr;
-}
-
-std::string getDeviceFromProperties(const std::map<std::string, std::string>& propertiesMap) {
-    const std::string defaultDevice = "4000";
-    auto it = propertiesMap.find(std::string(DEVICE_ID::key()));
-    if (it != propertiesMap.end()) {
-        return it->second;
-    }
-
-    it = propertiesMap.find(std::string(PLATFORM::key()));
-    if (it != propertiesMap.end()) {
-        return it->second;
-    }
-    return defaultDevice;
 }
 
 }  // namespace
@@ -664,6 +666,7 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    std::cout << "===========compile_model== update compilerType to Driver" <<std::endl;
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
 
     // Before going any further: if
@@ -672,6 +675,10 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     // activate the NPUW path
     auto useNpuwKey = ov::intel_npu::use_npuw.name();
     ov::AnyMap localProperties = properties;
+    std::cout << "(0)checkUpdateforspecialPlatform called, localProperties's size() is "<< localProperties.size() << std::endl;
+    for(auto item : localProperties) {
+        std::cout << "  key: " << item.first << ", value: " << item.second.as<std::string>() << std::endl;
+    }
     if (localProperties.count(useNpuwKey)) {
         if (localProperties.at(useNpuwKey).as<bool>() == true) {
             return ov::npuw::ICompiledModel::create(model->clone(), shared_from_this(), localProperties);
@@ -680,6 +687,11 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             localProperties.erase(useNpuwKey);
         }
     }
+    std::cout << "(0.5)checkUpdateforspecialPlatform called, localProperties's size() is "<< localProperties.size() << std::endl;
+    for(auto item : localProperties) {
+        std::cout << "  key: " << item.first << ", value: " << item.second.as<std::string>() << std::endl;
+    }
+
 
     // ov::hint::model has no corresponding "Config" implementation thus we need to remove it from the
     // list of properties
@@ -690,6 +702,10 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     std::cout << "Plugin::compile_model called======1=======" << std::endl;
     checkUpdateforspecialPlatform(_globalConfig, localProperties, _logger);
     std::cout << "Plugin::compile_model called======2=======" << std::endl;
+    std::cout << "(3)checkUpdateforspecialPlatform called, localProperties's size() is "<< localProperties.size() << std::endl;
+    for(auto item : localProperties) {
+        std::cout << "  key: " << item.first << ", value: " << item.second.as<std::string>() << std::endl;
+    }
 
     const std::map<std::string, std::string> localPropertiesMap = any_copy(localProperties);
     update_log_level(localPropertiesMap);
@@ -993,7 +1009,8 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
     exclude_model_ptr_from_map(npu_plugin_properties);
     const std::map<std::string, std::string> propertiesMap = any_copy(npu_plugin_properties);
     update_log_level(propertiesMap);
-    std::string device_id = getDeviceFromProperties(propertiesMap);
+    // std::string device_id = getDeviceFromProperties(propertiesMap);
+    checkUpdateforspecialPlatform(_globalConfig, npu_plugin_properties, _logger);
     auto compiler =
         compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, npu_plugin_properties));
     auto localConfig = fork_local_config(propertiesMap, compiler, OptionMode::CompileTime);
@@ -1030,7 +1047,8 @@ std::shared_ptr<ov::ICompiledModel> Plugin::parse(const ov::Tensor& tensorBig,
     CompilerAdapterFactory compilerAdapterFactory;
     const auto propertiesMap = any_copy(npu_plugin_properties);
     update_log_level(propertiesMap);
-    std::string device_id = getDeviceFromProperties(propertiesMap);
+    // std::string device_id = getDeviceFromProperties(propertiesMap);
+    checkUpdateforspecialPlatform(_globalConfig, npu_plugin_properties, _logger);
     auto compiler =
         compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, npu_plugin_properties));
 
