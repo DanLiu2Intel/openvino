@@ -70,10 +70,11 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
       _logger("PluginCompilerAdapter", Logger::global().level()) {
     _logger.debug("initialize PluginCompilerAdapter start");
 
-    _logger.info("PLUGIN VCL compiler will be used.");
+    _logger.info("Loading PLUGIN compiler");
     try {
         auto vclCompilerPtr = VCLCompilerImpl::getInstance();
         auto vclLib = VCLApi::getInstance()->getLibrary();
+        _logger.info("PLUGIN VCL compiler is loading");
         if (vclCompilerPtr && vclLib) {
             _compiler = ov::SoPtr<intel_npu::ICompiler>(vclCompilerPtr, vclLib);
         } else {
@@ -122,7 +123,6 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
     ov::Tensor tensor = make_tensor_from_vector(networkDesc.compiledNetwork);
     GraphDescriptor graphDesc;
 
-    NetworkMetadata networkMeta = std::move(networkDesc.metadata);
     if (_zeGraphExt) {
         // Depending on the config, we may get an error when trying to get the graph handle from the compiled
         // network
