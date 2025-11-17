@@ -76,6 +76,9 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
         auto vclLib = VCLApi::getInstance()->getLibrary();
         if (vclCompilerPtr && vclLib) {
             _compiler = ov::SoPtr<intel_npu::ICompiler>(vclCompilerPtr, vclLib);
+            if (_compiler) {
+                _logger.error("VCL compiler loaded successfully. PLUGIN compiler will be used.");
+            }
         } else {
             throw std::runtime_error("VCL compiler or library is nullptr");
         }

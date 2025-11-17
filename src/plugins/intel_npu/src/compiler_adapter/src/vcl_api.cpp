@@ -66,7 +66,7 @@ static inline std::string getLatestVCLLog(vcl_log_handle_t logHandle) {
         }                                               \
     }
 
-VCLApi::VCLApi() : _logger("VCLApi", ov::log::Level::DEBUG) {
+VCLApi::VCLApi() : _logger("VCLApi", ov::log::Level::INFO) {
     const std::string baseName = "openvino_intel_npu_compiler";
     try {
         auto libpath = ov::util::make_plugin_library_name({}, baseName);
@@ -113,8 +113,8 @@ const std::shared_ptr<VCLApi>& VCLApi::getInstance() {
     return instance;
 }
 
-VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerImpl", ov::log::Level::DEBUG) {
-    _logger.debug("VCLCompilerImpl constructor start");
+VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerImpl", ov::log::Level::INFO) {
+    _logger.info("VCLCompilerImpl constructor start");
     // Initialize the VCL API
     THROW_ON_FAIL_FOR_VCL("vclGetVersion", vclGetVersion(&_vclVersion, &_vclProfilingVersion), nullptr);
 
@@ -208,7 +208,7 @@ std::string supportVclCompiler(int major, int minor) {
 }
 
 NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Model>& model, const Config& config) const {
-    _logger.debug("compile start");
+    _logger.info("vcl compile start");
 
     const auto maxOpsetVersion = _compilerProperties.supportedOpsets;
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
@@ -355,7 +355,7 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
         // Use empty metadata as VCL does not support metadata extraction
         NetworkMetadata metadata;
 
-        _logger.debug("compile end, blob size:%d", compiledNetwork.size());
+        _logger.info("vcl compile end, blob size:%d", compiledNetwork.size());
         return NetworkDescription(std::move(compiledNetwork), std::move(metadata));
     }
 }
