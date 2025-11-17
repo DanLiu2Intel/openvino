@@ -296,6 +296,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
     std::optional<std::vector<ov::Tensor>> initBlobs,
     const std::optional<std::shared_ptr<const ov::Model>>& model) const {
     OV_ITT_TASK_CHAIN(PARSE_BLOB, itt::domains::NPUPlugin, "PluginCompilerAdapter", "parse");
+\
     _logger.debug("parse start");
     std::vector<uint8_t> network(mainBlob.get_byte_size());
     network.assign(reinterpret_cast<const uint8_t*>(mainBlob.data()),
@@ -303,6 +304,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
     auto networkMeta = _compiler->parse(network, config);
     network.clear();
     network.shrink_to_fit();
+
     GraphDescriptor mainGraphDesc;
 
     if (_zeGraphExt) {
