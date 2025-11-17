@@ -66,7 +66,7 @@ static inline std::string getLatestVCLLog(vcl_log_handle_t logHandle) {
         }                                               \
     }
 
-VCLApi::VCLApi() : _logger("VCLApi", Logger::global().level()) {
+VCLApi::VCLApi() : _logger("VCLApi", ov::log::Level::DEBUG) {
     const std::string baseName = "openvino_intel_npu_compiler";
     try {
         auto libpath = ov::util::make_plugin_library_name({}, baseName);
@@ -113,7 +113,7 @@ const std::shared_ptr<VCLApi>& VCLApi::getInstance() {
     return instance;
 }
 
-VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerImpl", Logger::global().level()) {
+VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerImpl", ov::log::Level::DEBUG) {
     _logger.debug("VCLCompilerImpl constructor start");
     // Initialize the VCL API
     THROW_ON_FAIL_FOR_VCL("vclGetVersion", vclGetVersion(&_vclVersion, &_vclProfilingVersion), nullptr);
