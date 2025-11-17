@@ -144,6 +144,38 @@ void update_log_level(const std::map<std::string, std::string>& propertiesMap) {
     }
 }
 
+void  checkUpdateforspecialPlatform(const FilteredConfig& base_conf, ov::AnyMap& propertiesMap, Logger& log) {
+    // if there is no compiler_type provided, use base_config value, check and update by the device
+    // update the compilerType by device:
+    //  3720 -> DRIVER
+    //  4000 and later -> MLIR
+    std::cout << "(1)checkUpdateforspecialPlatform called, propertiesMap's size() is "<< propertiesMap.size() << std::endl;
+    for(auto item : propertiesMap) {
+        std::cout << "  key: " << item.first << ", value: " << item.second << std::endl;
+    }
+    auto it_device = propertiesMap.find(std::string(DEVICE_ID::key()));
+    auto it_platform = propertiesMap.find(std::string(PLATFORM::key()));
+    auto it_compiler_type = propertiesMap.find(std::string(COMPILER_TYPE::key()));
+    if ((it_device != propertiesMap.end() || it_platform != propertiesMap.end()) && it_compiler_type == propertiesMap.end()) {
+        // if platform is provided by local config = use that
+        if (propertiesMap.at(DEVICE_ID::key()) == ov::intel_npu::Platform::NPU3720 ||
+                propertiesMap.at(PLATFORM::key()) == ov::intel_npu::Platform::NPU3720) {
+            if(base_conf.get<COMPILER_TYPE>() != ov::intel_npu::CompilerType::DRIVER) {
+                log.warning(
+                    "Platform '3720' is selected, but the used compiler_type is not set to 'DRIVER'. Forcely use the "
+                    "compiler_type to 'DRIVER'. Maybe cause the compilerType inconsistency issues.");
+            }
+
+            // To avoid compilerType inconsistency issues, only set DRIVER if compiler_type is not set by user
+            propertiesMap[COMPILER_TYPE::key()] = COMPILER_TYPE::toString(ov::intel_npu::CompilerType::DRIVER);
+        }
+    }
+    std::cout << "(2)checkUpdateforspecialPlatform called, propertiesMap's size() is "<< propertiesMap.size() << std::endl;
+    for(auto item : propertiesMap) {
+        std::cout << "  key: " << item.first << ", value: " << item.second << std::endl;
+    }
+}
+
 static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& base_conf, const ov::AnyMap& local_conf) {
     // first look if provided config changes compiler type
     auto it = local_conf.find(std::string(COMPILER_TYPE::key()));
@@ -151,30 +183,7 @@ static ov::intel_npu::CompilerType resolveCompilerType(const FilteredConfig& bas
         // if compiler_type is provided by local config = use that
         return COMPILER_TYPE::parse(it->second.as<std::string>());
     }
-
     // if there is no compiler_type provided = use base_config value
-    // update the compilerType by device id:
-    //  3720 -> DRIVER
-    //    4000 and later -> MLIR (default value)
-    auto it_device = local_conf.find(std::string(DEVICE_ID::key()));
-    if (it_device != local_conf.end()) {
-        // if platform is provided by local config = use that
-        if (it_device->second.as<std::string>() == ov::intel_npu::Platform::NPU3720) {
-            return ov::intel_npu::CompilerType::DRIVER;
-        }
-    }
-
-    // if there is no compiler_type provided = use base_config value
-    // update the compilerType by platform:
-    //  3720 -> DRIVER
-    //    4000 and later -> MLIR (default value)
-    auto it_platform = local_conf.find(std::string(PLATFORM::key()));
-    if (it_platform != local_conf.end()) {
-        // if platform is provided by local config = use that
-        if (it_platform->second.as<std::string>() == ov::intel_npu::Platform::NPU3720) {
-            return ov::intel_npu::CompilerType::DRIVER;
-        }
-    }
     return base_conf.get<COMPILER_TYPE>();
 }
 
@@ -551,9 +560,9 @@ FilteredConfig Plugin::fork_local_config(const std::map<std::string, std::string
 
     // Check if compiler was changed
     // 1. Check for compiler change
-    auto it = rawConfig.find(std::string(COMPILER_TYPE::key()));
-    if (it != rawConfig.end()) {
-        if (localConfigPtr->getString<COMPILER_TYPE>() != it->second) {
+    auto it = rawConfig.find(std::string(COMPILER_TYPE::key())); //查找 config中 有没有 comilerType
+    if (it != rawConfig.end()) { // 扎到了，也就是设置了compilerType的时候
+        if (localConfigPtr->getString<COMPILER_TYPE>() != it->second) {  // 默认的_global 和 用户设置的不一样的时候，显示compilerchanged
             // Compiler type has changed!
             // Set new compiler type
             localConfigPtr->update({{std::string(COMPILER_TYPE::key()), it->second}});
@@ -677,6 +686,10 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
     if (exclude_model_ptr_from_map(localProperties)) {
         _logger.warning("Model received in config will be ignored as it was already provided by parameter.");
     }
+    // for 3720, need check and update its compiler_type
+    std::cout << "Plugin::compile_model called======1=======" << std::endl;
+    checkUpdateforspecialPlatform(_globalConfig, localProperties, _logger);
+    std::cout << "Plugin::compile_model called======2=======" << std::endl;
 
     const std::map<std::string, std::string> localPropertiesMap = any_copy(localProperties);
     update_log_level(localPropertiesMap);
