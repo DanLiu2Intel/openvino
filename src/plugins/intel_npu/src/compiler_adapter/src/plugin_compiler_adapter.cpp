@@ -25,32 +25,34 @@
 
 namespace {
 
-std::shared_ptr<void> load_library(const std::string& libpath) {
-#if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
-    return ov::util::load_shared_object(ov::util::string_to_wstring(libpath).c_str());
-#else
-    return ov::util::load_shared_object(libpath.c_str());
-#endif
-}
+// for load mlir compiler,, now remove to test
+// std::shared_ptr<void> load_library(const std::string& libpath) {
+// #if defined(OPENVINO_ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
+//     return ov::util::load_shared_object(ov::util::string_to_wstring(libpath).c_str());
+// #else
+//     return ov::util::load_shared_object(libpath.c_str());
+// #endif
+// }
 
-std::shared_ptr<intel_npu::ICompiler> get_compiler(std::shared_ptr<void> so) {
-    static constexpr auto CreateFuncName = "CreateNPUCompiler";
-    auto symbol = ov::util::get_symbol(so, CreateFuncName);
+// std::shared_ptr<intel_npu::VCLCompilerImpl> get_compiler(std::shared_ptr<void> so) {
+//     static constexpr auto CreateFuncName = "CreateNPUCompiler";
+//     auto symbol = ov::util::get_symbol(so, CreateFuncName);
 
-    using CreateFuncT = void (*)(std::shared_ptr<intel_npu::ICompiler>&);
-    const auto createFunc = reinterpret_cast<CreateFuncT>(symbol);
+//     using CreateFuncT = void (*)(std::shared_ptr<intel_npu::VCLCompilerImpl>&);
+//     const auto createFunc = reinterpret_cast<CreateFuncT>(symbol);
 
-    std::shared_ptr<intel_npu::ICompiler> compilerPtr;
-    createFunc(compilerPtr);
-    return compilerPtr;
-}
+//     std::shared_ptr<intel_npu::VCLCompilerImpl> compilerPtr;
+//     createFunc(compilerPtr);
+//     return compilerPtr;
+// }
+//
+//
+// ov::SoPtr<intel_npu::VCLCompilerImpl> load_compiler(const std::string& libpath) {
+//     auto compilerSO = load_library(libpath);
+//     auto compiler = get_compiler(compilerSO);
 
-ov::SoPtr<intel_npu::ICompiler> load_compiler(const std::string& libpath) {
-    auto compilerSO = load_library(libpath);
-    auto compiler = get_compiler(compilerSO);
-
-    return ov::SoPtr<intel_npu::ICompiler>(compiler, compilerSO);
-}
+//     return ov::SoPtr<intel_npu::VCLCompilerImpl>(compiler, compilerSO);
+// }
 
 ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
     auto tensor = ov::Tensor(ov::element::u8, ov::Shape{vector.size()}, vector.data());
@@ -76,25 +78,25 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
         auto vclLib = VCLApi::getInstance()->getLibrary();
         _logger.info("PLUGIN VCL compiler is loading");
         if (vclCompilerPtr && vclLib) {
-            _compiler = ov::SoPtr<intel_npu::ICompiler>(vclCompilerPtr, vclLib);
+            _compiler = ov::SoPtr<intel_npu::VCLCompilerImpl>(vclCompilerPtr, vclLib);
         } else {
             throw std::runtime_error("VCL compiler or library is nullptr");
         }
     } catch (const std::exception& vcl_exception) {
         _logger.warning("VCL compiler load failed: %s. Trying to load MLIR compiler...", vcl_exception.what());
-        std::string baseName = "npu_mlir_compiler";
-        auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
-        try {
-            _compiler = load_compiler(libPath);
-            if (!_compiler) {
-                throw std::runtime_error("MLIR compiler load returned nullptr");
-            } else {
-                _logger.info("MLIR compiler loaded successfully. PLUGIN compiler will be used.");
-            }
-        } catch (const std::exception& mlir_exception) {
-            _logger.error("MLIR compiler load failed: %s", mlir_exception.what());
-            throw std::runtime_error("Both VCL and MLIR compiler load failed, aborting.");
-        }
+        // std::string baseName = "npu_mlir_compiler";
+        // auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
+        // try {
+        //     _compiler = load_compiler(libPath);
+        //     if (!_compiler) {
+        //         throw std::runtime_error("MLIR compiler load returned nullptr");
+        //     } else {
+        //         _logger.info("MLIR compiler loaded successfully. PLUGIN compiler will be used.");
+        //     }
+        // } catch (const std::exception& mlir_exception) {
+        //     _logger.error("MLIR compiler load failed: %s", mlir_exception.what());
+        //     throw std::runtime_error("Both VCL and MLIR compiler load failed, aborting.");
+        // }
     }
 
     if (_zeroInitStruct == nullptr) {

@@ -6,7 +6,12 @@
 
 #include <memory>
 
-#include "intel_npu/icompiler.hpp"
+#include "intel_npu/config/config.hpp"
+#include "intel_npu/network_metadata.hpp"
+#include "openvino/runtime/profiling_info.hpp"
+
+//#include "intel_npu/vclcompilerimpl.hpp"
+#include "intel_npu/vclcompilerimpl.hpp"
 #include "npu_driver_compiler.h"
 #include "openvino/core/except.hpp"
 
@@ -81,40 +86,64 @@ vcl_weak_symbols_list();
 
 std::string supportVclCompiler(int major, int minor);
 
-class VCLCompilerImpl final : public intel_npu::ICompiler {
-public:
-    VCLCompilerImpl();
-    ~VCLCompilerImpl() override;
 
-    static std::shared_ptr<VCLCompilerImpl> getInstance() {
-        static std::shared_ptr<VCLCompilerImpl> compiler = std::make_shared<VCLCompilerImpl>();
-        return compiler;
-    }
+// /**
+//  * @struct NetworkDescription
+//  * @brief The object returned by the compiler
+//  * to provide such information about a network as description of inputs and outputs,
+//  * name and compiled network in a format executable by device
+//  */
+// struct NetworkDescription final {
+//     NetworkDescription(std::vector<uint8_t>&& compiledNetwork, NetworkMetadata&& metadata)
+//         : compiledNetwork(std::move(compiledNetwork)),
+//           metadata(std::move(metadata)) {}
+//     // Force move semantics to prevent blob copies
+//     NetworkDescription(const NetworkDescription&) = delete;
+//     NetworkDescription(NetworkDescription&&) = default;
+//     NetworkDescription& operator=(const NetworkDescription&) = delete;
+//     NetworkDescription& operator=(NetworkDescription&&) = default;
+//     ~NetworkDescription() = default;
 
-    NetworkDescription compile(const std::shared_ptr<const ov::Model>& model, const Config& config) const override;
+//     std::vector<uint8_t> compiledNetwork;
 
-    ov::SupportedOpsMap query(const std::shared_ptr<const ov::Model>& model, const Config& config) const override;
+//     NetworkMetadata metadata;
+// };
 
-    NetworkMetadata parse(const std::vector<uint8_t>& network, const Config& config) const override;
 
-    uint32_t get_version() const override;
+// class VCLCompilerImpl {
+// public:
+//     VCLCompilerImpl();
+//     ~VCLCompilerImpl() override;
 
-    std::vector<ov::ProfilingInfo> process_profiling_output(const std::vector<uint8_t>& profData,
-                                                            const std::vector<uint8_t>& network,
-                                                            const intel_npu::Config& config) const final override;
+//     static std::shared_ptr<VCLCompilerImpl> getInstance() {
+//         static std::shared_ptr<VCLCompilerImpl> compiler = std::make_shared<VCLCompilerImpl>();
+//         return compiler;
+//     }
 
-    bool get_supported_options(std::vector<char>& options) const;
+//     NetworkDescription compile(const std::shared_ptr<const ov::Model>& model, const Config& config) const override;
 
-    bool is_option_supported(const std::string& option) const;
+//     ov::SupportedOpsMap query(const std::shared_ptr<const ov::Model>& model, const Config& config) const override;
 
-private:
-    std::shared_ptr<VCLApi> _vclApi;
-    vcl_log_handle_t _logHandle = nullptr;
-    vcl_compiler_handle_t _compilerHandle = nullptr;
-    vcl_compiler_properties_t _compilerProperties;
-    vcl_version_info_t _vclVersion;
-    vcl_version_info_t _vclProfilingVersion;
-    Logger _logger;
-};
+//     NetworkMetadata parse(const std::vector<uint8_t>& network, const Config& config) const override;
+
+//     uint32_t get_version() const override;
+
+//     std::vector<ov::ProfilingInfo> process_profiling_output(const std::vector<uint8_t>& profData,
+//                                                             const std::vector<uint8_t>& network,
+//                                                             const intel_npu::Config& config) const final override;
+
+//     bool get_supported_options(std::vector<char>& options) const;
+
+//     bool is_option_supported(const std::string& option) const;
+
+// private:
+//     std::shared_ptr<VCLApi> _vclApi;
+//     vcl_log_handle_t _logHandle = nullptr;
+//     vcl_compiler_handle_t _compilerHandle = nullptr;
+//     vcl_compiler_properties_t _compilerProperties;
+//     vcl_version_info_t _vclVersion;
+//     vcl_version_info_t _vclProfilingVersion;
+//     Logger _logger;
+// };
 
 }  // namespace intel_npu

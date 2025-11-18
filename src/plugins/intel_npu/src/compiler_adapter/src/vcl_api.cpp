@@ -3,6 +3,7 @@
 //
 
 #include "vcl_api.hpp"
+#include "intel_npu/vclcompilerimpl.hpp"
 
 #include "intel_npu/common/filtered_config.hpp"
 #include "intel_npu/config/options.hpp"

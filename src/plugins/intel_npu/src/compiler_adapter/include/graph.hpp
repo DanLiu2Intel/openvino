@@ -9,7 +9,7 @@
 #include <ze_graph_ext.h>
 
 #include "intel_npu/common/igraph.hpp"
-#include "intel_npu/icompiler.hpp"
+#include "intel_npu/vclcompilerimpl.hpp"
 #include "intel_npu/utils/zero/zero_init.hpp"
 #include "openvino/runtime/so_ptr.hpp"
 #include "ze_graph_ext_wrappers.hpp"
@@ -25,7 +25,7 @@ public:
           std::optional<ov::Tensor> blob,
           const Config& config,
           const bool blobIsPersistent = false,
-          const ov::SoPtr<ICompiler>& compiler = {nullptr},
+          const ov::SoPtr<VCLCompilerImpl>& compiler = {nullptr},
           const bool calledFromWeightlessGraph = false);
 
     std::pair<uint64_t, std::optional<std::vector<uint64_t>>> export_blob(std::ostream& stream) const override;
@@ -91,7 +91,7 @@ protected:
      */
     std::optional<std::size_t> _batchSize = std::nullopt;
 
-    const ov::SoPtr<ICompiler> _compiler;
+    const ov::SoPtr<VCLCompilerImpl> _compiler;
     Logger _logger;
 };
 

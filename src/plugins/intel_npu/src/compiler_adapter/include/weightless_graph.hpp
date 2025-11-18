@@ -32,7 +32,7 @@ public:
                     const std::shared_ptr<const ov::Model>& model,
                     const Config& config,
                     const bool blobIsPersistent = false,
-                    const ov::SoPtr<ICompiler>& compiler = {nullptr});
+                    const ov::SoPtr<IComVCLCompilerImplpiler>& compiler = {nullptr});
 
     /**
      * @brief The main schedule along with the weights initialization ones are exported.
