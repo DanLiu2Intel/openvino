@@ -933,11 +933,12 @@ ov::SupportedOpsMap Plugin::query_model(const std::shared_ptr<const ov::Model>& 
     CompilerAdapterFactory compilerAdapterFactory;
     auto npu_plugin_properties = properties;
     exclude_model_ptr_from_map(npu_plugin_properties);
+    checkUpdateforspecialPlatform(_globalConfig, npu_plugin_properties, _logger);
     const std::map<std::string, std::string> propertiesMap = any_copy(npu_plugin_properties);
     update_log_level(propertiesMap);
-    checkUpdateforspecialPlatform(_globalConfig, npu_plugin_properties, _logger);
     auto compiler =
         compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, npu_plugin_properties));
+
     auto localConfig = fork_local_config(propertiesMap, compiler, OptionMode::CompileTime);
     _logger.setLevel(localConfig.get<LOG_LEVEL>());
     const auto platform =
@@ -968,11 +969,11 @@ std::shared_ptr<ov::ICompiledModel> Plugin::parse(const ov::Tensor& tensorBig,
     // ov::hint::model has no corresponding "Config" implementation thus we need to remove it from the
     // list of properties
     auto originalModel = exclude_model_ptr_from_map(npu_plugin_properties);
-
+    checkUpdateforspecialPlatform(_globalConfig, npu_plugin_properties, _logger);
     CompilerAdapterFactory compilerAdapterFactory;
     const auto propertiesMap = any_copy(npu_plugin_properties);
     update_log_level(propertiesMap);
-    checkUpdateforspecialPlatform(_globalConfig, npu_plugin_properties, _logger);
+
     auto compiler =
         compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, npu_plugin_properties));
 
