@@ -395,7 +395,7 @@ std::vector<std::string> PluginCompilerAdapter::get_supported_options() const {
     // For VCL, we can return the supported options from compiler
     VCLCompilerImpl* vclCompiler = dynamic_cast<VCLCompilerImpl*>(_compiler.operator->());
     if (vclCompiler == nullptr) {
-        // If _compiler  cannot cover to VCLCompilerImpl, it should use the mlir library.
+        // If _compiler  cannot be cast to VCLCompilerImpl, it should use the mlir library.
         // PluginCompiler has all the same options as plugin
         // Returing empty string to let the plugin fallback to legacy registration
         _logger.warning("Failed to cast compiler to VCLCompilerImpl. Returning empty supported options.");
@@ -427,9 +427,9 @@ std::vector<std::string> PluginCompilerAdapter::get_supported_options() const {
 bool PluginCompilerAdapter::is_option_supported(std::string optname) const {
     VCLCompilerImpl* vclCompiler = dynamic_cast<VCLCompilerImpl*>(_compiler.operator->());
     if (vclCompiler == nullptr) {
-        // If _compiler  cannot cover to VCLCompilerImpl, it should use the mlir library.
+        // If _compiler  cannot be cast to VCLCompilerImpl, it should use the mlir library.
         // This functions has no utility in PluginCompiler
-        // returning false for any request to avoid the option of spaming the plugin
+        // returning false for any request to avoid the option of spamming the plugin
         _logger.warning("Failed to cast compiler to VCLCompilerImpl. Returning false for check.");
         return false;
     }
