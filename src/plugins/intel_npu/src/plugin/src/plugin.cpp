@@ -1029,26 +1029,16 @@ std::shared_ptr<ov::ICompiledModel> Plugin::parse(const ov::Tensor& tensorBig,
     // ov::hint::model has no corresponding "Config" implementation thus we need to remove it from the
     // list of properties
     auto originalModel = exclude_model_ptr_from_map(npu_plugin_properties);
-<<<<<<< HEAD
-    checkUpdateforspecialPlatform(_globalConfig, npu_plugin_properties, _logger);
-=======
-
     auto deviceBeforeCompilerCreate = _backend == nullptr ? nullptr : _backend->getDevice();
     std::string deviceName = deviceBeforeCompilerCreate != nullptr ? deviceBeforeCompilerCreate->getName() : "";
     checkUpdateforSpecialPlatform(_globalConfig, npu_plugin_properties, deviceName, _logger);
-
->>>>>>> acafdc6639 (fix 3720 platfrom compilerType issue and metadata name issue)
     CompilerAdapterFactory compilerAdapterFactory;
     const auto propertiesMap = any_copy(npu_plugin_properties);
     update_log_level(propertiesMap);
 
     auto compiler =
-<<<<<<< HEAD
-        compilerAdapterFactory.getCompiler(_backend, resolveCompilerType(_globalConfig, npu_plugin_properties));
-=======
         compilerAdapterFactory.getCompiler(_backend,
                                            resolveCompilerType(_globalConfig, npu_plugin_properties, deviceName));
->>>>>>> acafdc6639 (fix 3720 platfrom compilerType issue and metadata name issue)
 
     OV_ITT_TASK_CHAIN(PLUGIN_PARSE_MODEL, itt::domains::NPUPlugin, "Plugin::parse", "fork_local_config");
     auto localConfig = fork_local_config(propertiesMap, compiler, OptionMode::RunTime);
