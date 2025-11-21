@@ -226,6 +226,15 @@ std::string supportVclCompiler(int major, int minor) {
 NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Model>& model, const Config& config) const {
     _logger.debug("compile start");
 
+    /// Check the linked vcl version whether supported in plugin
+    uint16_t usedMajor = VCL_COMPILER_VERSION_MAJOR, usedMinor = VCL_COMPILER_VERSION_MINOR;
+    if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) == _vclVersion.major) {
+        usedMinor = std::min(static_cast<uint16_t>(VCL_COMPILER_VERSION_MINOR), _vclVersion.minor);
+    } else if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) > _vclVersion.major) {
+        usedMajor = _vclVersion.major;
+        usedMinor = _vclVersion.minor;
+    }
+
     const auto maxOpsetVersion = _compilerProperties.supportedOpsets;
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
 
@@ -241,7 +250,7 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
     FilteredConfig updatedConfig = *filteredConfig;
     bool useBaseModelSerializer = true;
     // vcl serializer is only support for vcl version >= 7.5
-    if (compilerVersion.major >= 7 && compilerVersion.minor >= 5) {
+    if (usedMajor >= 7 && usedMinor >= 5) {
         useBaseModelSerializer = isUseBaseModelSerializer(updatedConfig);
     }
     auto serializedIR =
@@ -261,15 +270,6 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
                                      buildFlags.c_str(),
                                      buildFlags.size()};
     _logger.debug("compiler vcl version: %d.%d", _vclVersion.major, _vclVersion.minor);
-
-    /// Check the linked vcl version whether supported in plugin
-    uint16_t usedMajor = VCL_COMPILER_VERSION_MAJOR, usedMinor = VCL_COMPILER_VERSION_MINOR;
-    if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) == _vclVersion.major) {
-        usedMinor = std::min(static_cast<uint16_t>(VCL_COMPILER_VERSION_MINOR), _vclVersion.minor);
-    } else if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) > _vclVersion.major) {
-        usedMajor = _vclVersion.major;
-        usedMinor = _vclVersion.minor;
-    }
 
     if (usedMajor >= 7 && usedMinor >= 4) {
         if (VCL_COMPILER_VERSION_MAJOR < _vclVersion.major) {
@@ -432,6 +432,16 @@ uint32_t VCLCompilerImpl::get_version() const {
 
 ov::SupportedOpsMap VCLCompilerImpl::query(const std::shared_ptr<const ov::Model>& model, const Config& config) const {
     _logger.debug("query start");
+
+    /// Check the linked vcl version whether supported in plugin
+    uint16_t usedMajor = VCL_COMPILER_VERSION_MAJOR, usedMinor = VCL_COMPILER_VERSION_MINOR;
+    if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) == _vclVersion.major) {
+        usedMinor = std::min(static_cast<uint16_t>(VCL_COMPILER_VERSION_MINOR), _vclVersion.minor);
+    } else if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) > _vclVersion.major) {
+        usedMajor = _vclVersion.major;
+        usedMinor = _vclVersion.minor;
+    }
+
     const auto maxOpsetVersion = _compilerProperties.supportedOpsets;
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
 
@@ -446,7 +456,7 @@ ov::SupportedOpsMap VCLCompilerImpl::query(const std::shared_ptr<const ov::Model
     FilteredConfig updatedConfig = *filteredConfig;
     bool useBaseModelSerializer = true;
     // vcl serializer is only support for vcl version >= 7.5
-    if (compilerVersion.major >= 7 && compilerVersion.minor >= 5) {
+    if (usedMajor>= 7 && usedMinor >= 5) {
         useBaseModelSerializer = isUseBaseModelSerializer(updatedConfig);
     }
     auto serializedIR =
