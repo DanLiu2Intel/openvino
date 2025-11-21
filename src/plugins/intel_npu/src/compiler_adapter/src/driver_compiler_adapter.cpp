@@ -64,12 +64,15 @@ void storeWeightlessCacheAttribute(const std::shared_ptr<ov::Model>& model) {
  */
 bool useBaseModelSerializer(const intel_npu::FilteredConfig& config) {
     if (config.isAvailable(ov::intel_npu::use_base_model_serializer.name())) {
+        std::cout << "  [driver adapter] 111 return USE_BASE_MODEL_SERIALIZER , " << config.get<intel_npu::USE_BASE_MODEL_SERIALIZER>() << std::endl;
         return config.get<intel_npu::USE_BASE_MODEL_SERIALIZER>();
     }
     if (config.isAvailable(ov::intel_npu::model_serializer_version.name())) {
+        std::cout << "  [driver adapter] 222 return MODEL_SERIALIZER_VERSION, " << config.get<intel_npu::MODEL_SERIALIZER_VERSION>() << std::endl;
         return (config.get<intel_npu::MODEL_SERIALIZER_VERSION>() !=
                 ov::intel_npu::ModelSerializerVersion::NO_WEIGHTS_COPY);
     }
+    std::cout << "  [driver adapter] 333 return ture" << std::endl;
     return true;
 }
 
