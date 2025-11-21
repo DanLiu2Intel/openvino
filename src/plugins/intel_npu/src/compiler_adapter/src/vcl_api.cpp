@@ -202,8 +202,9 @@ bool isUseBaseModelSerializer(const FilteredConfig& config) {
     //   但是存在问题: 着option 默认就是avaliable的，并且hasOpt不能确定这个值是否被重写过。
 
     // user pass use_base_model_serializer config
+    std::cout << "   ======NOTE is useing config.hasOpt!!!!!!!!!" << std::endl;
     if (config.isAvailable(ov::intel_npu::use_base_model_serializer.name()) &&
-        config.hasOpt(ov::intel_npu::use_base_model_serializer.name())) {
+        config.has(ov::intel_npu::use_base_model_serializer.name())) {
         std::cout << " ====1.1 call use_base_model_serializer , " << config.get<intel_npu::USE_BASE_MODEL_SERIALIZER>() << std::endl;
 
         if(config.hasOpt(ov::intel_npu::use_base_model_serializer.name())) {
@@ -217,7 +218,7 @@ bool isUseBaseModelSerializer(const FilteredConfig& config) {
 
     // user pass model_serializer_version config
     if (config.isAvailable(ov::intel_npu::model_serializer_version.name()) &&
-        config.hasOpt(ov::intel_npu::use_base_model_serializer.name())) {
+        config.has(ov::intel_npu::use_base_model_serializer.name())) {
         std::cout << " ====2 call model_serializer_version, " << config.get<intel_npu::MODEL_SERIALIZER_VERSION>() << std::endl;
         return (config.get<intel_npu::MODEL_SERIALIZER_VERSION>() ==
                 ov::intel_npu::ModelSerializerVersion::ALL_WEIGHTS_COPY);
