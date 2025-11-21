@@ -127,7 +127,7 @@ typedef enum __vcl_log_level_t {
     VCL_LOG_ERROR = 1,    ///< Events which are not expected, containing probable reason
     VCL_LOG_WARNING = 2,  ///< Events which are unusal
     VCL_LOG_INFO = 3,     ///< Short messages about ongoing activity
-    VCL_LOG_DEBUG = 4,    ///< Messages with praticular data and explanations
+    VCL_LOG_DEBUG = 4,    ///< Messages with particular data and explanations
     VCL_LOG_TRACE = 5,    ///< Messages with detailed information about execution
 
 } vcl_log_level_t;
