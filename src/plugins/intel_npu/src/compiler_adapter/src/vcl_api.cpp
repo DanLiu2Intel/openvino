@@ -196,20 +196,35 @@ struct vcl_allocator_malloc {
 };
 
 bool isUseBaseModelSerializer(const FilteredConfig& config) {
+    // 1）vcl compiler 不支持的时候 (vcl < 7.3),这些option都不能使用，avaliable就是false，所以返回值是什么就是什么。 
+    //    所以不应该，在这个函数里面检查 vcl < 7.3 时的结果。此时一定返回时true。（或者传compilerversion值,或者改为成员函数）
+    // 2）vcl compiler 支持的时候 (version > 7.5), 优先使用usr 的值，当usr 没有的时候，才会使用默认值，, 应该返回是个false。（此函数完成）
+    //   但是存在问题: 着option 默认就是avaliable的，并且hasOpt不能确定这个值是否被重写过。
+
     // user pass use_base_model_serializer config
     if (config.isAvailable(ov::intel_npu::use_base_model_serializer.name()) &&
         config.hasOpt(ov::intel_npu::use_base_model_serializer.name())) {
+        std::cout << " ====1.1 call use_base_model_serializer , " << config.get<intel_npu::USE_BASE_MODEL_SERIALIZER>() << std::endl;
+
+        if(config.hasOpt(ov::intel_npu::use_base_model_serializer.name())) {
+            std::cout << " ====1.2=this has update use_base_model_serializer value" << std::endl;
+        }
+        if(config.has(ov::intel_npu::use_base_model_serializer.name())) {
+            std::cout << " ====1.3=this has update use_base_model_serializer's has value" << std::endl;
+        }
         return config.get<intel_npu::USE_BASE_MODEL_SERIALIZER>();
     }
 
     // user pass model_serializer_version config
     if (config.isAvailable(ov::intel_npu::model_serializer_version.name()) &&
         config.hasOpt(ov::intel_npu::use_base_model_serializer.name())) {
+        std::cout << " ====2 call model_serializer_version, " << config.get<intel_npu::MODEL_SERIALIZER_VERSION>() << std::endl;
         return (config.get<intel_npu::MODEL_SERIALIZER_VERSION>() ==
                 ov::intel_npu::ModelSerializerVersion::ALL_WEIGHTS_COPY);
     }
 
     // vcl serializer method is not set by user, will default to use it.
+    std::cout << " ====3 call false " << std::endl;
     return false;
 }
 
@@ -230,10 +245,17 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
     uint16_t usedMajor = VCL_COMPILER_VERSION_MAJOR, usedMinor = VCL_COMPILER_VERSION_MINOR;
     if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) == _vclVersion.major) {
         usedMinor = std::min(static_cast<uint16_t>(VCL_COMPILER_VERSION_MINOR), _vclVersion.minor);
+        std::cout << " ==== VCL_COMPILER_VERSION_MAJOR is" << VCL_COMPILER_VERSION_MAJOR << std::endl;
+        std::cout << " ==== _vclVersion is" << _vclVersion.major << std::endl;
+
+        std::cout << " ==2== VCL_COMPILER_VERSION_MINOR is" << VCL_COMPILER_VERSION_MINOR << std::endl;
+        std::cout << " ==2== _vclVersion.minor is" << _vclVersion.minor << std::endl;
+        
     } else if (static_cast<uint16_t>(VCL_COMPILER_VERSION_MAJOR) > _vclVersion.major) {
         usedMajor = _vclVersion.major;
         usedMinor = _vclVersion.minor;
     }
+    std::cout << "  ===> usedMajor is " << usedMajor <<  ", usedMinor is " << usedMinor << std::endl;
 
     const auto maxOpsetVersion = _compilerProperties.supportedOpsets;
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
@@ -249,10 +271,13 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
     }
     FilteredConfig updatedConfig = *filteredConfig;
     bool useBaseModelSerializer = true;
+    std::cout << "  ======0====> useBaseModelSerializer is " << useBaseModelSerializer << std::endl;
     // vcl serializer is only support for vcl version >= 7.5
     if (usedMajor >= 7 && usedMinor >= 5) {
         useBaseModelSerializer = isUseBaseModelSerializer(updatedConfig);
+        std::cout << "  ====2======> useBaseModelSerializer is " << useBaseModelSerializer << std::endl;
     }
+    std::cout << "  ======3====> useBaseModelSerializer is " << useBaseModelSerializer << std::endl;
     auto serializedIR =
         driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, useBaseModelSerializer);
 

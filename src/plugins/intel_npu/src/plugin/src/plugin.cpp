@@ -765,6 +765,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     OV_ITT_TASK_CHAIN(PLUGIN_COMPILE_MODEL, itt::domains::NPUPlugin, "Plugin::compile_model", "fork_local_config");
     auto localConfig = fork_local_config(localPropertiesMap, compiler);
+    std::cout << "  === <origin> the localConfig is " << localConfig.toString() << std::endl;
 
     const auto set_cache_dir = localConfig.get<CACHE_DIR>();
     if (!set_cache_dir.empty()) {
@@ -863,6 +864,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         localConfig.update({{ov::intel_npu::weightless_blob.name(), cacheModeOptimizeSize ? "YES" : "NO"}});
     }
 
+    std::cout << "  === <before> the localConfig is " << localConfig.toString() << std::endl;
     if (modelSerializerChosenExplicitly) {
         if (localConfig.isAvailable(ov::intel_npu::use_base_model_serializer.name())) {
             localConfig.update(
@@ -872,6 +874,22 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
                                  useBaseModelSerializer ? "ALL_WEIGHTS_COPY" : "NO_WEIGHTS_COPY"}});
         }
     }
+    std::cout << "  ======> remove the default check in plugin=====" << std::endl;
+    std::cout << "  === <after> the localConfig is " << localConfig.toString() << std::endl;
+    //  else {
+    //     // for default value for serializer method in compiler, need update according the compilerType.
+    //     const auto compilerType = localConfig.get<COMPILER_TYPE>();
+    //     if (compilerType == ov::intel_npu::CompilerType::PLUGIN) {
+    //         if (localConfig.isAvailable(ov::intel_npu::use_base_model_serializer.name())) {
+    //             std::cout << " use_base_model_serializer is set to false" << std::endl;
+    //             localConfig.update(
+    //                 {{ov::intel_npu::use_base_model_serializer.name(), "NO" }});
+    //         } else if (localConfig.isAvailable(ov::intel_npu::model_serializer_version.name())) {
+    //             std::cout << " ======2" << std::endl;
+    //             localConfig.update({{ov::intel_npu::model_serializer_version.name(), "NO_WEIGHTS_COPY"}});
+    //         }
+    //     }
+    // }
 
     std::shared_ptr<intel_npu::IGraph> graph;
 
