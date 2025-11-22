@@ -15,6 +15,19 @@ The logic behind the choice is as follows:
 
 The AUTO plugin is also the default plugin for OpenVINO, if the user does not select a device explicitly in their application.
 
+### Delegation Pattern and Unimplemented Functions
+
+As a meta plugin, AUTO employs a delegation pattern where it forwards hardware-specific operations to the actual device plugins. This design explains why certain functions appear "unimplemented" in the AUTO plugin source code:
+
+* **Device Context Functions** (`create_context()`, `get_default_context()`): These are hardware-specific and delegated to the target device plugin (e.g., GPU plugin creates GPU contexts).
+* **Model Import Functions** (`import_model()`): Model import is device-specific and handled by the target hardware plugin.
+
+The AUTO plugin focuses on implementing the **decision-making and orchestration logic**:
+* Device discovery and selection (`select_device()`, `get_valid_device()`)
+* Model compilation coordination (`compile_model()`)
+* Inference request scheduling and fallback handling
+* Performance hint interpretation and device prioritization
+
 ## Specific Features of AUTO plugin
 
 ### Accelerating First Inference Latency (FIL)

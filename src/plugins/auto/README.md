@@ -46,6 +46,10 @@ Find more details in the [AUTO Plugin architecture](./docs/architecture.md) docu
 * [Testing the AUTO Plugin](./docs/tests.md)
 * [Integrating a new hardware plugin with the AUTO plugin](./docs/integration.md)
 
+## Documentation
+* [AUTO Plugin FAQ and Guide (English)](./docs/architecture.md)
+* [AUTO 插件详解 (中文文档)](./docs/README_zh_CN.md)
+
 ## See also
  * [OpenVINO™ README](../../../README.md)
  * [OpenVINO Core Components](../../README.md)
