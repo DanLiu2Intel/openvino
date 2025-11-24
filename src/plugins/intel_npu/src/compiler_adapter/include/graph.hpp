@@ -92,6 +92,7 @@ protected:
     std::optional<std::size_t> _batchSize = std::nullopt;
 
     const ov::SoPtr<ICompiler> _compiler;
+    bool _compile_initialized = false;
     Logger _logger;
 };
 

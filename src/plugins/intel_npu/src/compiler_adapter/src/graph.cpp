@@ -40,6 +40,8 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
         // Will be called at a later stage from WeightlessGraph::initialize() in order to save some memory
         initialize(config);
     }
+
+    _compile_initialized = true;
 }
 
 const NetworkMetadata& Graph::get_metadata() const {
@@ -160,6 +162,11 @@ void Graph::initialize(const Config& config) {
     _logger.debug("Graph initialize start");
 
     if (_zeGraphExt == nullptr || _graphDesc._handle == nullptr) {
+        if (_compile_initialized) {
+            OPENVINO_THROW("NO driver is found. Can not do inference without a driver!");
+        } else {
+            _logger.info("NO driver is found. Graph Initialization is skipped. Only exports are available.");
+        }
         return;
     }
 
