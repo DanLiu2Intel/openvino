@@ -14,7 +14,7 @@
 #include "mem_usage.hpp"
 #include "openvino/core/model.hpp"
 #include "vcl_serializer.hpp"
-#include "weightless_graph.hpp"
+#include "weightless_utils.hpp"
 
 namespace {
 

@@ -25,5 +25,22 @@ namespace intel_npu {
      *
      * @param model Both source and target.
      */
-    void storeWeightlessCacheAttribute(const std::shared_ptr<ov::Model>& model);
+    void storeWeightlessCacheAttribute(const std::shared_ptr<ov::Model>& model) {
+        size_t constantId = 0;
+        for (auto&& node : model->get_ordered_ops()) {
+            if (ov::is_type<ov::op::v0::Constant>(node)) {
+                ov::RTMap& runtimeInfoMap = node->get_rt_info();
+                const auto& weightlessCacheAttrIt =
+                    runtimeInfoMap.find(ov::WeightlessCacheAttribute::get_type_info_static());
+
+                const std::string constantIdString = std::to_string(constantId++);
+                if (weightlessCacheAttrIt != runtimeInfoMap.end()) {
+                    auto& weightlessCacheAttr = weightlessCacheAttrIt->second.as<ov::WeightlessCacheAttribute>();
+                    model->set_rt_info(weightlessCacheAttr.bin_offset, "ws_bin_offset_" + constantIdString);
+                    model->set_rt_info(weightlessCacheAttr.original_size, "ws_original_size_" + constantIdString);
+                    model->set_rt_info(weightlessCacheAttr.original_dtype, "ws_original_dtype_" + constantIdString);
+                }
+            }
+        }
+    }
 }  // namespace intel_npu

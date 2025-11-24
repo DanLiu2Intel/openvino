@@ -13,7 +13,6 @@
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/npu_private_properties.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
-#include "intel_npu/utils/weightless/weightless_utils.hpp"
 #include "intel_npu/utils/utils.hpp"
 #include "intel_npu/utils/zero/zero_api.hpp"
 #include "intel_npu/utils/zero/zero_result.hpp"
@@ -22,7 +21,7 @@
 #include "openvino/runtime/make_tensor.hpp"
 #include "openvino/util/file_util.hpp"
 #include "openvino/util/shared_object.hpp"
-#include "weightless_graph.hpp"
+#include "weightless_utils.hpp"
 #include "vcl_api.hpp"
 
 namespace {
