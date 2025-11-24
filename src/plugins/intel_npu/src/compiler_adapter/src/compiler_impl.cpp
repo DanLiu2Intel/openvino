@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2025 Intel Corporation
+// Copyright (C) 2025 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -12,6 +12,38 @@
 #include "openvino/util/shared_object.hpp"
 #include "vcl_serializer.hpp"
 #include "ze_graph_ext_wrappers.hpp"
+
+namespace {
+
+bool isUseBaseModelSerializer(const FilteredConfig& config) {
+    // user pass use_base_model_serializer config
+    if (config.isAvailable(ov::intel_npu::use_base_model_serializer.name()) &&
+        config.has(ov::intel_npu::use_base_model_serializer.name())) {
+        return config.get<intel_npu::USE_BASE_MODEL_SERIALIZER>();
+    }
+
+    // user pass model_serializer_version config
+    if (config.isAvailable(ov::intel_npu::model_serializer_version.name()) &&
+        config.has(ov::intel_npu::model_serializer_version.name())) {
+        return (config.get<intel_npu::MODEL_SERIALIZER_VERSION>() ==
+                ov::intel_npu::ModelSerializerVersion::ALL_WEIGHTS_COPY);
+    }
+
+    // No VCL serializer was chosen explicitly, will default to the "no weights copy" implementation
+    return false;
+}
+
+std::string supportVclCompiler(int major, int minor) {
+    if (major >= 7 && minor >= 4) {
+        return "vclAllocatedExecutableCreate2";
+    } else if (major >= 6 && minor >= 1) {
+        return "vclAllocatedExecutableCreate";
+    } else {
+        return "vclExecutableCreate";
+    }
+}
+
+}  // namespace
 
 namespace intel_npu {
 
@@ -292,34 +324,6 @@ struct vcl_allocator_malloc {
     }
 };
 
-bool isUseBaseModelSerializer(const FilteredConfig& config) {
-    // user pass use_base_model_serializer config
-    if (config.isAvailable(ov::intel_npu::use_base_model_serializer.name()) &&
-        config.has(ov::intel_npu::use_base_model_serializer.name())) {
-        return config.get<intel_npu::USE_BASE_MODEL_SERIALIZER>();
-    }
-
-    // user pass model_serializer_version config
-    if (config.isAvailable(ov::intel_npu::model_serializer_version.name()) &&
-        config.has(ov::intel_npu::use_base_model_serializer.name())) {
-        return (config.get<intel_npu::MODEL_SERIALIZER_VERSION>() ==
-                ov::intel_npu::ModelSerializerVersion::ALL_WEIGHTS_COPY);
-    }
-
-    // vcl serializer method is not set by user, will default to use it.
-    return false;
-}
-
-std::string supportVclCompiler(int major, int minor) {
-    if (major >= 7 && minor >= 4) {
-        return "vclAllocatedExecutableCreate2";
-    } else if (major >= 6 && minor >= 1) {
-        return "vclAllocatedExecutableCreate";
-    } else {
-        return "vclExecutableCreate";
-    }
-}
-
 NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Model>& model, const Config& config) const {
     _logger.debug("compile start");
 
@@ -354,9 +358,9 @@ NetworkDescription VCLCompilerImpl::compile(const std::shared_ptr<const ov::Mode
     }
 
     if (useBaseModelSerializer) {
-        _logger.debug("serialize IR is base method, useBaseModelSerializer is %d", useBaseModelSerializer);
+        _logger.debug("serialize IR is base method (copies the weights), useBaseModelSerializer is %d", useBaseModelSerializer);
     } else {
-        _logger.debug("serialize IR is vcl method, useBaseModelSerializer is %d", useBaseModelSerializer);
+        _logger.debug("serialize IR is vcl method (NOT copies), useBaseModelSerializer is %d", useBaseModelSerializer);
 
         // To resolve the issue with the default configuration where no user passes the serializer config, the VCL
         // serializer will be used as the default in the plugin adapter. You need to pass the serializer config;
@@ -479,6 +483,22 @@ std::vector<std::shared_ptr<NetworkDescription>> VCLCompilerImpl::compileWsOneSh
     auto serializedIR =
         driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, useBaseModelSerializer);
 
+    if (useBaseModelSerializer) {
+        _logger.debug("serialize IR in compileWS is base method (copies the weights), useBaseModelSerializer is %d", useBaseModelSerializer);
+    } else {
+        _logger.debug("serialize IR in compileWS is vcl method (NOT copies), useBaseModelSerializer is %d", useBaseModelSerializer);
+
+        // To resolve the issue with the default configuration where no user passes the serializer config, the VCL
+        // serializer will be used as the default in the plugin adapter. You need to pass the serializer config;
+        // otherwise, you will encounter a deserialization issue within the compiler.
+        _logger.warning("Add serializer config");
+        if (updatedConfig.isAvailable(ov::intel_npu::use_base_model_serializer.name())) {
+            updatedConfig.update({{ov::intel_npu::use_base_model_serializer.name(), "NO"}});
+        } else if (updatedConfig.isAvailable(ov::intel_npu::model_serializer_version.name())) {
+            updatedConfig.update({{ov::intel_npu::model_serializer_version.name(), "NO_WEIGHTS_COPY"}});
+        }
+    }
+
     std::string buildFlags;
 
     _logger.debug("create build flags");
@@ -505,7 +525,7 @@ std::vector<std::shared_ptr<NetworkDescription>> VCLCompilerImpl::compileWsOneSh
     }
 
     std::vector<std::shared_ptr<NetworkDescription>> networkDescrs;
-    for (uint32_t i = 0; i < allocator.m_vector.size(); i++) {
+    for (auto& blob : allocator.m_vecto) {
         // Use empty metadata as VCL does not support metadata extraction
         NetworkMetadata metadata;
         networkDescrs.emplace_back(

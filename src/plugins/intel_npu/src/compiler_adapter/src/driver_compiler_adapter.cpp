@@ -19,13 +19,6 @@
 
 namespace {
 
-bool isInitMetadata(const intel_npu::NetworkMetadata& networkMetadata) {
-    if (networkMetadata.inputs.size() == 0) {
-        return false;
-    }
-    return networkMetadata.inputs.at(0).isInitInputWeights;
-}
-
 /**
  * @brief On-going migration from "use_base_model_serializer" to "model_serializer_version". So we have to check both,
  * depending on which one is supported by the compiler.

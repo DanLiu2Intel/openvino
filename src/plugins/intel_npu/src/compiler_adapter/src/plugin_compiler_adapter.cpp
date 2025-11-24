@@ -63,13 +63,6 @@ ov::Tensor make_tensor_from_vector(std::vector<uint8_t>& vector) {
     return ov::make_tensor(impl);
 }
 
-bool isInitMetadata(const intel_npu::NetworkMetadata& networkMetadata) {
-    if (networkMetadata.inputs.size() == 0) {
-        return false;
-    }
-    return networkMetadata.inputs.at(0).isInitInputWeights;
-}
-
 }  // namespace
 
 namespace intel_npu {
@@ -202,7 +195,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compileWS(const std::shared_ptr<o
         mainNetworkDescription = initMainNetworkDescriptions.back();
         initMainNetworkDescriptions.pop_back();
         OPENVINO_ASSERT(initMainNetworkDescriptions.size() > 0,
-                        "The initMainNetworkDescriptions after getting mainNetworkDescription must not be empty!");
+                        "No init schedules have been returned by the compiler");
         initNetworkDescriptions = std::move(initMainNetworkDescriptions);
 
         tensorMain = make_tensor_from_vector(mainNetworkDescription->compiledNetwork);
@@ -319,7 +312,7 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::parse(
         if (model) {
             mainNetworkMetadata.name = model.value()->get_friendly_name();
         } else {
-            _logger.warning("networkMeta name is empty in parse!");
+            _logger.info("networkMeta name is empty in parse!");
         }
     } else {
         _logger.warning("no zeGraphExt, metadata is empty from vcl compiler.");
