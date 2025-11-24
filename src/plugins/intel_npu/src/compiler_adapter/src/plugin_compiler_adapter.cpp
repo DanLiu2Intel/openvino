@@ -13,6 +13,7 @@
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/npu_private_properties.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
+#include "intel_npu/utils/weightless/weightless_utils.hpp"
 #include "intel_npu/utils/utils.hpp"
 #include "intel_npu/utils/zero/zero_api.hpp"
 #include "intel_npu/utils/zero/zero_result.hpp"
@@ -22,6 +23,7 @@
 #include "openvino/util/file_util.hpp"
 #include "openvino/util/shared_object.hpp"
 #include "weightless_graph.hpp"
+#include "vcl_api.hpp"
 
 namespace {
 
@@ -79,8 +81,10 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
 
     _logger.info("Loading PLUGIN compiler");
     try {
+        std::cout << "======test=====" << std::endl;
         auto vclCompilerPtr = VCLCompilerImpl::getInstance();
-        auto vclLib = VCLApi::getInstance()->getLibrary();
+        // auto vclLib = VCLApi::getInstance()->getLibrary();
+        auto vclLib = vclCompilerPtr->getLinkedLibrary();
         _logger.info("PLUGIN VCL compiler is loading");
         if (vclCompilerPtr && vclLib) {
             _compiler = ov::SoPtr<intel_npu::ICompiler>(vclCompilerPtr, vclLib);

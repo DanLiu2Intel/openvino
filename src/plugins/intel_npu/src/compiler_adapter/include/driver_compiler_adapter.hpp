@@ -9,6 +9,7 @@
 #include "intel_npu/common/icompiler_adapter.hpp"
 #include "intel_npu/config/config.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
+#include "intel_npu/utils/weightless/weightless_utils.hpp"
 #include "intel_npu/utils/zero/zero_init.hpp"
 #include "vcl_serializer.hpp"
 #include "ze_graph_ext_wrappers.hpp"
