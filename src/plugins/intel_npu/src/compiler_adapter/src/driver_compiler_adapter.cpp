@@ -61,16 +61,16 @@ void updateSerializerConfigToEnableNoCopy(intel_npu::FilteredConfig& updatedConf
 }
 
 bool updateSerializerFlagAndConfig(intel_npu::FilteredConfig& updatedConfig, const intel_npu::Logger& log) {
-    bool useBaseModelSerializer = useBaseModelSerializer(updatedConfig);
+    bool useBaseModelSerializerflag = useBaseModelSerializer(updatedConfig);
 
-    if (useBaseModelSerializer) {
-        log.debug("serialize IR is base method (copies the weights), useBaseModelSerializer is %d", useBaseModelSerializer);
+    if (useBaseModelSerializerflag) {
+        log.debug("serialize IR is base method (copies the weights), useBaseModelSerializer is %d", useBaseModelSerializerflag);
         updateSerializerConfigToEnableCopy(updatedConfig, log);
     } else {
-        log.debug("serialize IR is NOT copies method, useBaseModelSerializer is %d", useBaseModelSerializer);
+        log.debug("serialize IR is NOT copies method, useBaseModelSerializer is %d", useBaseModelSerializerflag);
         updateSerializerConfigToEnableNoCopy(updatedConfig, log);
     }
-    return useBaseModelSerializer;
+    return useBaseModelSerializerflag;
 }
 
 }  // namespace
