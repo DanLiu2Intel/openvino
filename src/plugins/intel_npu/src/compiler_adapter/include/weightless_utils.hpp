@@ -5,8 +5,12 @@
 #pragma once
 
 #include "openvino/core/model.hpp"
+#include "intel_npu/network_metadata.hpp"
 
 namespace intel_npu {
+
+bool isInitMetadata(const NetworkMetadata& networkMetadata);
+
 /**
  * @brief Stores the information within the "WeightlessCacheAttribute" as runtime fields that persist upon
  * serialization.

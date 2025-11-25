@@ -34,7 +34,7 @@ bool useBaseModelSerializer(const intel_npu::FilteredConfig& config) {
     return true;
 }
 
-void updateSerializerConfigToEnableCopy(FilteredConfig& updatedConfig, Logger& log) {
+void updateSerializerConfigToEnableCopy(intel_npu::FilteredConfig& updatedConfig, const intel_npu::Logger& log) {
     // To resolve the issue with the default configuration where no user passes the serializer config, the VCL
     // serializer will be used as the default in the plugin adapter. You need to pass the serializer config;
     // otherwise, you will encounter a deserialization issue within the compiler.
@@ -47,7 +47,7 @@ void updateSerializerConfigToEnableCopy(FilteredConfig& updatedConfig, Logger& l
     return;
 }
 
-void updateSerializerConfigToEnableNoCopy(FilteredConfig& updatedConfig, Logger& log) {
+void updateSerializerConfigToEnableNoCopy(intel_npu::FilteredConfig& updatedConfig, const intel_npu::Logger& log) {
     // To resolve the issue with the default configuration where no user passes the serializer config, the VCL
     // serializer will be used as the default in the plugin adapter. You need to pass the serializer config;
     // otherwise, you will encounter a deserialization issue within the compiler.
@@ -60,7 +60,7 @@ void updateSerializerConfigToEnableNoCopy(FilteredConfig& updatedConfig, Logger&
     return;
 }
 
-bool updateSerializerFlagAndConfig(FilteredConfig& updatedConfig, Logger& log) {
+bool updateSerializerFlagAndConfig(intel_npu::FilteredConfig& updatedConfig, const intel_npu::Logger& log) {
     bool useBaseModelSerializer = useBaseModelSerializer(updatedConfig);
 
     if (useBaseModelSerializer) {
