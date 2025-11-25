@@ -166,7 +166,12 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
     }
 
     _logger.debug("serialize IR");
-    FilteredConfig updatedConfig = config;
+    const FilteredConfig* plgConfig = dynamic_cast<const FilteredConfig*>(&config);
+    if (plgConfig == nullptr) {
+        OPENVINO_THROW("config is not FilteredConfig");
+    }
+    FilteredConfig updatedConfig = *plgConfig;
+
     std::cout << "1) DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's config is " << config.toString()<< std::endl;
     std::cout << "2) DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's updatedConfig is " << updatedConfig.toString()<< std::endl;
     auto serializedIR =
@@ -177,11 +182,6 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
     const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
 
     const std::string serializedIOInfo = driver_compiler_utils::serializeIOInfo(model, useIndices);
-    const FilteredConfig* plgConfig = dynamic_cast<const FilteredConfig*>(&config);
-    if (plgConfig == nullptr) {
-        OPENVINO_THROW("config is not FilteredConfig");
-    }
-    FilteredConfig updatedConfig = *plgConfig;
 
     // WS v3 is based on a stateless compiler. We'll use a separate config entry for informing the compiler the index of
     // the current call iteration.
