@@ -160,6 +160,13 @@ void Graph::initialize(const Config& config) {
     _logger.debug("Graph initialize start");
 
     if (_zeGraphExt == nullptr || _graphDesc._handle == nullptr) {
+        const char* env_p = std::getenv("MY_ENV_VAR_FOR_GRAPH_INIT");
+        if (env_p) {
+            std::cout << "MY_ENV_VAR_FOR_GRAPH_INIT = " << env_p << std::endl;
+            OPENVINO_THROW("_zeGraphExt wasn't initialized or graph handle is null. The driver is not installed or the installed driver is not suitable."");
+        } else {
+            std::cout << "MY_ENV_VAR_FOR_GRAPH_INIT not set" << std::endl;
+        }
         return;
     }
 

@@ -34,6 +34,45 @@ bool useBaseModelSerializer(const intel_npu::FilteredConfig& config) {
     return true;
 }
 
+void updateSerializerConfigToEnableCopy(FilteredConfig& updatedConfig, Logger& log) {
+    // To resolve the issue with the default configuration where no user passes the serializer config, the VCL
+    // serializer will be used as the default in the plugin adapter. You need to pass the serializer config;
+    // otherwise, you will encounter a deserialization issue within the compiler.
+    log.warning("update serializer config");
+    if (updatedConfig.isAvailable(ov::intel_npu::use_base_model_serializer.name())) {
+        updatedConfig.update({{ov::intel_npu::use_base_model_serializer.name(), "YES"}});
+    } else if (updatedConfig.isAvailable(ov::intel_npu::model_serializer_version.name())) {
+        updatedConfig.update({{ov::intel_npu::model_serializer_version.name(), "ALL_WEIGHTS_COPY"}});
+    }
+    return;
+}
+
+void updateSerializerConfigToEnableNoCopy(FilteredConfig& updatedConfig, Logger& log) {
+    // To resolve the issue with the default configuration where no user passes the serializer config, the VCL
+    // serializer will be used as the default in the plugin adapter. You need to pass the serializer config;
+    // otherwise, you will encounter a deserialization issue within the compiler.
+    log.warning("Add serializer config");
+    if (updatedConfig.isAvailable(ov::intel_npu::use_base_model_serializer.name())) {
+        updatedConfig.update({{ov::intel_npu::use_base_model_serializer.name(), "NO"}});
+    } else if (updatedConfig.isAvailable(ov::intel_npu::model_serializer_version.name())) {
+        updatedConfig.update({{ov::intel_npu::model_serializer_version.name(), "NO_WEIGHTS_COPY"}});
+    }
+    return;
+}
+
+bool updateSerializerFlagAndConfig(FilteredConfig& updatedConfig, Logger& log) {
+    bool useBaseModelSerializer = useBaseModelSerializer(updatedConfig);
+
+    if (useBaseModelSerializer) {
+        log.debug("serialize IR is base method (copies the weights), useBaseModelSerializer is %d", useBaseModelSerializer);
+        updateSerializerConfigToEnableCopy(updatedConfig, log);
+    } else {
+        log.debug("serialize IR is NOT copies method, useBaseModelSerializer is %d", useBaseModelSerializer);
+        updateSerializerConfigToEnableNoCopy(updatedConfig, log);
+    }
+    return useBaseModelSerializer;
+}
+
 }  // namespace
 
 namespace intel_npu {
@@ -65,9 +104,13 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
 
     _logger.debug("serialize IR");
-
+    FilteredConfig updatedConfig = config;
+    std::cout << "   get the flag to bool is " << useBaseModelSerializer(updatedConfig) << std::endl;
+    std::cout << "1) IN compile, DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's config is " << config.toString() << std::endl;
+    std::cout << "2) IN compile, DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's updatedConfig is " << updatedConfig.toString()<< std::endl;
     auto serializedIR =
-        driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, useBaseModelSerializer(config));
+        driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, updateSerializerFlagAndConfig(updatedConfig, _logger));
+    std::cout << "3) IN compile, AFTER DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's config is " << updatedConfig.toString()<< std::endl;
 
     std::string buildFlags;
     const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
@@ -75,7 +118,7 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     _logger.debug("build flags");
     buildFlags += driver_compiler_utils::serializeIOInfo(model, useIndices);
     buildFlags += " ";
-    buildFlags += driver_compiler_utils::serializeConfig(config,
+    buildFlags += driver_compiler_utils::serializeConfig(updatedConfig,
                                                          compilerVersion,
                                                          _zeGraphExt->isTurboOptionSupported(compilerVersion));
 
@@ -123,8 +166,12 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
     }
 
     _logger.debug("serialize IR");
+    FilteredConfig updatedConfig = config;
+    std::cout << "1) DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's config is " << config.toString()<< std::endl;
+    std::cout << "2) DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's updatedConfig is " << updatedConfig.toString()<< std::endl;
     auto serializedIR =
-        driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, useBaseModelSerializer(config));
+        driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, updateSerializerFlagAndConfig(updatedConfig, _logger));
+    std::cout << "3) AFTER DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's config is " << updatedConfig.toString()<< std::endl;
 
     std::string buildFlags;
     const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
@@ -267,8 +314,12 @@ ov::SupportedOpsMap DriverCompilerAdapter::query(const std::shared_ptr<const ov:
     _logger.info("getSupportedOpsetVersion Max supported version of opset in CiD: %d", maxOpsetVersion);
 
     _logger.debug("serialize IR");
+    FilteredConfig updatedConfig = config;
+    std::cout << "1) IN QUERY, DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's config is " << config.toString()<< std::endl;
+    std::cout << "2) IN QUERY, DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's updatedConfig is " << updatedConfig.toString()<< std::endl;
     auto serializedIR =
-        driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, useBaseModelSerializer(config));
+        driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, updateSerializerFlagAndConfig(updatedConfig, _logger));
+    std::cout << "3) IN QUERY, AFTER DriverCompilerAdapter::compileWS updateSerializerFlagAndConfig's config is " << updatedConfig.toString()<< std::endl;
 
     std::string buildFlags;
     buildFlags += driver_compiler_utils::serializeConfig(config, compilerVersion);

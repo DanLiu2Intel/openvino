@@ -23,7 +23,6 @@
 #include "openvino/util/file_util.hpp"
 #include "openvino/util/shared_object.hpp"
 #include "weightless_graph.hpp"
-#include "weightless_utils.hpp"
 
 namespace {
 
@@ -159,9 +158,6 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
 std::shared_ptr<IGraph> PluginCompilerAdapter::compileWS(const std::shared_ptr<ov::Model>& model,
                                                          const FilteredConfig& config) const {
     OV_ITT_TASK_CHAIN(COMPILE_BLOB, itt::domains::NPUPlugin, "PluginCompilerAdapter", "compileWS");
-
-    storeWeightlessCacheAttribute(model);
-
     _logger.debug("compile start");
 
     FilteredConfig localConfig = config;
