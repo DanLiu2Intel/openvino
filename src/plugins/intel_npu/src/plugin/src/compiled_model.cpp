@@ -54,9 +54,10 @@ std::shared_ptr<ov::IAsyncInferRequest> CompiledModel::create_infer_request() co
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "CompiledModel::create_infer_request");
 
     // sanity check
-    if (_device == nullptr) {
-        OPENVINO_THROW("No available devices. Failed to create infer request!");
-    }
+    std::cout << "======skip device check=======" << std::endl;
+    // if (_device == nullptr) {
+    //     OPENVINO_THROW("No available devices. Failed to create infer request!");
+    // }
 
     if (!_config.get<CREATE_EXECUTOR>() || _config.get<DEFER_WEIGHTS_LOAD>()) {
         if (_graph == nullptr) {

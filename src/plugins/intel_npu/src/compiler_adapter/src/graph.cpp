@@ -163,10 +163,10 @@ void Graph::initialize(const Config& config) {
     std::cout << " ============5================"  << std::endl;
     if (_zeGraphExt == nullptr || _graphDesc._handle == nullptr) {
         std::cout << " ============6================"  << std::endl;
-        if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()){
+        // if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()){
             std::cout << "==============config to judge" << std::endl;
             OPENVINO_THROW("_zeGraphExt wasn't initialized or graph handle is null. The driver is not installed or the installed driver is not suitable.");
-        }
+        // }
         return;
     }
 
