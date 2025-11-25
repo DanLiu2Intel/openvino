@@ -35,10 +35,12 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
         _logger.info("Graph initialize is deferred from the \"Graph\" constructor");
         return;
     }
-
+    std::cout << " ============1================"  << std::endl;
     if (!calledFromWeightlessGraph) {
         // Will be called at a later stage from WeightlessGraph::initialize() in order to save some memory
+        std::cout << " ============2================"  << std::endl;
         initialize(config);
+        std::cout << " ============3================"  << std::endl;
     }
 }
 
@@ -158,8 +160,13 @@ void Graph::set_argument_value(uint32_t argi, const void* argv) const {
 
 void Graph::initialize(const Config& config) {
     _logger.debug("Graph initialize start");
-
+    std::cout << " ============5================"  << std::endl;
     if (_zeGraphExt == nullptr || _graphDesc._handle == nullptr) {
+        std::cout << " ============6================"  << std::endl;
+        // if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()){
+            std::cout << "==============config to judge" << std::endl;
+            OPENVINO_THROW("_zeGraphExt wasn't initialized or graph handle is null. The driver is not installed or the installed driver is not suitable.");
+        // }
         return;
     }
 
