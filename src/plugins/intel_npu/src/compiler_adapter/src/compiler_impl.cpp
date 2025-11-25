@@ -584,7 +584,7 @@ std::vector<std::shared_ptr<NetworkDescription>> VCLCompilerImpl::compileWsOneSh
         // Use empty metadata as VCL does not support metadata extraction
         NetworkMetadata metadata;
         networkDescrs.emplace_back(
-            std::make_shared<NetworkDescription>(std::move(blob), std::move(metadata)));
+            std::make_shared<NetworkDescription>(std::move(*blob), std::move(metadata)));
     }
     return networkDescrs;
 }
