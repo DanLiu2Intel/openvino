@@ -31,6 +31,10 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
       _blobIsPersistent(blobIsPersistent),
       _compiler(compiler),
       _logger("Graph", config.get<LOG_LEVEL>()) {
+
+    std::cout << " ====Graph constructor called" << std::endl;
+    std::cout << " ====Graph constructor called, config.get<CREATE_EXECUTOR>() is " << config.get<CREATE_EXECUTOR>() << std::endl;
+    std::cout << " ====Graph constructor called, config.get<DEFER_WEIGHTS_LOAD>() is " << config.get<DEFER_WEIGHTS_LOAD>() << std::endl;
     if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()) {
         _logger.info("Graph initialize is deferred from the \"Graph\" constructor");
         return;
