@@ -275,6 +275,19 @@ std::pair<uint64_t, std::optional<std::vector<uint64_t>>> WeightlessGraph::expor
 }
 
 void WeightlessGraph::initialize(const Config& config) {
+    const char* env_var = std::getenv("MY_ENV_VAR2");
+    if (env_var != nullptr) {
+        std::cout << "Environment variable MY_ENV_VAR2 is set to: " << env_var << std::endl;
+        if (!_zeroInitStruct) {
+            // To ensure that offline compilation succeeds and does not throw an exception when subsequently calling `_zeroInitStruct->getDevice()`
+            return;
+            // 从这里返回，graph也不会初始化， 但是会调用这里_zeroInitStruct->getDevice(),报错
+        }
+    } else {
+        std::cout << "Environment variable MY_ENV_VAR2 is not set." << std::endl;
+        std::cout << "No throw _zeroInitStruct is " << (_zeroInitStruct ? "not null" : "null") << std::endl;
+    }
+
     // Simplified version for init schedules
     const size_t numberOfInits = _initsGraphDesc.size();
     _initsCommandQueueOrdinals.resize(numberOfInits);

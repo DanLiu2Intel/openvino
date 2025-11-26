@@ -31,6 +31,10 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
       _blobIsPersistent(blobIsPersistent),
       _compiler(compiler),
       _logger("Graph", config.get<LOG_LEVEL>()) {
+
+    std::cout << " ====Graph constructor called" << std::endl;
+    std::cout << " ====Graph constructor called, config.get<CREATE_EXECUTOR>() is " << config.get<CREATE_EXECUTOR>() << std::endl;
+    std::cout << " ====Graph constructor called, config.get<DEFER_WEIGHTS_LOAD>() is " << config.get<DEFER_WEIGHTS_LOAD>() << std::endl;
     if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()) {
         _logger.info("Graph initialize is deferred from the \"Graph\" constructor");
         return;
@@ -159,7 +163,22 @@ void Graph::set_argument_value(uint32_t argi, const void* argv) const {
 void Graph::initialize(const Config& config) {
     _logger.debug("Graph initialize start");
 
-    if (_zeGraphExt == nullptr || _graphDesc._handle == nullptr) {
+    if (_zeGraphExt == nullptr || _graphDesc._handle == nullptr || _zeroInitStruct == nullptr) {
+        // It indicates that the creation location is from create_infer_quest, rather than graph::initializer.
+        // For other cases (such as compilation), it should just return.
+        const char* env_var = std::getenv("MY_ENV_VAR");
+
+        if (env_var != nullptr) {
+            std::cout << "MY_ENV_VAR: " << env_var << std::endl;
+            OPENVINO_THROW("_zeGraphExt wasn't initialized or graph handle is null. The driver is not installed or the "
+                "installed driver is not suitable.");
+        } else {
+            std::cout << "MY_ENV_VAR is not set." << std::endl;
+            if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()) {
+                OPENVINO_THROW("_zeGraphExt wasn't initialized or graph handle is null. The driver is not installed or the "
+                            "installed driver is not suitable.");
+            }
+        }
         return;
     }
 
@@ -208,6 +227,8 @@ void Graph::initialize(const Config& config) {
 
         _lastSubmittedEvent.resize(numberOfCommandLists);
     }
+
+    _finishedInitialize = true;
 }
 
 bool Graph::release_blob(const Config& config) {
