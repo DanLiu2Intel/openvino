@@ -159,7 +159,7 @@ void Graph::set_argument_value(uint32_t argi, const void* argv) const {
 void Graph::initialize(const Config& config) {
     _logger.debug("Graph initialize start");
 
-    if (_zeGraphExt == nullptr || _graphDesc._handle == nullptr) {
+    if (_zeGraphExt == nullptr || _graphDesc._handle == nullptr || _zeroInitStruct == nullptr) {
         return;
     }
 
@@ -208,6 +208,9 @@ void Graph::initialize(const Config& config) {
 
         _lastSubmittedEvent.resize(numberOfCommandLists);
     }
+
+    // To ensure that the initialization of the graph does not exit prematurely due to nullptrs
+    _finishedInitialize = true;
 }
 
 bool Graph::release_blob(const Config& config) {

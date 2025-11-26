@@ -13,50 +13,11 @@
 #include "intel_npu/utils/logger/logger.hpp"
 #include "mem_usage.hpp"
 #include "openvino/core/model.hpp"
-#include "openvino/core/rt_info/weightless_caching_attributes.hpp"
 #include "vcl_serializer.hpp"
 #include "weightless_graph.hpp"
+#include "weightless_utils.hpp"
 
 namespace {
-
-bool isInitMetadata(const intel_npu::NetworkMetadata& networkMetadata) {
-    if (networkMetadata.inputs.size() == 0) {
-        return false;
-    }
-    return networkMetadata.inputs.at(0).isInitInputWeights;
-}
-
-/**
- * @brief Stores the information within the "WeightlessCacheAttribute" as runtime fields that persist upon
- * serialization.
- * @details Constant nodes (weights) may contain as medatadata the "WeightlessCacheAttribute", that is information
- * regarding the offset of the weights within the binary file, as well as the original size and precision. This
- * information is required within the "weights separation" flow, therefore this function is here to store it.
- * @note Not calling this function in the weights separation flow would lead to this information being lost upon
- * serialization. The "WeightlessCacheAttribute" information that is populated upon de-serialization would represent
- * metadata corresponding to the serialized stream, not the original weights file. Therefore the compiler would be
- * misinformed and lookups of weights offsets could fail.
- *
- * @param model Both source and target.
- */
-void storeWeightlessCacheAttribute(const std::shared_ptr<ov::Model>& model) {
-    size_t constantId = 0;
-    for (auto&& node : model->get_ordered_ops()) {
-        if (ov::is_type<ov::op::v0::Constant>(node)) {
-            ov::RTMap& runtimeInfoMap = node->get_rt_info();
-            const auto& weightlessCacheAttrIt =
-                runtimeInfoMap.find(ov::WeightlessCacheAttribute::get_type_info_static());
-
-            const std::string constantIdString = std::to_string(constantId++);
-            if (weightlessCacheAttrIt != runtimeInfoMap.end()) {
-                auto& weightlessCacheAttr = weightlessCacheAttrIt->second.as<ov::WeightlessCacheAttribute>();
-                model->set_rt_info(weightlessCacheAttr.bin_offset, "ws_bin_offset_" + constantIdString);
-                model->set_rt_info(weightlessCacheAttr.original_size, "ws_original_size_" + constantIdString);
-                model->set_rt_info(weightlessCacheAttr.original_dtype, "ws_original_dtype_" + constantIdString);
-            }
-        }
-    }
-}
 
 /**
  * @brief On-going migration from "use_base_model_serializer" to "model_serializer_version". So we have to check both,
@@ -162,6 +123,12 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
     }
 
     _logger.debug("serialize IR");
+    const FilteredConfig* plgConfig = dynamic_cast<const FilteredConfig*>(&config);
+    if (plgConfig == nullptr) {
+        OPENVINO_THROW("config is not FilteredConfig");
+    }
+    FilteredConfig updatedConfig = *plgConfig;
+
     auto serializedIR =
         driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, useBaseModelSerializer(config));
 
@@ -169,11 +136,6 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(const std::shared_ptr<o
     const bool useIndices = !((compilerVersion.major < 5) || (compilerVersion.major == 5 && compilerVersion.minor < 9));
 
     const std::string serializedIOInfo = driver_compiler_utils::serializeIOInfo(model, useIndices);
-    const FilteredConfig* plgConfig = dynamic_cast<const FilteredConfig*>(&config);
-    if (plgConfig == nullptr) {
-        OPENVINO_THROW("config is not FilteredConfig");
-    }
-    FilteredConfig updatedConfig = *plgConfig;
 
     // WS v3 is based on a stateless compiler. We'll use a separate config entry for informing the compiler the index of
     // the current call iteration.
@@ -308,7 +270,6 @@ ov::SupportedOpsMap DriverCompilerAdapter::query(const std::shared_ptr<const ov:
     _logger.debug("serialize IR");
     auto serializedIR =
         driver_compiler_utils::serializeIR(model, compilerVersion, maxOpsetVersion, useBaseModelSerializer(config));
-
     std::string buildFlags;
     buildFlags += driver_compiler_utils::serializeConfig(config, compilerVersion);
     _logger.debug("queryImpl build flags : %s", buildFlags.c_str());
