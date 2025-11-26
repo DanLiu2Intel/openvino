@@ -57,6 +57,10 @@ public:
     uint32_t get_unique_id() override;
     void set_last_submitted_id(uint32_t id_index) override;
     uint32_t get_last_submitted_id() const override;
+    
+    bool isGraphFinishedInitialize() {
+        return _finishedInitialize;
+    }
 
     ~Graph() override;
 
@@ -81,6 +85,7 @@ protected:
     // exported
     bool _blobIsReleased = false;
     bool _blobIsPersistent = false;
+    bool _finishedInitialize = false;
 
     uint32_t _uniqueId = 0;
     uint32_t _lastSubmittedId = 0;
