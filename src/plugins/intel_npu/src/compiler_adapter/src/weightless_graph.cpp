@@ -275,6 +275,12 @@ std::pair<uint64_t, std::optional<std::vector<uint64_t>>> WeightlessGraph::expor
 }
 
 void WeightlessGraph::initialize(const Config& config) {
+    if (!_zeroInitStruct) {
+        // To ensure that offline compilation succeeds and does not throw an exception when subsequently calling
+        // `_zeroInitStruct->getDevice()`
+        return;
+    }
+
     // Simplified version for init schedules
     const size_t numberOfInits = _initsGraphDesc.size();
     _initsCommandQueueOrdinals.resize(numberOfInits);

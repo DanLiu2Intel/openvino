@@ -4,6 +4,8 @@
 
 #include "compiler_impl.hpp"
 
+#include <mutex>
+
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/npu_private_properties.hpp"
 #include "intel_npu/profiling.hpp"
@@ -92,7 +94,7 @@ namespace intel_npu {
     vcl_symbol_statement(vclGetCompilerIsOptionSupported)   \
 
 
-//unsupported symbols with older ze_loader versions
+// symbols that may not be supported in older versions of ze_loade
 #define vcl_weak_symbols_list()                             \
     vcl_symbol_statement(vclAllocatedExecutableCreateWSOneShot)
 // clang-format on
@@ -105,7 +107,7 @@ public:
     void operator=(const VCLApi&) = delete;
     void operator=(VCLApi&&) = delete;
 
-    static const std::shared_ptr<VCLApi>& getInstance();
+    static const std::shared_ptr<VCLApi> getInstance();
     std::shared_ptr<void> getLibrary() const {
         return lib;
     }
@@ -234,6 +236,19 @@ const std::shared_ptr<VCLApi>& VCLApi::getInstance() {
     return instance;
 }
 
+const std::shared_ptr<VCLCompilerImpl> VCLCompilerImpl::getInstance() {
+    static std::mutex mutex;
+    static std::weak_ptr<VCLCompilerImpl> weak_compiler;
+
+    std::lock_guard<std::mutex> lock(mutex);
+    auto compiler = weak_compiler.lock();
+    if (!compiler) {
+        compiler = std::make_shared<VCLCompilerImpl>();
+        weak_compiler = compiler;
+    }
+    return compiler;
+}
+
 VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerImpl", Logger::global().level()) {
     _logger.debug("VCLCompilerImpl constructor start");
 
@@ -242,39 +257,35 @@ VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerIm
 
     // Initialize the VCL API
     THROW_ON_FAIL_FOR_VCL("vclGetVersion", vclGetVersion(&_vclVersion, &_vclProfilingVersion), nullptr);
-
     _logger.info("Plugin VCL API Version: %d.%d", VCL_COMPILER_VERSION_MAJOR, VCL_COMPILER_VERSION_MINOR);
     _logger.info("Plugin VCL Profiling API Version: %d.%d", VCL_PROFILING_VERSION_MAJOR, VCL_PROFILING_VERSION_MINOR);
     _logger.info("Lib VCL Compiler Version: %d.%d", _vclVersion.major, _vclVersion.minor);
     _logger.info("Lib VCL Profiling Version: %d.%d", _vclProfilingVersion.major, _vclProfilingVersion.minor);
-    _logger.info("Use Lib VCL version to create compiler");
     if (VCL_COMPILER_VERSION_MAJOR < _vclVersion.major ||
         (VCL_COMPILER_VERSION_MAJOR == _vclVersion.major && VCL_COMPILER_VERSION_MINOR < _vclVersion.minor)) {
         _logger.warning("inside supported VCL version is lower than loaded VCL api:\n plugin was built with VCL %d.%d, "
                         "\n      but loaded VCL is %d.%d.\n"
-                        "Will downgrade to use the latest plugin vcl compiler!!!",
+                        "Will downgrade to use the plugin vcl compiler!!!",
                         VCL_COMPILER_VERSION_MAJOR,
                         VCL_COMPILER_VERSION_MINOR,
                         _vclVersion.major,
                         _vclVersion.minor);
+    } else {
+        _logger.info("Use Lib VCL version to create compiler");
     }
 
-    _logger.info("Use Lib VCL version to create compiler");
     vcl_compiler_desc_t compilerDesc;
     compilerDesc.version = _vclVersion;
     compilerDesc.debugLevel = static_cast<__vcl_log_level_t>(static_cast<int>(Logger::global().level()) - 1);
 
     // Set device description as empty, the related info will be processed in compile phase if passed by user.
     vcl_device_desc_t device_desc = {};
-
     THROW_ON_FAIL_FOR_VCL("vclCompilerCreate",
                           vclCompilerCreate(&compilerDesc, &device_desc, &_compilerHandle, &_logHandle),
                           nullptr);
-
     THROW_ON_FAIL_FOR_VCL("vclCompilerGetProperties",
                           vclCompilerGetProperties(_compilerHandle, &_compilerProperties),
                           _logHandle);
-
     _logger.info("VCL Compiler created successfully");
     _logger.info("VCL Compiler Properties: ID: %s, Version: %d.%d, Supported Opsets: %u",
                  _compilerProperties.id,
@@ -533,6 +544,7 @@ NetworkDescription VCLCompilerImpl::compileWsIterative(const std::shared_ptr<ov:
 intel_npu::NetworkMetadata VCLCompilerImpl::parse(const std::vector<uint8_t>& network, const Config& config) const {
     _logger.debug("parse start");
     // VCL does not support parse, return empty metadata
+    OPENVINO_THROW(" VCL does not support parse, just throw exception");
     return intel_npu::NetworkMetadata();
 }
 
@@ -673,12 +685,15 @@ bool VCLCompilerImpl::get_supported_options(std::vector<char>& options) const {
     return false;
 }
 
-bool VCLCompilerImpl::is_option_supported(const std::string& option) const {
+bool VCLCompilerImpl::is_option_supported(const std::string& option, std::optional<std::string> optValue) const {
     try {
         const char* optname_ch = option.c_str();
-        _logger.debug("is_option_supported start for option: %s", optname_ch);
+        const char* optvalue_ch = optValue.has_value() ? optValue.value().c_str() : nullptr;
+        _logger.debug("is_option_supported start for option: %s, value: %s",
+                      optname_ch,
+                      optValue ? optvalue_ch : "null");
         THROW_ON_FAIL_FOR_VCL("vclGetCompilerIsOptionSupported",
-                              vclGetCompilerIsOptionSupported(_compilerHandle, optname_ch, nullptr),
+                              vclGetCompilerIsOptionSupported(_compilerHandle, optname_ch, optvalue_ch),
                               _logHandle);
         return true;
     } catch (const std::exception& e) {
