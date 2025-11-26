@@ -14,6 +14,7 @@ namespace intel_npu {
 ZeroEngineBackend::ZeroEngineBackend() : _logger("ZeroEngineBackend", Logger::global().level()) {
     _logger.debug("ZeroEngineBackend - initialize started");
 
+    std::cout << "instance ZeroInitStructsHolder instance...." << std::endl;
     _initStruct = ZeroInitStructsHolder::getInstance();
     if(!_initStruct) {
         std::cout << "Failed to get ZeroInitStructsHolder instance, _initStruct is empty" << std::endl;
