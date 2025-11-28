@@ -242,7 +242,7 @@ const std::shared_ptr<VCLCompilerImpl> VCLCompilerImpl::getInstance() {
 VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerImpl", Logger::global().level()) {
     _logger.debug("VCLCompilerImpl constructor start");
 
-    // Load VCL library
+    // Load VCL library (may not need)
     (void)VCLApi::getInstance();
 
     // Initialize the VCL API
@@ -299,7 +299,7 @@ VCLCompilerImpl::~VCLCompilerImpl() {
     _logger.info("VCL Compiler destroyed successfully");
 }
 
-std::shared_ptr<void> VCLCompilerImpl::getLinkedLibrary() const {
+std::shared_ptr<void> VCLCompilerImpl::getLinkedLibrary() {
     return VCLApi::getInstance()->getLibrary();
 }
 

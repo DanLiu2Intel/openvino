@@ -43,7 +43,7 @@ public:
 
     bool is_option_supported(const std::string& option, std::optional<std::string> optValue = std::nullopt) const;
 
-    std::shared_ptr<void> getLinkedLibrary() const;
+    static std::shared_ptr<void> getLinkedLibrary();
 
 private:
     vcl_log_handle_t _logHandle = nullptr;

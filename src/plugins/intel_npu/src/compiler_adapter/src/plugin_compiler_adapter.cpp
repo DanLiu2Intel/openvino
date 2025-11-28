@@ -74,8 +74,8 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
 
     _logger.info("Loading PLUGIN compiler");
     try {
+        auto vclLib = VCLCompilerImpl::getLinkedLibrary();
         auto vclCompilerPtr = VCLCompilerImpl::getInstance();
-        auto vclLib = vclCompilerPtr->getLinkedLibrary();
         _logger.info("PLUGIN VCL compiler is loading");
         if (vclCompilerPtr && vclLib) {
             _compiler = ov::SoPtr<intel_npu::ICompiler>(vclCompilerPtr, vclLib);
