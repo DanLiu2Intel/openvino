@@ -299,8 +299,8 @@ VCLCompilerImpl::~VCLCompilerImpl() {
     _logger.info("VCL Compiler destroyed successfully");
 }
 
-std::shared_ptr<VCLApi> VCLCompilerImpl::getLinkedLibrary() const {
-    return VCLApi::getInstance();
+std::shared_ptr<void> VCLCompilerImpl::getLinkedLibrary() const {
+    return VCLApi::getInstance()->getLibrary();
 }
 
 struct vcl_allocator_vector : vcl_allocator2_t {
