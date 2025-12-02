@@ -40,7 +40,7 @@ source_group("include" FILES ${PUBLIC_HEADERS})
 # Create openvino_core_dev library
 #
 
-add_library(openvino_core_dev INTERFACE)
+add_library(openvino_core_dev INTERFACE)    ### 这里应该包含ov::shape的类型  ？？？？
 add_library(openvino::core::dev ALIAS openvino_core_dev)
 
 target_include_directories(openvino_core_dev INTERFACE

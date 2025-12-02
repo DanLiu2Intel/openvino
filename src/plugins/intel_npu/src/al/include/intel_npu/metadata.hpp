@@ -7,7 +7,8 @@
 #pragma once
 
 #include "intel_npu/config/config.hpp"
-#include "intel_npu/metadata.hpp"
+#include "intel_npu/network_metadata.hpp"
+#include "openvino/runtime/profiling_info.hpp"
 
 namespace intel_npu {
 
@@ -22,6 +23,21 @@ namespace intel_npu {
  * to provide such information about a network as description of inputs and outputs,
  * name and compiled network in a format executable by device
  */
+struct NetworkDescription final {
+    NetworkDescription(std::vector<uint8_t>&& compiledNetwork, NetworkMetadata&& metadata)
+        : compiledNetwork(std::move(compiledNetwork)),
+          metadata(std::move(metadata)) {}
+    // Force move semantics to prevent blob copies
+    NetworkDescription(const NetworkDescription&) = delete;
+    NetworkDescription(NetworkDescription&&) = default;
+    NetworkDescription& operator=(const NetworkDescription&) = delete;
+    NetworkDescription& operator=(NetworkDescription&&) = default;
+    ~NetworkDescription() = default;
+
+    std::vector<uint8_t> compiledNetwork;
+
+    NetworkMetadata metadata;
+};
 
 /**
  * @interface ICompiler
