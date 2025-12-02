@@ -17,13 +17,6 @@ namespace intel_npu {
 #endif  // ICOMPILER_MAKE_VERSION
 
 /**
- * @struct NetworkDescription
- * @brief The object returned by the compiler
- * to provide such information about a network as description of inputs and outputs,
- * name and compiled network in a format executable by device
- */
-
-/**
  * @interface ICompiler
  * @brief An interface to be implemented by a concrete compiler to provide
  * methods for preparing a network for execution on a NPU device
