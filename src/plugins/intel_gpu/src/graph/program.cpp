@@ -1466,6 +1466,7 @@ void program::set_layout_optimizer_attributes(layout_optimizer& lo) {
     size_t opt_deconv_layers_b_fs_yx_fsv16 = 0;
     size_t total_crop_layers = 0;
     size_t total_non_byxf_onednn_conv_whitelist_layers = 0;
+    std::cout << " TO use an flage `is_dynamic_batch_onednn_conv` is " << is_dynamic_batch_onednn_conv << std::endl;
 
     // OneDNN previously selects formats like b_fs_yx_fsv16 or bs_fs_yx_bsv16_fsv16 based on batch size.
     // For dynamic batches, this approach is inefficient.
