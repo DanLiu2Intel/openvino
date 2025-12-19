@@ -76,7 +76,7 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
     try {
         auto vclCompilerPtr = VCLCompilerImpl::getInstance();
         auto vclLib = vclCompilerPtr->getLinkedLibrary();
-        _logger.info("PLUGIN VCL compiler is loading");
+        _logger.error("PLUGIN VCL compiler is loading");
         if (vclCompilerPtr && vclLib) {
             _compiler = ov::SoPtr<intel_npu::ICompiler>(vclCompilerPtr, vclLib);
         } else {
@@ -84,6 +84,7 @@ PluginCompilerAdapter::PluginCompilerAdapter(const std::shared_ptr<ZeroInitStruc
         }
     } catch (const std::exception& vcl_exception) {
         _logger.info("VCL compiler load failed: %s. Trying to load MLIR compiler...", vcl_exception.what());
+        _logger.error("Loading MLIR compiler...", vcl_exception.what());
         std::string baseName = "npu_mlir_compiler";
         auto libPath = ov::util::make_plugin_library_name(ov::util::get_ov_lib_path(), baseName + OV_BUILD_POSTFIX);
         try {

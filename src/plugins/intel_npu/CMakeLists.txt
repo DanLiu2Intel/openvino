@@ -18,7 +18,9 @@ set(NPU_PLUGIN_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(cmake/features.cmake)
 
+message("===before===     +(cmake/download_compiler_libs.cmake)")
 if(ENABLE_INTEL_NPU_COMPILER AND BUILD_SHARED_LIBS)
+    message("======     +(cmake/download_compiler_libs.cmake)")
     include(cmake/download_compiler_libs.cmake)
 endif()
 

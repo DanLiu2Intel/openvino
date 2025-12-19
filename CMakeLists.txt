@@ -144,7 +144,8 @@ endfunction()
 #
 # Build
 #
-
+message("====force update ENABLE_INTEL_NPU_COMPILER form ${ENABLE_INTEL_NPU_COMPILER} to ON===")
+set(ENABLE_INTEL_NPU_COMPILER ON)
 if(ENABLE_TESTS)
     # add target with processed tests model zoo
     include(cmake/test_model_zoo.cmake)
