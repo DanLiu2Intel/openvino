@@ -26,9 +26,13 @@ TEST_P(OVCompiledGraphImportExportTestNPU, CanImportModelWithApplicationHeaderAn
     std::stringstream sstream;
 
     sstream.write(headerView.data(), headerView.size());
+    auto configuration2 = configuration;
+    configuration2[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+    std::cout << "==OV2===> Setting platform from environment in plugin: "
+            << ov::test::utils::getTestPlatform() << std::endl;
     {
         auto model = ov::test::utils::make_conv_pool_relu();
-        core.compile_model(model, target_device, configuration).export_model(sstream);
+        core.compile_model(model, target_device, configuration2).export_model(sstream);
     }
 
     // header tests, application correctly manages offsets
@@ -73,8 +77,11 @@ TEST_P(OVCompiledGraphImportExportTestNPU, CheckSizeOfExportedModelIfMultipleOfP
     std::stringstream sstream;
 
     auto model = ov::test::utils::make_conv_pool_relu();
-    core.compile_model(model, target_device, configuration).export_model(sstream);
-
+    auto configuration2 = configuration;
+    configuration2[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+    std::cout << "==OV2.1===> Setting platform from environment in plugin: "
+            << ov::test::utils::getTestPlatform() << std::endl;
+    core.compile_model(model, target_device, configuration2).export_model(sstream);
     std::size_t size = sstream.str().size();
 
     ASSERT_TRUE(size != 0) << "Size of the exported model shall be different from 0";
@@ -86,8 +93,11 @@ TEST_P(OVCompiledGraphImportExportTestNPU, CheckSizeOfBlobIfMultipleOfPageSize) 
     std::stringstream sstream;
 
     auto model = ov::test::utils::make_conv_pool_relu();
-    core.compile_model(model, target_device, configuration).export_model(sstream);
-
+    auto configuration2 = configuration;
+    configuration2[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+    std::cout << "==OV2.2===> Setting platform from environment in plugin: "
+            << ov::test::utils::getTestPlatform() << std::endl;
+    core.compile_model(model, target_device, configuration2).export_model(sstream);
     uint64_t size_of_blob;
     std::size_t size = sstream.str().size();
 

@@ -178,6 +178,9 @@ protected:
  * case.
  */
 TEST_P(WeightsSeparationTests, CheckOneShotVersionThrows) {
+    //only driver  not support one-shot compile
+    configuration.insert(ov::intel_npu::compiler_type(ov::intel_npu::CompilerType::DRIVER));
+
     model = createTestModel();
     configuration.insert(ov::intel_npu::weightless_blob(true));
     configuration.insert(ov::intel_npu::separate_weights_version(ov::intel_npu::WSVersion::ONE_SHOT));

@@ -98,6 +98,9 @@ public:
         SKIP_IF_CURRENT_TEST_IS_DISABLED();
 
         std::tie(target_device, configuration) = this->GetParam();
+        configuration[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+        std::cout << "==OV3===> Setting platform from environment in plugin: "
+              << ov::test::utils::getTestPlatform() << std::endl;
         APIBaseTest::SetUp();
         function = ov::test::behavior::getDefaultNGraphFunctionForTheDeviceNPU();
         ov::AnyMap params;

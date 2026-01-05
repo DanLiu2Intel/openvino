@@ -64,6 +64,12 @@ public:
 
         std::tie(target_device, configuration) = this->GetParam();
         OVPluginTestBase::SetUp();
+
+        /// which method is better?
+        configuration[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+        std::cout << "==OV===> Setting platform from environment in plugin: "
+              << ov::test::utils::getTestPlatform() << std::endl;
+
         ov_model = getDefaultNGraphFunctionForTheDeviceNPU();  // FIXME: E#80555
     }
 
