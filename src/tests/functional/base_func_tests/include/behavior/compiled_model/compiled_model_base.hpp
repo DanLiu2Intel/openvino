@@ -141,7 +141,8 @@ using OVAutoExecutableNetworkTest = OVCompiledModelBaseTest;
 using OVCompiledModelBaseTestOptional = OVCompiledModelBaseTest;
 
 TEST_P(OVCompiledModelBaseTest, canCompileModel) {
-    EXPECT_NO_THROW(auto execNet = core->compile_model(function, target_device, configuration));
+    // EXPECT_NO_THROW(auto execNet = core->compile_model(function, target_device, configuration));
+    auto execNet = core->compile_model(function, target_device, configuration);
 }
 
 TEST_P(OVCompiledModelBaseTest, canCompileModelFromMemory) {
@@ -212,7 +213,8 @@ TEST_P(OVCompiledModelBaseTest, canCompileModelFromMemory) {
             </edges>
         </net>
         )V0G0N";
-    EXPECT_NO_THROW(auto execNet = core->compile_model(model, ov::Tensor(), target_device, configuration));
+    // EXPECT_NO_THROW(auto execNet = core->compile_model(model, ov::Tensor(), target_device, configuration));
+    auto execNet = core->compile_model(model, ov::Tensor(), target_device, configuration);
 }
 
 TEST_P(OVCompiledModelBaseTest, canCompileModelwithBrace) {
@@ -324,7 +326,9 @@ TEST_P(OVCompiledModelBaseTest, CanGetInputsInfo) {
 TEST_P(OVCompiledModelBaseTest, CanCreateTwoCompiledModelsAndCheckRuntimeModel) {
     std::vector<ov::CompiledModel> vec;
     for (size_t i = 0; i < 2; i++) {
-        EXPECT_NO_THROW(vec.push_back(core->compile_model(function, target_device, configuration)));
+        // EXPECT_NO_THROW(vec.push_back(core->compile_model(function, target_device, configuration)));
+        vec.push_back(core->compile_model(function, target_device, configuration));
+
         EXPECT_NE(nullptr, vec[i].get_runtime_model());
         EXPECT_NE(vec.begin()->get_runtime_model(), vec[i].get_runtime_model());
     }
@@ -607,7 +611,9 @@ TEST_P(OVCompiledModelBaseTest, getOutputsFromSplitFunctionWithSeveralOutputs) {
 // Load correct network to Plugin to get executable network
 TEST_P(OVCompiledModelBaseTest, precisionsAsInOriginalFunction) {
     ov::CompiledModel execNet;
-    EXPECT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+    // EXPECT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
+    execNet = core->compile_model(function, target_device, configuration);
+
 
     EXPECT_EQ(function->get_parameters().size(), execNet.inputs().size());
     auto ref_parameter = function->get_parameters().back();
@@ -667,7 +673,8 @@ TEST_P(OVCompiledModelBaseTest, loadIncorrectV11Model) {
         function->get_rt_info()["version"] = int64_t(11);
         function->set_friendly_name("SimpleConcat");
     }
-    EXPECT_NO_THROW(core->compile_model(function, target_device, configuration));
+    // EXPECT_NO_THROW(core->compile_model(function, target_device, configuration));
+    core->compile_model(function, target_device, configuration);
 }
 
 TEST_P(OVCompiledModelBaseTest, canLoadCorrectNetworkToGetExecutableWithIncorrectConfig) {
