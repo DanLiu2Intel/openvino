@@ -25,6 +25,7 @@
 #include "openvino/runtime/compiled_model.hpp"
 #include "openvino/runtime/core.hpp"
 #include "shared_test_classes/base/ov_behavior_test_utils.hpp"
+#include "common/npu_test_env_cfg.hpp"
 
 using CompilationParams = std::tuple<std::string,  // Device name
                                      ov::AnyMap    // Config
@@ -73,6 +74,9 @@ public:
         std::tie(target_device, configuration) = this->GetParam();
         OVPluginTestBase::SetUp();
         ov_model = getDefaultNGraphFunctionForTheDeviceNPU();  // FIXME: E#80555
+        configuration[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+        std::cout << "==OV6===> Setting platform from environment in plugin: "
+              << ov::test::utils::getTestPlatform() << std::endl;
     }
 
     std::string generateCacheDirName(const std::string& test_name) {

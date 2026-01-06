@@ -11,6 +11,8 @@
 #include "intel_npu/npu_private_properties.hpp"
 #include "openvino/runtime/make_tensor.hpp"
 
+#include "common/npu_test_env_cfg.hpp"
+
 namespace ov {
 
 namespace test {

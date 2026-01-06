@@ -16,6 +16,7 @@
 #include "openvino/runtime/core.hpp"
 #include "openvino/runtime/intel_npu/level_zero/level_zero.hpp"
 #include "shared_test_classes/base/ov_behavior_test_utils.hpp"
+#include "common/npu_test_env_cfg.hpp"
 
 #ifdef __linux__
 #    include <linux/version.h>
@@ -65,7 +66,9 @@ public:
 
     void SetUp() override {
         std::tie(target_device, configuration) = this->GetParam();
-
+        configuration[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+        std::cout << "==OV10===> Setting platform from environment in plugin: "
+                  << ov::test::utils::getTestPlatform() << std::endl;
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
         OVPluginTestBase::SetUp();
         ov_model = getDefaultNGraphFunctionForTheDeviceNPU();

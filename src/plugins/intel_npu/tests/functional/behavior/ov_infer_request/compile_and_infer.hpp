@@ -17,6 +17,7 @@
 #include "openvino/runtime/intel_npu/properties.hpp"
 #include "openvino/runtime/properties.hpp"
 #include "shared_test_classes/base/ov_behavior_test_utils.hpp"
+#include "common/npu_test_env_cfg.hpp"
 
 namespace ov {
 namespace test {
@@ -102,6 +103,9 @@ public:
     }
     void SetUp() override {
         std::tie(function, target_device, configuration) = this->GetParam();
+        configuration[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+        std::cout << "==OV4===> Setting platform from environment in plugin: "
+              << ov::test::utils::getTestPlatform() << std::endl;
         // Skip test according to plugin specific disabledTestPatterns() (if any)
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
         APIBaseTest::SetUp();
@@ -116,6 +120,11 @@ protected:
 };
 
 TEST_P(OVCompileAndInferRequest, AsyncInferRequest) {
+    for (auto it : configuration) {
+        std::cout << "==OV4 test_p===> Config key: " << it.first << " value: ";
+        it.second.as<std::string>();
+        std::cout << std::endl;
+    }
     ov::InferRequest req;
     OV_ASSERT_NO_THROW(execNet = core->compile_model(function, target_device, configuration));
     OV_ASSERT_NO_THROW(req = execNet.create_infer_request());

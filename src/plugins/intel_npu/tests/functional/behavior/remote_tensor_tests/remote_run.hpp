@@ -21,6 +21,7 @@
 #include "remote_context.hpp"
 #include "shared_test_classes/base/ov_behavior_test_utils.hpp"
 #include "zero_backend.hpp"
+#include "common/npu_test_env_cfg.hpp"
 
 using CompilationParams = std::tuple<std::string,  // Device name
                                      ov::AnyMap    // Config
@@ -61,7 +62,9 @@ public:
 
     void SetUp() override {
         std::tie(target_device, configuration) = this->GetParam();
-
+        configuration[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+        std::cout << "==OV11===> Setting platform from environment in plugin: "
+                  << ov::test::utils::getTestPlatform() << std::endl;
         SKIP_IF_CURRENT_TEST_IS_DISABLED()
         OVPluginTestBase::SetUp();
         ov_model = getDefaultNGraphFunctionForTheDeviceNPU();  // FIXME: E#80555

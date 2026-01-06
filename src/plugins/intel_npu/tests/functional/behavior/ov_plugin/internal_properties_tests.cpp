@@ -7,6 +7,7 @@
 
 #include "common/utils.hpp"
 #include "intel_npu/npu_private_properties.hpp"
+#include "common/npu_test_env_cfg.hpp"
 
 namespace ov::test::behavior {
 
@@ -55,6 +56,9 @@ void OVPropertiesTestsWithCompileModelPropsNPU::SetUp() {
     SKIP_IF_CURRENT_TEST_IS_DISABLED();
     std::string temp_device;
     std::tie(temp_device, properties) = this->GetParam();
+    properties[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+    std::cout << "==OV9===> Setting platform from environment in plugin: "
+                << ov::test::utils::getTestPlatform() << std::endl;
     std::string::size_type pos = temp_device.find(":", 0);
     std::string hw_device;
 

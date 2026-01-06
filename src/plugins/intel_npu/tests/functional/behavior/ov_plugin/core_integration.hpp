@@ -67,6 +67,9 @@ public:
 
     void SetUp() override {
         std::tie(target_device, configuration) = this->GetParam();
+        configuration[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+        std::cout << "==OV58===> Setting platform from environment in plugin: "
+                  << ov::test::utils::getTestPlatform() << std::endl;
         SKIP_IF_CURRENT_TEST_IS_DISABLED();
         APIBaseTest::SetUp();
         SKIP_IF_CURRENT_TEST_IS_DISABLED();
@@ -199,6 +202,7 @@ TEST_P(OVClassGetMetricAndPrintNoThrow, DeviceAllocMemSizeLesserThanTotalMemSize
 }
 
 TEST_P(OVClassGetMetricAndPrintNoThrow, DeviceAllocMemSizeLesserAfterModelIsLoadedNPU) {
+    // test proptrty, how to remove platform check???
     SKIP_IF_CURRENT_TEST_IS_DISABLED()
     ov::Core ie;
     ov::Any p;

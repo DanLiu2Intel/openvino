@@ -18,6 +18,7 @@
 #include "openvino/core/type/element_type_traits.hpp"
 #include "openvino/op/relu.hpp"
 #include "shared_test_classes/base/ov_behavior_test_utils.hpp"
+#include "common/npu_test_env_cfg.hpp"
 
 namespace ov {
 namespace test {
@@ -62,6 +63,16 @@ public:
     }
 
 protected:
+    void SetUp() override {
+        std::tie(function, inOutShapes, target_device, configuration) = this->GetParam();
+        configuration[ov::intel_npu::platform.name()] = ov::test::utils::getTestPlatform();
+        std::cout << "==OV5===> Setting platform from environment in plugin: "
+                  << ov::test::utils::getTestPlatform() << std::endl;
+        // Skip test according to plugin specific disabledTestPatterns() (if any)
+        SKIP_IF_CURRENT_TEST_IS_DISABLED()
+        OVInferRequestTestBase::SetUp();
+    }
+
     void checkOutputFP16(const ov::Tensor& in, const ov::Tensor& actual) {
         auto net = core->compile_model(function, ov::test::utils::DEVICE_TEMPLATE);
         ov::InferRequest req;
