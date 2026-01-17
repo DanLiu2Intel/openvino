@@ -16,6 +16,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "openvino/op/add.hpp"
+#include "openvino/op/constant.hpp"
+#include "openvino/op/multiply.hpp"
+#include "openvino/op/relu.hpp"
+#include "openvino/op/squeeze.hpp"
+#include "openvino/pass/manager.hpp"
+#include "openvino/pass/serialize.hpp"
 #include "tools_helpers.hpp"
 
 static constexpr char help_message[] = "Optional. Print the usage message.";
@@ -425,6 +432,335 @@ std::string getFileNameFromPath(const std::string& path,
     }
 }
 
+std::shared_ptr<ov::Model> getFunction1() {
+    const std::vector<size_t> inputShape = {1, 1, 128};
+    const ov::element::Type_t ngPrc = ov::element::Type_t::f32;
+
+    ov::ParameterVector params{std::make_shared<ov::op::v0::Parameter>(ngPrc, ov::Shape(inputShape))};
+    params.front()->set_friendly_name("Parameter_1");
+    params.front()->get_output_tensor(0).set_names({"Parameter_1"});
+
+    auto relu = std::make_shared<ov::op::v0::Relu>(params[0]);
+    relu->set_friendly_name("Relu_2");
+    relu->get_output_tensor(0).set_names({"relu_output"});
+
+    auto variable = std::make_shared<ov::op::util::Variable>(
+        ov::op::util::VariableInfo{ov::PartialShape::dynamic(), ov::element::dynamic, "my_var"});
+
+    auto read_value = std::make_shared<ov::op::v6::ReadValue>(relu->output(0), variable);
+    read_value->set_friendly_name("ReadValue_3");
+    read_value->get_output_tensor(0).set_names({"readvalue_output"});
+
+    auto assign = std::make_shared<ov::op::v6::Assign>(read_value->output(0), variable);
+    assign->set_friendly_name("Assign_4");
+    assign->get_output_tensor(0).set_names({"assign_output"});
+
+    auto squeeze = std::make_shared<ov::op::v0::Squeeze>(assign);
+    squeeze->set_friendly_name("Squeeze_5");
+    squeeze->get_output_tensor(0).set_names({"Output_5"});
+
+    auto result = std::make_shared<ov::op::v0::Result>(squeeze);
+    result->set_friendly_name("Result_6");
+
+    return std::make_shared<ov::Model>(ov::ResultVector{result}, params, "custom_model");
+}
+
+std::shared_ptr<ov::Model> getFunction2(bool insert_squeeze, bool use_friendly_names) {
+    std::shared_ptr<ov::Model> model;
+    // create ReadValue for X
+    auto variable_x = std::make_shared<ov::op::util::Variable>(
+        ov::op::util::VariableInfo{ov::Shape{32, 1, 10}, ov::element::f32, "xres0"});
+    auto read_val_x = std::make_shared<ov::op::v6::ReadValue>(variable_x);
+
+    // create ReadValue for Y
+    auto variable_y = std::make_shared<ov::op::util::Variable>(
+        ov::op::util::VariableInfo{ov::Shape{32, 1, 10}, ov::element::f32, "yres1"});
+    auto read_val_y = std::make_shared<ov::op::v6::ReadValue>(variable_y);
+
+    if (!use_friendly_names) {
+        read_val_x->get_output_tensor(0).add_names({"x"});
+        read_val_y->get_output_tensor(0).add_names({"y"});
+    } else {
+        read_val_x->set_friendly_name("x");
+        read_val_y->set_friendly_name("y");
+    }
+
+    // -> Add  -> Squeeze -> Assign
+    //         -> Assign
+    // or
+    // -> Add -> Assign
+    //        -> Assign
+    std::shared_ptr<ov::Node> node;
+    node = std::make_shared<ov::op::v1::Add>(read_val_x, read_val_y);
+    auto assign_x = std::make_shared<ov::op::v6::Assign>(node, variable_x);
+
+    if (!use_friendly_names) {
+        node->get_output_tensor(0).add_names({"res0"});
+    } else {
+        node->set_friendly_name("res0");
+    }
+
+    auto assign_y = std::make_shared<ov::op::v6::Assign>(node, variable_y);
+    if (!use_friendly_names) {
+        node->get_output_tensor(0).add_names({"res1"});
+    } else {
+        node->set_friendly_name("res1");
+    }
+
+    assign_x->add_control_dependency(read_val_x);
+    assign_y->add_control_dependency(read_val_y);
+
+    model = std::make_shared<ov::Model>(ov::ResultVector{}, ov::SinkVector{assign_x, assign_y}, ov::ParameterVector{});
+    model->validate_nodes_and_infer_types();
+    return model;
+}
+
+std::shared_ptr<ov::Model> getFunction3() {
+    ov::Shape shape{1, 10, 2};
+    auto inp = std::make_shared<ov::op::v0::Parameter>(ov::element::f16, shape);
+    auto m_i = std::make_shared<ov::op::v0::Constant>(ov::element::f16, shape, 1);
+    auto variable = std::make_shared<ov::op::util::Variable>(
+        ov::op::util::VariableInfo{ov::PartialShape::dynamic(), ov::element::dynamic, "my_var3"});
+    auto m_r = std::make_shared<ov::op::v6::ReadValue>(m_i, variable);
+    auto sum = std::make_shared<ov::op::v1::Add>(inp, m_r);
+    auto m_w = std::make_shared<ov::op::v6::Assign>(sum, variable);
+    auto mul = std::make_shared<ov::op::v1::Multiply>(inp, sum);
+
+    mul->add_control_dependency(m_w);
+
+    std::shared_ptr<ov::Model> model = std::make_shared<ov::Model>(ov::OutputVector{mul}, ov::ParameterVector{inp});
+    return model;
+}
+
+/**
+ * @brief Print basic model information
+ */
+void print_basic_info(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Basic Information ===" << std::endl;
+    std::cout << "Name: " << model->get_name() << std::endl;
+    std::cout << "Friendly Name: " << model->get_friendly_name() << std::endl;
+    std::cout << "Output Size: " << model->get_output_size() << std::endl;
+    std::cout << "Graph Size: " << model->get_graph_size() << " bytes" << std::endl;
+    std::cout << "Is Dynamic: " << (model->is_dynamic() ? "Yes" : "No") << std::endl;
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model parameters (inputs)
+ */
+void print_parameters(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Parameters (Inputs) ===" << std::endl;
+    const auto& parameters = model->get_parameters();
+    std::cout << "Total Parameters: " << parameters.size() << std::endl;
+
+    for (size_t i = 0; i < parameters.size(); ++i) {
+        const auto& param = parameters[i];
+        std::cout << "  [" << i << "] " << param->get_friendly_name() << " : " << param->get_element_type() << " "
+                  << param->get_partial_shape() << std::endl;
+
+        // Print additional parameter info
+        std::cout << "      Type: " << param->get_type_name() << std::endl;
+        if (param->get_output_size() > 0) {
+            std::cout << "      Output tensor names: ";
+            for (size_t j = 0; j < param->get_output_size(); ++j) {
+                auto names = param->get_output_tensor(j).get_names();
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model results (outputs)
+ */
+void print_results(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Results (Outputs) ===" << std::endl;
+    const auto& results = model->get_results();
+    std::cout << "Total Results: " << results.size() << std::endl;
+
+    for (size_t i = 0; i < results.size(); ++i) {
+        const auto& result = results[i];
+        std::cout << "  [" << i << "] " << result->get_friendly_name() << std::endl;
+        std::cout << "      Type: " << result->get_type_name() << std::endl;
+
+        if (result->get_input_size() > 0) {
+            const auto& input = result->get_input_source_output(0);
+            std::cout << "      Element Type: " << input.get_element_type() << std::endl;
+            std::cout << "      Shape: " << input.get_partial_shape() << std::endl;
+
+            auto names = result->get_output_tensor(0).get_names();
+            if (!names.empty()) {
+                std::cout << "      Tensor names: ";
+                for (const auto& name : names) {
+                    std::cout << name << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model variables
+ */
+void print_variables(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Variables ===" << std::endl;
+    const auto& variables = model->get_variables();
+    std::cout << "Total Variables: " << variables.size() << std::endl;
+
+    for (size_t i = 0; i < variables.size(); ++i) {
+        const auto& var = variables[i];
+        const auto& info = var->get_info();
+        std::cout << "  [" << i << "] ID: " << info.variable_id << std::endl;
+        std::cout << "      Shape: " << info.data_shape << std::endl;
+        std::cout << "      Type: " << info.data_type << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print model sinks
+ */
+void print_sinks(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Sinks ===" << std::endl;
+    const auto& sinks = model->get_sinks();
+    std::cout << "Total Sinks: " << sinks.size() << std::endl;
+
+    for (size_t i = 0; i < sinks.size(); ++i) {
+        const auto& sink = sinks[i];
+        std::cout << "  [" << i << "] " << sink->get_friendly_name() << " (" << sink->get_type_name() << ")"
+                  << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print runtime information
+ */
+void print_runtime_info(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Model Runtime Information ===" << std::endl;
+    const auto& rt_info = model->get_rt_info();
+    std::cout << "Runtime Info Entries: " << rt_info.size() << std::endl;
+
+    for (const auto& kv : rt_info) {
+        std::cout << "  " << kv.first << " = ";
+        try {
+            // Try to convert to string
+            std::cout << kv.second.as<std::string>();
+        } catch (...) {
+            try {
+                // Try to convert to int
+                std::cout << kv.second.as<int>();
+            } catch (...) {
+                try {
+                    // Try to convert to bool
+                    std::cout << (kv.second.as<bool>() ? "true" : "false");
+                } catch (...) {
+                    std::cout << "[complex type]";
+                }
+            }
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print all nodes in the model
+ */
+void print_all_nodes(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== All Nodes (Detailed) ===" << std::endl;
+    const auto& nodes = model->get_ordered_ops();
+    std::cout << "Total Nodes: " << nodes.size() << std::endl;
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        const auto& node = nodes[i];
+        std::cout << "  [" << std::setw(3) << i << "] " << std::setw(20) << std::left << node->get_friendly_name()
+                  << " (" << node->get_type_name() << ")" << std::endl;
+
+        // Print inputs
+        if (node->get_input_size() > 0) {
+            std::cout << "       Inputs: ";
+            for (size_t j = 0; j < node->get_input_size(); ++j) {
+                const auto& input = node->get_input_source_output(j);
+                std::cout << input.get_element_type() << input.get_partial_shape();
+                if (j < node->get_input_size() - 1)
+                    std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+
+        // Print outputs
+        if (node->get_output_size() > 0) {
+            std::cout << "       Outputs: ";
+            for (size_t j = 0; j < node->get_output_size(); ++j) {
+                const auto& output = node->get_output_tensor(j);
+                std::cout << output.get_element_type() << output.get_partial_shape();
+                if (j < node->get_output_size() - 1)
+                    std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+
+        // Print node runtime info if exists
+        const auto& node_rt_info = node->get_rt_info();
+        if (!node_rt_info.empty()) {
+            std::cout << "       RT Info: ";
+            for (const auto& kv : node_rt_info) {
+                std::cout << kv.first << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+/**
+ * @brief Print graph statistics
+ */
+void print_graph_statistics(const std::shared_ptr<ov::Model>& model) {
+    std::cout << "=== Graph Statistics ===" << std::endl;
+    const auto& nodes = model->get_ops();
+
+    // Count nodes by type
+    std::map<std::string, int> node_type_count;
+    for (const auto& node : nodes) {
+        node_type_count[node->get_type_name()]++;
+    }
+
+    std::cout << "Node Type Distribution:" << std::endl;
+    for (const auto& kv : node_type_count) {
+        std::cout << "  " << std::setw(20) << std::left << kv.first << ": " << kv.second << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+void print_all_info(const std::shared_ptr<ov::Model>& model) {
+    if (!model) {
+        std::cout << "Model is null!" << std::endl;
+        return;
+    }
+
+    print_basic_info(model);
+    print_parameters(model);
+    print_results(model);
+    print_variables(model);
+    print_sinks(model);
+    print_runtime_info(model);
+
+    const char* detail = std::getenv("DETAIL");
+    if (detail) {
+        print_all_nodes(model);
+    }
+
+    print_graph_statistics(model);
+}
+
 using TimeDiff = std::chrono::milliseconds;
 
 int main(int argc, char* argv[]) {
@@ -438,56 +774,99 @@ int main(int argc, char* argv[]) {
         // 5. Parse configuration file
         // 6. Compile model
         // 7. Export model to file
-        TimeDiff loadNetworkTimeElapsed{0};
-
-        const auto& version = ov::get_openvino_version();
-        std::cout << version.description << " version ......... ";
-        std::cout << OPENVINO_VERSION_MAJOR << "." << OPENVINO_VERSION_MINOR << "." << OPENVINO_VERSION_PATCH
-                  << std::endl;
-
-        std::cout << "Build ........... ";
-        std::cout << version.buildNumber << std::endl;
-        std::cout << "Parsing command-line arguments" << std::endl;
-        if (!parseCommandLine(&argc, &argv)) {
-            return EXIT_SUCCESS;
-        }
-
         ov::Core core;
-        std::cout << "Checking FLAGS_LOG_LEVEL " << FLAGS_log_level << std::endl;
+        const char* nor = std::getenv("CompileToolNORMALLY");
+        if (nor) {
+            TimeDiff loadNetworkTimeElapsed{0};
 
-        if (!FLAGS_log_level.empty()) {
-            std::cout << "Setting log level " << FLAGS_log_level << std::endl;
-            ov::log::Level level;
-            std::stringstream{FLAGS_log_level} >> level;
-            core.set_property(FLAGS_d, ov::log::level(level));
+            const auto& version = ov::get_openvino_version();
+            std::cout << version.description << " version ......... ";
+            std::cout << OPENVINO_VERSION_MAJOR << "." << OPENVINO_VERSION_MINOR << "." << OPENVINO_VERSION_PATCH
+                      << std::endl;
+
+            std::cout << "Build ........... ";
+            std::cout << version.buildNumber << std::endl;
+            std::cout << "Parsing command-line arguments" << std::endl;
+            if (!parseCommandLine(&argc, &argv)) {
+                return EXIT_SUCCESS;
+            }
+
+            std::cout << "Checking FLAGS_LOG_LEVEL " << FLAGS_log_level << std::endl;
+            if (!FLAGS_log_level.empty()) {
+                std::cout << "Setting log level " << FLAGS_log_level << std::endl;
+                ov::log::Level level;
+                std::stringstream{FLAGS_log_level} >> level;
+                core.set_property(FLAGS_d, ov::log::level(level));
+            }
+
+            std::cout << "Reading model" << std::endl;
+            auto model = core.read_model(FLAGS_m);
+            std::cout << "------1---------" << std::endl;
+            print_all_info(model);
+            std::cout << "------2---------" << std::endl;
+
+            auto inputs_info = std::const_pointer_cast<ov::Model>(model)->inputs();
+            InputsInfo info_map;
+
+            std::cout << "Configuring model pre & post processing" << std::endl;
+            configurePrePostProcessing(model,
+                                       FLAGS_ip,
+                                       FLAGS_op,
+                                       FLAGS_iop,
+                                       FLAGS_il,
+                                       FLAGS_ol,
+                                       FLAGS_iol,
+                                       FLAGS_iml,
+                                       FLAGS_oml,
+                                       FLAGS_ioml);
+            std::cout << "------3 after configuration---------" << std::endl;
+            print_all_info(model);
+            std::cout << "------4---------" << std::endl;
+
+            reshape(std::move(inputs_info), info_map, model, FLAGS_shape, FLAGS_override_model_batch_size, FLAGS_d);
+
+            std::cout << "Printing Input and Output Info from model" << std::endl;
+            printInputAndOutputsInfoShort(*model);
+            auto timeBeforeLoadNetwork = std::chrono::steady_clock::now();
+            std::cout << "Parsing configuration file" << std::endl;
+            auto configs = parseConfigFile();
+            if (FLAGS_pc) {
+                configs["PERF_COUNT"] = "YES";
+            }
+
+            std::cout << "Compiling model" << std::endl;
+            auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
+            loadNetworkTimeElapsed =
+                std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
+            std::string outputName = FLAGS_o;
+            if (outputName.empty()) {
+                outputName = getFileNameFromPath(fileNameNoExt(FLAGS_m)) + ".blob";
+            }
+
+            std::ofstream outputFile{outputName, std::ios::out | std::ios::binary};
+            if (!outputFile.is_open()) {
+                std::cout << "Outputting file " << outputName << " can't be opened for writing" << std::endl;
+                return EXIT_FAILURE;
+            } else {
+                std::cout << "Writing into file - " << outputName << std::endl;
+                compiledModel.export_model(outputFile);
+            }
+            std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
         }
 
-        std::cout << "Reading model" << std::endl;
-        auto model = core.read_model(FLAGS_m);
-        auto inputs_info = std::const_pointer_cast<ov::Model>(model)->inputs();
-        InputsInfo info_map;
-
-        std::cout << "Configuring model pre & post processing" << std::endl;
-        configurePrePostProcessing(model,
-                                   FLAGS_ip,
-                                   FLAGS_op,
-                                   FLAGS_iop,
-                                   FLAGS_il,
-                                   FLAGS_ol,
-                                   FLAGS_iol,
-                                   FLAGS_iml,
-                                   FLAGS_oml,
-                                   FLAGS_ioml);
-
-        reshape(std::move(inputs_info), info_map, model, FLAGS_shape, FLAGS_override_model_batch_size, FLAGS_d);
-
-        std::cout << "Printing Input and Output Info from model" << std::endl;
-        printInputAndOutputsInfoShort(*model);
-        auto timeBeforeLoadNetwork = std::chrono::steady_clock::now();
-        std::cout << "Parsing configuration file" << std::endl;
-        auto configs = parseConfigFile();
-        if (FLAGS_pc) {
-            configs["PERF_COUNT"] = "YES";
+        std::shared_ptr<ov::Model> modelSelf;
+        const char* model1 = std::getenv("READ_MODEL1");
+        const char* model2 = std::getenv("READ_MODEL2");
+        const char* model3 = std::getenv("READ_MODEL3");
+        if (model1) {
+            std::cout << "    Get model from function1!" << std::endl;
+            modelSelf = getFunction1();
+        } else if (model2) {
+            std::cout << "    Get model from function2!" << std::endl;
+            modelSelf = getFunction2(true, true);
+        } else if (model3) {
+            std::cout << "    Get model from function3!" << std::endl;
+            modelSelf = getFunction3();
         }
         if (FLAGS_raw_blob) {
             if (FLAGS_d == "NPU") {
@@ -502,24 +881,21 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        std::cout << "Compiling model" << std::endl;
-        auto compiledModel = core.compile_model(model, FLAGS_d, {configs.begin(), configs.end()});
-        loadNetworkTimeElapsed =
-            std::chrono::duration_cast<TimeDiff>(std::chrono::steady_clock::now() - timeBeforeLoadNetwork);
-        std::string outputName = FLAGS_o;
-        if (outputName.empty()) {
-            outputName = getFileNameFromPath(fileNameNoExt(FLAGS_m)) + ".blob";
-        }
+        std::cout << "[ INFO ] serialize mode" << std::endl;
+        const auto passConfig = std::make_shared<ov::pass::PassConfig>();
+        ov::pass::Manager manager(passConfig);
+        std::string modelName = modelSelf->get_friendly_name();
+        std::cout << "    Serialize model name:" << modelName << std::endl;
+        std::string xmlName = modelName + "_serialized.xml";
+        std::string binName = modelName + "_serialized.bin";
+        std::cout << "graph size:" << modelSelf->get_graph_size();
+        manager.register_pass<ov::pass::Serialize>(xmlName, binName);
+        manager.run_passes(modelSelf);
 
-        std::ofstream outputFile{outputName, std::ios::out | std::ios::binary};
-        if (!outputFile.is_open()) {
-            std::cout << "Outputting file " << outputName << " can't be opened for writing" << std::endl;
-            return EXIT_FAILURE;
-        } else {
-            std::cout << "Writing into file - " << outputName << std::endl;
-            compiledModel.export_model(outputFile);
-        }
-        std::cout << "Done. LoadNetwork time elapsed: " << loadNetworkTimeElapsed.count() << " ms" << std::endl;
+        std::cout << "[ INFO ]read model file again" << std::endl;
+
+        modelSelf = core.read_model(xmlName);
+        std::cout << "[ INFO ]done" << std::endl;
     } catch (const std::exception& error) {
         std::cerr << error.what() << std::endl;
         return EXIT_FAILURE;
