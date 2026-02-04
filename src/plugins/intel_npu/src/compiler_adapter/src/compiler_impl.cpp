@@ -391,7 +391,7 @@ VCLCompilerImpl::VCLCompilerImpl() : _logHandle(nullptr), _logger("VCLCompilerIm
     const char* value = getenv(varName);
     vcl_device_desc_t device_desc;
     if (value) {
-        std::cout << "Environment variable found, USE static16" << " = " << value << std::endl;
+        std::cerr << "Environment variable found, USE static16" << " = " << value << std::endl;
         device_desc = {sizeof(vcl_device_desc_t),
                                     0x00,
                                     static_cast<uint16_t>(-1),
