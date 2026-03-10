@@ -5,7 +5,8 @@
 #include "openvino/core/type.hpp"
 
 #include "openvino/util/common_util.hpp"
-
+#include <cstring>
+#include <iostream>
 namespace std {
 size_t std::hash<ov::DiscreteTypeInfo>::operator()(const ov::DiscreteTypeInfo& k) const {
     return k.hash();
@@ -15,8 +16,10 @@ size_t std::hash<ov::DiscreteTypeInfo>::operator()(const ov::DiscreteTypeInfo& k
 namespace ov {
 
 size_t DiscreteTypeInfo::hash() const {
-    if (hash_value != 0)
+    if (hash_value != 0) {
+        std::cout << "DiscreteTypeInfo::hash() is called, hash_value: " << hash_value << std::endl;
         return hash_value;
+    }
     size_t name_hash = name ? std::hash<std::string>()(std::string(name)) : 0;
     size_t version_id_hash = version_id ? std::hash<std::string>()(std::string(version_id)) : 0;
 
@@ -41,6 +44,9 @@ std::string DiscreteTypeInfo::get_version() const {
 }
 
 DiscreteTypeInfo::operator std::string() const {
+    std::cout << "DiscreteTypeInfo::operator std::string() is called, name: " << name << ", version_id: " << version_id
+              << std::endl;
+    std::cout << "DiscreteTypeInfo::operator std::string() is called, get_version: " << get_version() << std::endl;
     return std::string(name) + "_" + get_version();
 }
 
