@@ -15,6 +15,7 @@
 
 #define _OPENVINO_RTTI_WITH_TYPE_VERSION(TYPE_NAME, VERSION_NAME)                         \
     _OPENVINO_HIDDEN_METHOD static const ::ov::DiscreteTypeInfo& get_type_info_static() { \
+        std::printf("==rtti1=get_type_info_static===, TYPE_NAME: %s, VERSION_NAME: %s\n", TYPE_NAME, VERSION_NAME);    \
         static ::ov::DiscreteTypeInfo type_info_static{TYPE_NAME, VERSION_NAME};          \
         type_info_static.hash();                                                          \
         return type_info_static;                                                          \
@@ -28,6 +29,7 @@
 
 #define _OPENVINO_RTTI_WITH_TYPE_VERSIONS_PARENT(TYPE_NAME, VERSION_NAME, PARENT_CLASS)        \
     _OPENVINO_HIDDEN_METHOD static const ::ov::DiscreteTypeInfo& get_type_info_static() {      \
+        std::printf("==rtti2=get_type_info_static===, TYPE_NAME: %s, VERSION_NAME: %s, PARENT_CLASS: %s\n", TYPE_NAME, VERSION_NAME, #PARENT_CLASS); \
         static ::ov::DiscreteTypeInfo type_info_static{TYPE_NAME,                              \
                                                        VERSION_NAME,                           \
                                                        &PARENT_CLASS::get_type_info_static()}; \
