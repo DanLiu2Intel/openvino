@@ -3,6 +3,7 @@
 ## Contents
 
 - [Introduction](#introduction)
+- [The OPENVINO_STATIC_LIBRARY macro](#the-openvino_static_library-macro)
 - [System requirements](#system-requirements)
 - [Configure OpenVINO runtime in CMake stage](#configure-openvino-runtime-in-cmake-stage)
 - [Build static OpenVINO libraries](#build-static-openvino-libraries)
@@ -16,6 +17,177 @@
 
 Building static OpenVINO Runtime libraries allows to additionally reduce the size of a binary when it is used together with conditional compilation.
 It is possible because not all interface symbols of OpenVINO Runtime libraries are exported to end users during a static build and can be removed by linker. See [Static OpenVINO libraries + Conditional compilation for particular models](#static-openvino-libraries--conditional-compilation-for-particular-models)
+
+## The OPENVINO_STATIC_LIBRARY macro
+
+### Overview
+
+`OPENVINO_STATIC_LIBRARY` is a preprocessor macro that plays a critical role throughout the OpenVINO project. It controls the behavior of symbol visibility, API exports/imports, and plugin/frontend loading mechanisms when building or using OpenVINO as a static library.
+
+### When is it defined?
+
+The macro is automatically defined by the CMake build system when building OpenVINO in static library mode:
+
+```cmake
+if(NOT BUILD_SHARED_LIBS)
+    target_compile_definitions(${TARGET_NAME} PUBLIC OPENVINO_STATIC_LIBRARY)
+endif()
+```
+
+This occurs in multiple CMakeLists.txt files across the project, including:
+- `src/cmake/openvino.cmake` - Main OpenVINO library
+- `src/inference/CMakeLists.txt` - Runtime components
+- `src/core/CMakeLists.txt` - Core library
+- `src/frontends/common/CMakeLists.txt` - Frontend infrastructure
+- Various plugin CMakeLists.txt files
+
+When users build OpenVINO with the CMake option `-DBUILD_SHARED_LIBS=OFF`, all these targets automatically get the `OPENVINO_STATIC_LIBRARY` definition as a PUBLIC compile definition, which means it propagates to any code that links against these libraries.
+
+### What does it affect?
+
+#### 1. Symbol Visibility and API Exports/Imports
+
+In shared library builds, OpenVINO uses platform-specific mechanisms to control which symbols are exported:
+- **Windows**: `__declspec(dllexport)` when building, `__declspec(dllimport)` when using
+- **Linux/GCC**: `__attribute__((visibility("default")))`
+
+When `OPENVINO_STATIC_LIBRARY` is defined, these export/import declarations are removed, as static libraries don't require symbol visibility control. This is implemented in various visibility headers:
+
+**Core API** (`src/core/include/openvino/core/core_visibility.hpp`):
+```cpp
+#ifdef OPENVINO_STATIC_LIBRARY
+#    define OPENVINO_API                // Empty - no export/import needed
+#    define OPENVINO_API_C(...) __VA_ARGS__
+#else
+#    ifdef IMPLEMENT_OPENVINO_API
+#        define OPENVINO_API        OPENVINO_CORE_EXPORTS  // __declspec(dllexport) or visibility("default")
+#        define OPENVINO_API_C(...) OPENVINO_EXTERN_C OPENVINO_CORE_EXPORTS __VA_ARGS__ OPENVINO_CDECL
+#    else
+#        define OPENVINO_API        OPENVINO_CORE_IMPORTS  // __declspec(dllimport)
+#        define OPENVINO_API_C(...) OPENVINO_EXTERN_C OPENVINO_CORE_IMPORTS __VA_ARGS__ OPENVINO_CDECL
+#    endif
+#endif
+```
+
+**Runtime API** (`src/inference/include/openvino/runtime/common.hpp`):
+```cpp
+#if defined(OPENVINO_STATIC_LIBRARY) || defined(USE_STATIC_IE)
+#    define OPENVINO_RUNTIME_API_C(...) OPENVINO_EXTERN_C __VA_ARGS__
+#    define OPENVINO_RUNTIME_API
+#else
+    // DLL export/import declarations
+#endif
+```
+
+**Transformations API** (`src/common/transformations/include/transformations_visibility.hpp`):
+```cpp
+#ifdef OPENVINO_STATIC_LIBRARY
+#    define TRANSFORMATIONS_API
+#else
+    // DLL export/import declarations
+#endif
+```
+
+**Frontend API** (`src/frontends/common/include/openvino/frontend/visibility.hpp`):
+```cpp
+#ifdef OPENVINO_STATIC_LIBRARY
+#    define FRONTEND_API
+#    define FRONTEND_C_API
+#else
+    // DLL export/import declarations
+#endif
+```
+
+**C API** (`src/bindings/c/include/openvino/c/ov_common.h`):
+```cpp
+#if defined(OPENVINO_STATIC_LIBRARY) || defined(__GNUC__) && (__GNUC__ < 4)
+#    define OPENVINO_C_API(...) OPENVINO_C_API_EXTERN __VA_ARGS__
+#else
+    // Platform-specific DLL export/import
+#endif
+```
+
+#### 2. Plugin and Frontend Loading Mechanisms
+
+The macro fundamentally changes how plugins and frontends are loaded:
+
+**Dynamic Library Mode** (default):
+- Plugins and frontends are loaded at runtime from separate shared library files (.dll/.so)
+- The system searches for plugin files in the filesystem
+- Plugin paths are stored in the registry
+
+**Static Library Mode** (`OPENVINO_STATIC_LIBRARY` defined):
+- All plugins and frontends are compiled directly into the application
+- No dynamic loading occurs
+- Plugin creation functions are called directly through function pointers
+- Registration happens via static registry at program startup
+
+This is evident in `src/inference/src/dev/core_impl.cpp`:
+```cpp
+#ifdef OPENVINO_STATIC_LIBRARY
+    // In static build: use function pointers to create plugins
+    PluginDescriptor desc{value.m_create_plugin_func, config, value.m_create_extensions_func};
+    register_plugin_in_registry_unsafe(device_name, desc);
+#else
+    // In dynamic build: use plugin file paths
+    const auto& plugin_path = ov::util::get_compiled_plugin_path(...);
+    PluginDescriptor desc{plugin_path, config};
+    register_plugin_in_registry_unsafe(device_name, desc);
+#endif
+```
+
+And in `src/frontends/common/src/plugin_loader.cpp`:
+```cpp
+#ifdef OPENVINO_STATIC_LIBRARY
+    // Load frontends from static registry
+    for (const auto& frontend : getStaticFrontendsRegistry()) {
+        // Direct function calls to create frontends
+    }
+#else
+    // Load frontends from shared library files
+#endif
+```
+
+#### 3. Plugin Registry Structure
+
+The plugin registry structure itself changes based on this macro (`cmake/developer_package/plugins/plugins.hpp.in`):
+
+**Static Mode**:
+```cpp
+struct Value {
+    CreatePluginEngineFunc * m_create_plugin_func;      // Function pointer
+    CreateExtensionFunc * m_create_extensions_func;     // Function pointer
+    std::map<std::string, std::string> m_default_config;
+};
+```
+
+**Dynamic Mode**:
+```cpp
+struct Value {
+    std::string m_plugin_path;                          // File path to plugin
+    std::map<std::string, std::string> m_default_config;
+};
+```
+
+### Usage in User Code
+
+When linking against static OpenVINO libraries, users' code automatically receives the `OPENVINO_STATIC_LIBRARY` definition because it's defined as a `PUBLIC` compile definition. This ensures that:
+
+1. Header files correctly define API macros without export/import attributes
+2. The application code matches the library's expectations
+3. No symbol visibility mismatches occur between library and application
+
+Users typically don't need to manually define this macro; it's handled automatically by CMake when using `find_package(OpenVINO)` with static libraries.
+
+### Summary
+
+In summary, `OPENVINO_STATIC_LIBRARY` serves as the central control point that:
+- **Eliminates** DLL export/import declarations (not needed for static libraries)
+- **Switches** plugin/frontend loading from dynamic file-based loading to static function pointer-based registration
+- **Changes** the internal structure of plugin registries
+- **Ensures** consistent compilation across the entire codebase when building statically
+
+This macro is defined automatically when using `-DBUILD_SHARED_LIBS=OFF` and propagates throughout the build system and to user applications linking against OpenVINO static libraries.
 
 ## System requirements
 
@@ -48,7 +220,6 @@ cmake -DENABLE_INTEL_GPU=OFF \
       -DENABLE_OV_TF_LITE_FRONTEND=OFF \
       -DENABLE_OV_JAX_FRONTEND=OFF \
       -DENABLE_OV_PYTORCH_FRONTEND=OFF \
-      -DENABLE_OV_JAX_FRONTEND=OFF \
       -DENABLE_INTEL_CPU=ON \
       -DENABLE_OV_IR_FRONTEND=ON
 ```
