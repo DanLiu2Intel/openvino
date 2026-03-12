@@ -3,7 +3,8 @@
 //
 
 #pragma once
-
+#include <cstdlib>
+#include <iostream>
 #include <cstdint>
 #include <cstring>
 #include <functional>
@@ -45,13 +46,25 @@ struct OPENVINO_API DiscreteTypeInfo {
         : name(_name),
           version_id(_version_id),
           parent(_parent),
-          hash_value(0) {}
+          hash_value(0) {
+            std::printf("===explicit constexpr===\n");
+            for (int i = 0; i < 3; i++) {
+                std::printf("-%c", name[i]);
+            }
+            std::printf("\n");
+          }
 
     constexpr DiscreteTypeInfo(const char* _name, const DiscreteTypeInfo* _parent = nullptr)
         : name(_name),
           version_id(nullptr),
           parent(_parent),
-          hash_value(0) {}
+          hash_value(0) {
+            std::printf("===constexpr===\n");
+            for (int i = 0; i < 3; i++) {
+                std::printf("?+%c", name[i]);
+            }
+            std::printf("\n");
+          }
 
     bool is_castable(const DiscreteTypeInfo& target_type) const;
 

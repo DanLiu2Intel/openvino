@@ -7,6 +7,7 @@
 #include "openvino/util/common_util.hpp"
 #include <cstring>
 #include <iostream>
+#include <cstdlib>
 namespace std {
 size_t std::hash<ov::DiscreteTypeInfo>::operator()(const ov::DiscreteTypeInfo& k) const {
     return k.hash();
@@ -44,10 +45,77 @@ std::string DiscreteTypeInfo::get_version() const {
 }
 
 DiscreteTypeInfo::operator std::string() const {
-    std::cout << "DiscreteTypeInfo::operator std::string() is called, name: " << name << ", version_id: " << version_id
-              << std::endl;
-    std::cout << "DiscreteTypeInfo::operator std::string() is called, get_version: " << get_version() << std::endl;
-    return std::string(name) + "_" + get_version();
+    std::printf("7nd=========check point1============\n");///
+    if(name == nullptr) {
+        std::cout << "DiscreteTypeInfo::operator std::string() is called, name is nullptr" << std::endl;  
+    }/// no
+    for (int i = 0; i < 2; i++) {
+        std::printf("+%c", name[i]);
+    }
+    std::printf("\n");
+    std::printf("===operator std::string()1===\n");
+    char* env = std::getenv("PRINT");
+    std::printf("===operator std::string()2===\n");
+    if (env != nullptr) {
+        std::cout << "++ENV is: " << env << std::endl;
+        if (std::string(env) == "P6") {
+            std::cout << "++ENV is: P6        " << env << std::endl;
+            for (int i = 0; i < 6; i++) {
+                std::printf("+6+%c", name[i]);
+            }
+            std::printf("\n");
+        } else if (std::string(env) == "P10") {
+            std::cout << "++ENV is: P10    " << env << std::endl;
+            for (int i = 0; i < 10; i++) {
+                std::printf("+10+%c", name[i]);
+            }
+            std::printf("\n");
+        } else if (std::string(env) == "P15") {
+            std::cout << "++ENV is: P15    " << env << std::endl;
+            for (int i = 0; i < 15; i++) {
+                std::printf("+15+%c", name[i]);
+            }
+            std::printf("\n");
+        } else if (std::string(env) == "PALL") {
+                std::cout << "++ENV is: PALL    " << env << std::endl;
+            for (int i = 0; name[i] != '\0'; i++) {
+                std::printf("++%c", name[i]);
+            }
+            std::printf("\n");
+        }
+    } else {
+        std::cout << "++ENV is nullptr" << std::endl;
+    }
+
+    std::printf("==========check point2===========\n");////
+    if(version_id == nullptr) {
+        std::cout << "DiscreteTypeInfo::operator std::string() is called, version_id is nullptr" << std::endl;////
+    }
+
+    std::printf("==========check point3===========\n");
+    if(version_id == nullptr) {
+        std::cout << "DiscreteTypeInfo::operator std::string() is called, 22version_id is nullptr" << std::endl;////
+    } else {
+        std::cout << "DiscreteTypeInfo::operator std::string() is called, 22get_version: " << get_version() << std::endl;
+    }
+    std::printf("==========check point4===========\n");////
+    if(name == nullptr) {
+        std::cout << "DiscreteTypeInfo::operator std::string() is called, 22name is nullptr" << std::endl;
+    } else {
+        std::cout << "DiscreteTypeInfo::operator std::string() is called, 22name: " << name << std::endl;
+    }
+    std::printf("==========check point5===========\n");
+    if(get_version().empty()) {
+        std::cout << "DiscreteTypeInfo::operator std::string() is called, 33version_id is nullptr" << std::endl;
+    } else {
+        std::cout << "DiscreteTypeInfo::operator std::string() is called, 33get_version: " << get_version() << std::endl;
+    }
+    std::printf("==========check point6===========\n");
+    std::string version_str = get_version().empty() ? "(empty)" : get_version();
+    std::printf("==========check point7===========version_str is %s\n", version_str.c_str());
+    std::string nam_str = name ? std::string(name) : "(empty)";
+    std::printf("==========check point8===========nam_str is %s\n", nam_str.c_str());
+    return nam_str + "_" + version_str;
 }
 
 std::ostream& operator<<(std::ostream& s, const DiscreteTypeInfo& info) {
