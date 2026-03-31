@@ -17,11 +17,10 @@ add_library(openvino::npu_vcl_utils ALIAS ${TARGET_NAME})
 target_include_directories(${TARGET_NAME}
     PUBLIC
         $<BUILD_INTERFACE:${NPU_UTILS_SOURCE_DIR}/include>
+    PRIVATE
+        $<TARGET_PROPERTY:openvino::runtime::dev,INTERFACE_INCLUDE_DIRECTORIES>
 )
-target_link_libraries(${TARGET_NAME} PUBLIC openvino::runtime::dev openvino_npu_logger_utils)
 
-#
-# targets install
-#
-
-ov_install_static_lib(${TARGET_NAME} ${NPU_PLUGIN_COMPONENT})
+if(NOT BUILD_SHARED_LIBS)
+    target_compile_definitions(${TARGET_NAME} PRIVATE OPENVINO_STATIC_LIBRARY)
+endif()
