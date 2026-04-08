@@ -20,6 +20,7 @@ add_library(openvino::npu_vm_utils ALIAS ${TARGET_NAME})
 target_include_directories(${TARGET_NAME}
     PUBLIC
         $<BUILD_INTERFACE:${NPU_UTILS_SOURCE_DIR}/include>
+        $<TARGET_PROPERTY:openvino_npu_compiler_adapter,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_link_libraries(${TARGET_NAME}
@@ -31,7 +32,6 @@ target_link_libraries(${TARGET_NAME}
         openvino_npu_al  # TODO: remove once "intel_npu/npu_mlir_runtime.hpp" dependency is dropped
         openvino_npu_zero_utils
         openvino_npu_common
-        openvino_npu_compiler_adapter #可能多余？？？
 )
 
 #

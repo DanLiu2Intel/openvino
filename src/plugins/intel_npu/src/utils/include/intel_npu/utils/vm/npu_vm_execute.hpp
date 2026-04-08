@@ -15,6 +15,9 @@
 
 namespace intel_npu {
 
+using MemRefType = IDynamicGraph::MemRefType;
+using GraphArguments = IDynamicGraph::GraphArguments;
+
 /**
  * @brief MLIR-level implementation for a single MemRef handle.
  *
