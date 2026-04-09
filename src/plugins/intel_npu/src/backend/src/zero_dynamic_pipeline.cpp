@@ -17,6 +17,7 @@
 #include "intel_npu/utils/zero/zero_cmd_queue_pool.hpp"
 #include "intel_npu/utils/zero/zero_remote_tensor.hpp"
 #include "intel_npu/utils/zero/zero_types.hpp"
+#include "npu_vm_execute.hpp"
 
 namespace {
 std::vector<size_t> get_strides(const std::vector<size_t>& strides_in_bytes, size_t element_size) {
@@ -219,13 +220,14 @@ void DynamicPipeline::push() {
         // L0 wrapper handle closed command list
         command_lists->resetCommandList();
 
-        dynamicGraph->execute(_init_structs,
-                              command_lists->getBinding(),
-                              command_lists->getHandles(),
-                              commandQueueHandle,
-                              fence,
-                              event,
-                              nullptr);
+        auto engine = static_cast<npu_vm_runtime_handle_t>(dynamicGraph->get_vm_engine());
+        vm_execute_graph(engine,
+                         _init_structs,
+                         command_lists->getBinding(),
+                         command_lists->getHandles(),
+                         commandQueueHandle,
+                         fence,
+                         event);
     }
 
     _logger.debug("push - completed");
