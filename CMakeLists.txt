@@ -40,6 +40,7 @@ project(OpenVINO
         DESCRIPTION "OpenVINO toolkit"
         HOMEPAGE_URL "https://docs.openvino.ai/2026/index.html"
         LANGUAGES C CXX)
+message("====> test for fail applying CID patches in CMakeLists.txt")
 
 find_package(OpenVINODeveloperScripts REQUIRED
              PATHS "${OpenVINO_SOURCE_DIR}/cmake/developer_package"
