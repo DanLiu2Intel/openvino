@@ -52,7 +52,9 @@ ov_install_static_lib(level-zero-ext ${NPU_PLUGIN_COMPONENT})
 ov_developer_package_export_targets(TARGET level-zero-headers)
 ov_install_static_lib(level-zero-headers ${NPU_PLUGIN_COMPONENT})
 
+message("=====find ze_loader then install this target 7.3")
 if(TARGET ze_loader)
+  message("=====find ze_loader then install this target 7.3")
     ov_developer_package_export_targets(
         TARGET ze_loader
         INSTALL_INCLUDE_DIRECTORIES 
