@@ -3,8 +3,5 @@
 #
 
 add_subdirectory(logger)
-message("====>  does this be include? 6 6.1")
-if(ENABLE_NPU_PLUGIN_ENGINE)
-    message("====>  does this be include? 6.2")
-    add_subdirectory(zero)
-endif()
+message("====>  include zero utils? 6.3")
+add_subdirectory(zero)
