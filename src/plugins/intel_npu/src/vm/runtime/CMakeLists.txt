@@ -4,7 +4,7 @@
 #
 
 set(TARGET_NAME npu_vm_runtime_api)
-message("====> ov add library for npu_vm_runtime_api")
+message("====> ov add library for npu_vm_runtime_api 4")
 
 add_library(${TARGET_NAME} INTERFACE)
 add_library(openvino::npu_vm_runtime_api ALIAS ${TARGET_NAME})

@@ -11,10 +11,11 @@ add_subdirectory(al)
 
 add_subdirectory(ops)
 
+add_subdirectory(vm)
+message("===> ov move mv out of  ENABLE_NPU_PLUGIN_ENGINE in src/plugins/intel_npu/src/CMakeLists.txt 2.1")
 if (ENABLE_NPU_PLUGIN_ENGINE)
-    message("===> ov include dir: ENABLE_NPU_PLUGIN_ENGINE in src/plugins/intel_npu/src/CMakeLists.txt")
+    message("===> ov include dir: ENABLE_NPU_PLUGIN_ENGINE in src/plugins/intel_npu/src/CMakeLists.txt 2.2")
     add_subdirectory(common)
-    add_subdirectory(vm)
     add_subdirectory(compiler_adapter)
     add_subdirectory(backend)
     add_subdirectory(plugin)

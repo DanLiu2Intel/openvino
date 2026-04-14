@@ -3,7 +3,7 @@
 #
 
 set (TARGET_NAME "openvino_runtime")
-message("====> ov add library for openvino_runtime")
+message("====> ov add library for openvino_runtime 1")
 
 file (GLOB LIBRARY_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp

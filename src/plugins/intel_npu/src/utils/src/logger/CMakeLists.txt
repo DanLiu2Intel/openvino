@@ -3,7 +3,7 @@
 #
 
 set(TARGET_NAME openvino_npu_logger_utils)
-message("====> ov add library for openvino_npu_logger_utils")
+message("====> ov add library for openvino_npu_logger_utils 3")
 
 file(GLOB_RECURSE SOURCES *.cpp)
 
