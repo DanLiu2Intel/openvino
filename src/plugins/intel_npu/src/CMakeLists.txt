@@ -11,10 +11,11 @@ add_subdirectory(al)
 
 add_subdirectory(ops)
 
+# Decouple from ENABLE_NPU_PLUGIN_ENGINE to satisfy npu_interpreter_runtime dependencies
+add_subdirectory(vm)
 if (ENABLE_NPU_PLUGIN_ENGINE)
     message("===> ov include dir: ENABLE_NPU_PLUGIN_ENGINE in src/plugins/intel_npu/src/CMakeLists.txt")
     add_subdirectory(common)
-    add_subdirectory(vm)
     add_subdirectory(compiler_adapter)
     add_subdirectory(backend)
     add_subdirectory(plugin)
