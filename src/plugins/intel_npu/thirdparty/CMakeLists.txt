@@ -6,16 +6,13 @@
 # zeroApi
 #
 
-# if(ENABLE_NPU_PLUGIN_ENGINE)
-#     message("====> ov add library for level-zero-ext 5")
-#     add_library(level-zero-ext INTERFACE)
-#     set_property(TARGET level-zero-ext APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/level-zero-ext/>)
-#     add_library(LevelZero::NPUExt ALIAS level-zero-ext)
-# endif()
-message("====> ov add library for level-zero-ext 5-2")
-add_library(level-zero-ext INTERFACE)
-set_property(TARGET level-zero-ext APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/level-zero-ext/>)
-add_library(LevelZero::NPUExt ALIAS level-zero-ext)
+message("====> ov add library for level-zero-ext 5-0")
+if(ENABLE_NPU_PLUGIN_ENGINE)
+    message("====> ov add library for level-zero-ext 5")
+    add_library(level-zero-ext INTERFACE)
+    set_property(TARGET level-zero-ext APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/level-zero-ext/>)
+    add_library(LevelZero::NPUExt ALIAS level-zero-ext)
+endif()
 
 #
 # yaml-cpp
