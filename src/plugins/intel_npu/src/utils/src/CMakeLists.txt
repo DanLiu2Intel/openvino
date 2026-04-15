@@ -4,7 +4,8 @@
 
 add_subdirectory(logger)
 
+# Decouple from ENABLE_NPU_PLUGIN_ENGINE to satisfy npu_interpreter_runtime dependencies
+add_subdirectory(zero)
 if(ENABLE_NPU_PLUGIN_ENGINE)
-    add_subdirectory(zero)
     add_subdirectory(vm)
 endif()
