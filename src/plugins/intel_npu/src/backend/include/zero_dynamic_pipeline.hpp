@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "intel_npu/common/idynamic_graph.hpp"
 #include "zero_pipeline.hpp"
 
@@ -136,7 +138,16 @@ public:
     const IDynamicGraph::GraphArguments& get_graph_arguments(size_t batch_index) const;
 
 private:
+    void predict_and_update_outputs(IDynamicGraph* dynamicGraph);
+    size_t get_output_metadata_index(uint32_t driver_arg_index) const;
+    static ov::Shape memref_to_shape(const IDynamicGraph::MemRefType& memref);
+    static size_t memref_num_elements(const IDynamicGraph::MemRefType& memref);
+
     std::vector<std::unique_ptr<PipelinedCommandLists>> _command_lists;
+    std::vector<std::shared_ptr<ZeroTensor>> _output_tensors;
+    std::unordered_map<uint32_t, size_t> _output_index_by_driver;
+    std::vector<bool> _output_uses_user_tensor;
+    bool _graph_arguments_changed = true;
 };
 
 }  // namespace intel_npu

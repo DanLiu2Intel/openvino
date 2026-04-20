@@ -1344,6 +1344,100 @@ TEST_P(DynamicBatchedTensorsRunTests, DynamicSetInputDifferentTensorsMultipleInf
     }
 }
 
+TEST_P(DynamicBatchedTensorsRunTests, DynamicInferFailsIfUserOutputTensorTooSmall) {
+    SKIP_IF_CURRENT_TEST_IS_DISABLED();
+
+    const size_t requested_batch = 4;
+    const Shape one_shape = {1, 2, 2, 2};
+    const Shape model_shape = {requested_batch, 2, 2, 2};
+    const PartialShape dynamic_model_shape = {ov::Dimension(1, 10), 2, 2, 2};
+
+    auto model = BatchedTensorsRunTests::create_n_inputs(2, element::f32, model_shape, "N...");
+    std::map<std::string, ov::PartialShape> shapes;
+    shapes["tensor_input0"] = dynamic_model_shape;
+    shapes["tensor_input1"] = dynamic_model_shape;
+    model->reshape(shapes);
+
+    auto execNet = core->compile_model(model, target_device, configuration);
+    auto context = core->get_default_context(target_device);
+    ov::InferRequest req = execNet.create_infer_request();
+
+    std::vector<ov::Tensor> tensors0;
+    std::vector<ov::Tensor> tensors1;
+    tensors0.reserve(requested_batch);
+    tensors1.reserve(requested_batch);
+    for (size_t i = 0; i < requested_batch; ++i) {
+        tensors0.push_back(context.create_host_tensor(ov::element::f32, one_shape));
+        tensors1.push_back(context.create_host_tensor(ov::element::f32, one_shape));
+    }
+
+    req.set_tensors("tensor_input0", tensors0);
+    req.set_tensors("tensor_input1", tensors1);
+
+    // Provide a user output tensor that is smaller than the predicted output for requested_batch.
+    auto too_small_output = context.create_host_tensor(ov::element::f32, Shape{requested_batch - 1, 2, 2, 2});
+    req.set_tensor("tensor_output0", too_small_output);
+
+    for (size_t i = 0; i < requested_batch; ++i) {
+        auto* data = tensors0[i].data<float>();
+        for (size_t j = 0; j < ov::shape_size(one_shape); ++j) {
+            data[j] = static_cast<float>(i + 1);
+        }
+    }
+
+    try {
+        req.infer();
+        FAIL() << "Expected ov::Exception due to undersized user output tensor";
+    } catch (const ov::Exception& ex) {
+        EXPECT_THAT(ex.what(), HasSubstr("User output tensor shape is smaller than predicted shape."));
+    }
+}
+
+TEST_P(DynamicBatchedTensorsRunTests, DynamicInferAutoUpdatesInternalOutputShapeAcrossBatches) {
+    SKIP_IF_CURRENT_TEST_IS_DISABLED();
+
+    const Shape one_shape = {1, 2, 2, 2};
+    const Shape initial_model_shape = {4, 2, 2, 2};
+    const PartialShape dynamic_model_shape = {ov::Dimension(1, 10), 2, 2, 2};
+
+    auto model = BatchedTensorsRunTests::create_n_inputs(2, element::f32, initial_model_shape, "N...");
+    std::map<std::string, ov::PartialShape> shapes;
+    shapes["tensor_input0"] = dynamic_model_shape;
+    shapes["tensor_input1"] = dynamic_model_shape;
+    model->reshape(shapes);
+
+    auto execNet = core->compile_model(model, target_device, configuration);
+    auto context = core->get_default_context(target_device);
+    ov::InferRequest req = execNet.create_infer_request();
+
+    for (const size_t batch_value : {static_cast<size_t>(2), static_cast<size_t>(5)}) {
+        std::vector<ov::Tensor> tensors0;
+        std::vector<ov::Tensor> tensors1;
+        tensors0.reserve(batch_value);
+        tensors1.reserve(batch_value);
+        for (size_t i = 0; i < batch_value; ++i) {
+            tensors0.push_back(context.create_host_tensor(ov::element::f32, one_shape));
+            tensors1.push_back(context.create_host_tensor(ov::element::f32, one_shape));
+        }
+
+        req.set_tensors("tensor_input0", tensors0);
+        req.set_tensors("tensor_input1", tensors1);
+
+        for (size_t i = 0; i < batch_value; ++i) {
+            auto* data = tensors0[i].data<float>();
+            for (size_t j = 0; j < ov::shape_size(one_shape); ++j) {
+                data[j] = static_cast<float>(batch_value + i);
+            }
+        }
+
+        req.infer();
+
+        auto output = req.get_tensor("tensor_output0");
+        ASSERT_EQ(output.get_shape().size(), 4);
+        ASSERT_EQ(output.get_shape()[0], batch_value);
+    }
+}
+
 using BatchedTensorsRunFailureTests = BatchedTensorsRunTests;
 
 TEST_P(BatchedTensorsRunFailureTests, FailedToDetectBatch) {

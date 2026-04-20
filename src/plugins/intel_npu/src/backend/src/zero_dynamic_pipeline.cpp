@@ -7,6 +7,7 @@
 #include <ze_api.h>
 #include <ze_graph_ext.h>
 
+#include <limits>
 #include <sstream>
 
 #include "intel_npu/common/itt.hpp"
@@ -47,7 +48,9 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
                                  const std::vector<std::vector<std::shared_ptr<ZeroTensor>>>& input_tensors,
                                  const std::vector<std::shared_ptr<ZeroTensor>>& output_tensors,
                                  size_t batch_size)
-    : IPipeline(init_structs, graph, batch_size, config, "DynamicPipeline") {
+        : IPipeline(init_structs, graph, batch_size, config, "DynamicPipeline"),
+            _output_tensors(output_tensors),
+            _output_uses_user_tensor(output_tensors.size(), false) {
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "Zero_infer_request::DynamicPipeline::DynamicPipeline");
 
     OPENVINO_ASSERT(!_run_inferences_sequentially, "In-order execution doesn't work for dynamic pipeline");
@@ -70,6 +73,10 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
     _logger.debug("DynamicPipeline - event pool and command queue setup completed");
 
     uint64_t num_of_subgraphs = dynamicGraph->get_num_subgraphs();
+
+    for (size_t i = 0; i < _graph->get_metadata().outputs.size(); ++i) {
+        _output_index_by_driver[_graph->get_metadata().outputs.at(i).indexUsedByDriver] = i;
+    }
 
     _command_lists.reserve(_batch_size);
     for (size_t i = 0; i < _batch_size; i++) {
@@ -169,6 +176,8 @@ void DynamicPipeline::push() {
         }
     }
 
+    predict_and_update_outputs(dynamicGraph);
+
     auto commandQueueHandle = _command_queue->handle();
     for (size_t i = 0; i < _command_lists.size(); ++i) {
         OV_ITT_TASK_CHAIN(ZERO_PIPELINE_IP_PUSH, itt::domains::LevelZeroBackend, "Pipeline", "push");
@@ -265,6 +274,11 @@ void DynamicPipeline::update_graph_arguments(uint32_t index,
                 tensor->get_shape());
         }
     }
+
+    if (_output_index_by_driver.count(index) > 0) {
+        _output_uses_user_tensor[get_output_metadata_index(index)] = (userTensor != nullptr);
+    }
+    _graph_arguments_changed = true;
 }
 
 void DynamicPipeline::update_graph_arguments(uint32_t index,
@@ -299,6 +313,11 @@ void DynamicPipeline::update_graph_arguments(uint32_t index,
                                        get_strides(tensor->get_strides(), elementSize),
                                        tensor->get_shape());
     }
+
+    if (_output_index_by_driver.count(index) > 0) {
+        _output_uses_user_tensor[get_output_metadata_index(index)] = (userTensor != nullptr);
+    }
+    _graph_arguments_changed = true;
 }
 
 const IDynamicGraph::GraphArguments& DynamicPipeline::get_graph_arguments(size_t batch_index) const {
@@ -306,6 +325,97 @@ const IDynamicGraph::GraphArguments& DynamicPipeline::get_graph_arguments(size_t
                     "Command list index is higher than the number of Command lists ",
                     batch_index);
     return _command_lists.at(batch_index)->getBinding();
+}
+
+size_t DynamicPipeline::get_output_metadata_index(uint32_t driver_arg_index) const {
+    const auto it = _output_index_by_driver.find(driver_arg_index);
+    OPENVINO_ASSERT(it != _output_index_by_driver.end(), "Failed to find output index for driver arg ", driver_arg_index);
+    return it->second;
+}
+
+ov::Shape DynamicPipeline::memref_to_shape(const IDynamicGraph::MemRefType& memref) {
+    ov::Shape shape;
+    shape.reserve(static_cast<size_t>(memref._dimsCount));
+    for (int64_t i = 0; i < memref._dimsCount; ++i) {
+        OPENVINO_ASSERT(memref._sizes.at(static_cast<size_t>(i)) >= 0,
+                        "Negative predicted dimension at index ",
+                        i,
+                        ": ",
+                        memref._sizes.at(static_cast<size_t>(i)));
+        shape.push_back(static_cast<size_t>(memref._sizes.at(static_cast<size_t>(i))));
+    }
+    return shape;
+}
+
+size_t DynamicPipeline::memref_num_elements(const IDynamicGraph::MemRefType& memref) {
+    size_t elements = 1;
+    for (int64_t i = 0; i < memref._dimsCount; ++i) {
+        const auto dim = memref._sizes.at(static_cast<size_t>(i));
+        OPENVINO_ASSERT(dim >= 0, "Negative predicted dimension at index ", i, ": ", dim);
+        const size_t dim_size = static_cast<size_t>(dim);
+        if (dim_size == 0) {
+            return 0;
+        }
+        OPENVINO_ASSERT(elements <= std::numeric_limits<size_t>::max() / dim_size,
+                        "Predicted shape size overflow");
+        elements *= dim_size;
+    }
+    return elements;
+}
+
+void DynamicPipeline::predict_and_update_outputs(IDynamicGraph* dynamicGraph) {
+    if (!_graph_arguments_changed || _command_lists.empty()) {
+        return;
+    }
+
+    auto& graphArgs = _command_lists.at(0)->getBinding();
+    std::vector<IDynamicGraph::MemRefType> predictedInputs = graphArgs._inputs;
+    std::vector<IDynamicGraph::MemRefType> predictedOutputs = graphArgs._outputs;
+
+    dynamicGraph->predict_output_shape(predictedInputs, predictedOutputs);
+
+    for (const auto& output_desc : _graph->get_metadata().outputs) {
+        const uint32_t driver_index = output_desc.indexUsedByDriver;
+        OPENVINO_ASSERT(driver_index >= graphArgs._inputs.size(),
+                        "Output driver index ",
+                        driver_index,
+                        " points to input binding range");
+        const size_t output_binding_index = static_cast<size_t>(driver_index) - graphArgs._inputs.size();
+        OPENVINO_ASSERT(output_binding_index < predictedOutputs.size(),
+                        "Output binding index out of range: ",
+                        output_binding_index,
+                        ", outputs size: ",
+                        predictedOutputs.size());
+
+        const auto& current_output = graphArgs._outputs.at(output_binding_index);
+        const auto& predicted_output = predictedOutputs.at(output_binding_index);
+        const size_t current_elements = memref_num_elements(current_output);
+        const size_t predicted_elements = memref_num_elements(predicted_output);
+        const size_t output_metadata_index = get_output_metadata_index(driver_index);
+
+        if (_output_uses_user_tensor.at(output_metadata_index) && current_elements < predicted_elements) {
+            _logger.error("predict_and_update_outputs - user output tensor %zu is smaller than predicted shape",
+                          output_metadata_index);
+            OPENVINO_THROW("User output tensor shape is smaller than predicted shape.");
+        }
+
+        auto& level_zero_tensor = _output_tensors.at(output_metadata_index);
+        if (level_zero_tensor == nullptr) {
+            continue;
+        }
+
+        const ov::Shape predicted_shape = memref_to_shape(predicted_output);
+        if (level_zero_tensor->get_shape() != predicted_shape) {
+            _logger.info("predict_and_update_outputs - reshape output tensor %d from %s to predicted shape %s",
+                         output_metadata_index,
+                         level_zero_tensor->get_shape().to_string().c_str(),
+                         predicted_shape.to_string().c_str());
+            level_zero_tensor->set_shape(predicted_shape);
+            update_graph_arguments(driver_index, level_zero_tensor);
+        }
+    }
+
+    _graph_arguments_changed = false;
 }
 
 }  // namespace intel_npu
