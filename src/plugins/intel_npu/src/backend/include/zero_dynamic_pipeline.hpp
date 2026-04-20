@@ -36,8 +36,22 @@ class DynamicPipeline final : public IPipeline {
             return _commandListHandles.data();
         }
 
-        void bind(IDynamicGraph* graph) {
-            graph->getBinding(_binding);
+        void initializeBinding(const NetworkMetadata& metadata) {
+            _binding._inputs.resize(metadata.inputs.size());
+            for (size_t i = 0; i < metadata.inputs.size(); ++i) {
+                const auto& shape = metadata.inputs[i].shapeFromCompiler.get_shape();
+                std::vector<int64_t> shapeVec(shape.begin(), shape.end());
+                _binding._inputs[i] = IDynamicGraph::MemRefType(nullptr, nullptr, 0, shapeVec, shapeVec, shapeVec.size());
+                _binding._inputs[i].updateStride();
+            }
+
+            _binding._outputs.resize(metadata.outputs.size());
+            for (size_t i = 0; i < metadata.outputs.size(); ++i) {
+                const auto& shape = metadata.outputs[i].shapeFromCompiler.get_shape();
+                std::vector<int64_t> shapeVec(shape.begin(), shape.end());
+                _binding._outputs[i] = IDynamicGraph::MemRefType(nullptr, nullptr, 0, shapeVec, shapeVec, shapeVec.size());
+                _binding._outputs[i].updateStride();
+            }
         }
 
         std::vector<ze_command_list_handle_t>& getHandles() {
@@ -118,6 +132,8 @@ public:
                                 const std::shared_ptr<ZeroTensor>& tensor,
                                 size_t batch_index,
                                 const std::shared_ptr<ov::ITensor>& userTensor = nullptr) override;
+
+    const IDynamicGraph::GraphArguments& get_graph_arguments(size_t batch_index) const;
 
 private:
     std::vector<std::unique_ptr<PipelinedCommandLists>> _command_lists;

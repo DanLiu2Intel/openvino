@@ -127,10 +127,6 @@ void IDynamicGraph::execute(const std::shared_ptr<ZeroInitStructsHolder>&,
     OPENVINO_THROW("execute not implemented");
 }
 
-void IDynamicGraph::getBinding(GraphArguments&) {
-    OPENVINO_THROW("getBinding not implemented");
-}
-
 uint64_t IDynamicGraph::get_num_subgraphs() const {
     OPENVINO_THROW("get_num_subgraphs not implemented");
 }

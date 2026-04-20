@@ -202,9 +202,10 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<IDynamicGraph::MemRefTy
     // Predict output shapes based on current inputs
     intel_npu::IDynamicGraph* dynamicGraph = dynamic_cast<intel_npu::IDynamicGraph*>(_graph.get());
     if (dynamicGraph && _isTensorChanged) {
-        IDynamicGraph::GraphArguments graphArgs;
-        // Need change to use arguments in pipeline
-        dynamicGraph->getBinding(graphArgs);
+        auto* dynamicPipeline = dynamic_cast<DynamicPipeline*>(_pipeline.get());
+        OPENVINO_ASSERT(dynamicPipeline != nullptr, "Dynamic pipeline is not initialized");
+        // Reuse per-command-list GraphArguments maintained by DynamicPipeline.
+        const auto& graphArgs = dynamicPipeline->get_graph_arguments(0);
         std::vector<IDynamicGraph::MemRefType> inputPros = graphArgs._inputs;
         outputProps = graphArgs._outputs;
 

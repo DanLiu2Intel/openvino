@@ -29,8 +29,6 @@ public:
     void createExecutionEngine(std::optional<ov::Tensor>& blob);
     void prepareMetadata(NetworkMetadata& metadata);
     void initializeDynamicGraphExecution(std::optional<ov::Tensor>& blob, NetworkMetadata& metadata);
-    void setArgumentValue(uint32_t argi, const void* argv) override;
-    void setArgumentValueWithStrides(uint32_t argi, const void* argv, const std::vector<size_t>& strides) override;
     uint64_t getNumSubgraphs() override {
         return _engineProperties.numOfSubGraphs;
     }
@@ -41,7 +39,6 @@ public:
                       ze_fence_handle_t inferenceFence,
                       ze_event_handle_t event,
                       ze_graph_profiling_pool_handle_t profiling) override;
-    void getBinding(DynamicGraph::GraphArguments& binding) override;
 
     virtual ~DynamicGraphImpl() {
         destroy();
@@ -60,7 +57,6 @@ public:
 public:
     npu_vm_runtime_handle_t _engine = nullptr;
     npu_vm_runtime_properties_t _engineProperties;
-    DynamicGraph::GraphArguments _binding;
     bool _initialized = false;
     Logger _logger;
 };
@@ -70,8 +66,6 @@ void DynamicGraphImpl::initialize(std::optional<ov::Tensor>& blob, NetworkMetada
         initializeDynamicGraphExecution(blob, metadata);
         _initialized = true;
     }
-
-    _binding._inputs.resize(metadata.inputs.size());
 
     // dump output of _metadata
     _logger.debug("Dump metadata info from blob");
@@ -92,24 +86,6 @@ void DynamicGraphImpl::initialize(std::optional<ov::Tensor>& blob, NetworkMetada
                       output.shapeFromIRModel.has_value() ? output.shapeFromIRModel->to_string().c_str() : "N/A");
     }
 
-    auto& inputs = _binding._inputs;
-    for (size_t i = 0; i < inputs.size(); ++i) {
-        // Use size as placeholder of stride
-        const auto& shape = metadata.inputs[i].shapeFromCompiler.get_shape();
-        std::vector<int64_t> shapeVec(shape.begin(), shape.end());
-        inputs[i] = MemRefType(nullptr, nullptr, 0, shapeVec, shapeVec, shapeVec.size());
-        // Calc real stride
-        inputs[i].updateStride();
-    }
-
-    _binding._outputs.resize(metadata.outputs.size());
-    auto& outputs = _binding._outputs;
-    for (size_t i = 0; i < outputs.size(); ++i) {
-        const auto& shape = metadata.outputs[i].shapeFromCompiler.get_shape();
-        std::vector<int64_t> shapeVec(shape.begin(), shape.end());
-        outputs[i] = MemRefType(nullptr, nullptr, 0, shapeVec, shapeVec, shapeVec.size());
-        outputs[i].updateStride();
-    }
 }
 
 void DynamicGraphImpl::createExecutionEngine(std::optional<ov::Tensor>& blob) {
@@ -244,10 +220,6 @@ void DynamicGraphImpl::prepareMetadata(NetworkMetadata& metadata) {
     metadata.bindRelatedDescriptors();
 }
 
-void DynamicGraphImpl::getBinding(DynamicGraph::GraphArguments& binding) {
-    binding = _binding;
-}
-
 void DynamicGraphImpl::initializeDynamicGraphExecution(std::optional<ov::Tensor>& blob, NetworkMetadata& metadata) {
     createExecutionEngine(blob);
     prepareMetadata(metadata);
@@ -256,47 +228,6 @@ void DynamicGraphImpl::initializeDynamicGraphExecution(std::optional<ov::Tensor>
                   _engineProperties.numOfSubGraphs,
                   metadata.inputs.size(),
                   metadata.outputs.size());
-}
-
-void DynamicGraphImpl::setArgumentValue(uint32_t argi, const void* argv) {
-    auto& inputs = _binding._inputs;
-    if (argi < inputs.size()) {
-        _logger.debug("setArgumentValue for index %d (input %d)", argi, argi);
-        inputs[argi].setArg(argv);
-    } else {
-        auto& outputs = _binding._outputs;
-        auto idx = argi - inputs.size();
-        _logger.debug("setArgumentValue for index %d (output %d)", argi, idx);
-        if (idx < outputs.size()) {
-            outputs[idx].setArg(argv);
-        }
-    }
-}
-
-void DynamicGraphImpl::setArgumentValueWithStrides(uint32_t argi,
-                                                   const void* argv,
-                                                   const std::vector<size_t>& strides) {
-    _logger.debug("setArgumentValueWithStrides for index %d", argi);
-    auto& inputs = _binding._inputs;
-    if (argi < inputs.size()) {
-        _logger.debug("setArgumentValueWithStrides for index %d (input %d)", argi, argi);
-        inputs[argi].setArg(argv);
-
-        for (int64_t i = 0; i < inputs[argi]._dimsCount; i++) {
-            inputs[argi]._strides[i] = strides[i];
-        }
-    } else {
-        auto& outputs = _binding._outputs;
-        auto idx = argi - inputs.size();
-        _logger.debug("setArgumentValueWithStrides for index %d (output %d)", argi, idx);
-        if (idx < outputs.size()) {
-            outputs[idx].setArg(argv);
-
-            for (int64_t i = 0; i < outputs[idx]._dimsCount; i++) {
-                outputs[idx]._strides[i] = strides[i];
-            }
-        }
-    }
 }
 
 void DynamicGraphImpl::executeGraph(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct,
@@ -523,23 +454,19 @@ void DynamicGraph::set_model_priority(const ov::hint::Priority modelPriority) {
 }
 
 void DynamicGraph::set_argument_value(uint32_t argi, const void* argv) const {
-    if (_impl == nullptr) {
-        _logger.warning("Graph handle is null, dynamic pipeline to handle set_argument_value");
-        return;
-    }
-
-    _impl->setArgumentValue(argi, argv);
+    (void)argi;
+    (void)argv;
+    _logger.warning("set_argument_value is not used by DynamicGraph. Arguments are managed by DynamicPipeline.");
 }
 
 void DynamicGraph::set_argument_value_with_strides(uint32_t id,
                                                    const void* data,
                                                    const std::vector<size_t>& strides) const {
-    if (_impl == nullptr) {
-        _logger.warning("Graph handle is null, dynamic pipeline to handle set_argument_value");
-        return;
-    }
-
-    _impl->setArgumentValueWithStrides(id, data, strides);
+    (void)id;
+    (void)data;
+    (void)strides;
+    _logger.warning(
+        "set_argument_value_with_strides is not used by DynamicGraph. Arguments are managed by DynamicPipeline.");
 }
 
 ze_graph_handle_t DynamicGraph::get_handle() const {
@@ -692,15 +619,6 @@ void DynamicGraph::execute(const std::shared_ptr<ZeroInitStructsHolder>& zeroIni
         return;
 
     impl->executeGraph(zeroInitStruct, args, commandLists, commandQueue, inferenceFence, event, profiling);
-}
-
-void DynamicGraph::getBinding(GraphArguments& args) {
-    auto impl = reinterpret_cast<DynamicGraphImpl*>(_impl.get());
-
-    if (impl == nullptr)
-        return;
-
-    impl->getBinding(args);
 }
 
 uint64_t DynamicGraph::get_num_subgraphs() const {
