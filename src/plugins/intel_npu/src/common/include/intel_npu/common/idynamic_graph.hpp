@@ -67,8 +67,6 @@ public:
                          ze_event_handle_t event,
                          ze_graph_profiling_pool_handle_t profiling);
 
-    virtual void getBinding(GraphArguments& args);
-
     virtual uint64_t get_num_subgraphs() const;
 
     virtual void predict_output_shape(std::vector<MemRefType>& inputDescriptors,

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "intel_npu/common/idynamic_graph.hpp"
 #include "zero_pipeline.hpp"
 
@@ -36,8 +38,22 @@ class DynamicPipeline final : public IPipeline {
             return _commandListHandles.data();
         }
 
-        void bind(IDynamicGraph* graph) {
-            graph->getBinding(_binding);
+        void initializeBinding(const NetworkMetadata& metadata) {
+            _binding._inputs.resize(metadata.inputs.size());
+            for (size_t i = 0; i < metadata.inputs.size(); ++i) {
+                const auto& shape = metadata.inputs[i].shapeFromCompiler.get_shape();
+                std::vector<int64_t> shapeVec(shape.begin(), shape.end());
+                _binding._inputs[i] = IDynamicGraph::MemRefType(nullptr, nullptr, 0, shapeVec, shapeVec, shapeVec.size());
+                _binding._inputs[i].updateStride();
+            }
+
+            _binding._outputs.resize(metadata.outputs.size());
+            for (size_t i = 0; i < metadata.outputs.size(); ++i) {
+                const auto& shape = metadata.outputs[i].shapeFromCompiler.get_shape();
+                std::vector<int64_t> shapeVec(shape.begin(), shape.end());
+                _binding._outputs[i] = IDynamicGraph::MemRefType(nullptr, nullptr, 0, shapeVec, shapeVec, shapeVec.size());
+                _binding._outputs[i].updateStride();
+            }
         }
 
         std::vector<ze_command_list_handle_t>& getHandles() {
@@ -119,8 +135,19 @@ public:
                                 size_t batch_index,
                                 const std::shared_ptr<ov::ITensor>& userTensor = nullptr) override;
 
+    const IDynamicGraph::GraphArguments& get_graph_arguments(size_t batch_index) const;
+
 private:
+    void predict_and_update_outputs(IDynamicGraph* dynamicGraph);
+    size_t get_output_metadata_index(uint32_t driver_arg_index) const;
+    static ov::Shape memref_to_shape(const IDynamicGraph::MemRefType& memref);
+    static size_t memref_num_elements(const IDynamicGraph::MemRefType& memref);
+
     std::vector<std::unique_ptr<PipelinedCommandLists>> _command_lists;
+    std::vector<std::shared_ptr<ZeroTensor>> _output_tensors;
+    std::unordered_map<uint32_t, size_t> _output_index_by_driver;
+    std::vector<bool> _output_uses_user_tensor;
+    bool _graph_arguments_changed = true;
 };
 
 }  // namespace intel_npu

@@ -31,13 +31,6 @@ protected:
     void sync_zero_tensors_with_graph(const ZeroInferRequest::FoundPort& foundPort,
                                       const std::vector<ov::SoPtr<ov::ITensor>>& tensors,
                                       const std::optional<size_t>& batchSize = std::nullopt) override;
-
-    void predict_shapes(std::vector<IDynamicGraph::MemRefType>& outputProps);
-    void check_tensor_and_predicted_shapes(const std::vector<IDynamicGraph::MemRefType>& outputProps);
-
-    void update_tensor(const std::vector<IDynamicGraph::MemRefType>& outputProps);
-
-    bool _isTensorChanged = false;
 };
 
 }  //  namespace intel_npu

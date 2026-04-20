@@ -10,8 +10,8 @@
 
 #include "intel_npu/common/idynamic_graph.hpp"
 #include "intel_npu/common/network_metadata.hpp"
+#include "intel_npu/utils/vm/npu_vm_runtime_api.hpp"
 #include "intel_npu/utils/zero/zero_init.hpp"
-#include "npu_vm_runtime_api.hpp"
 #include "openvino/runtime/so_ptr.hpp"
 
 namespace intel_npu {
@@ -88,12 +88,7 @@ public:
 
     public:
         virtual void initialize(std::optional<ov::Tensor>& blob, NetworkMetadata& metadata) = 0;
-        virtual void setArgumentValue(uint32_t argi, const void* argv) = 0;
-        virtual void setArgumentValueWithStrides(uint32_t argi,
-                                                 const void* argv,
-                                                 const std::vector<size_t>& strides) = 0;
         virtual uint64_t getNumSubgraphs() = 0;
-        virtual void getBinding(GraphArguments& binding) = 0;
         virtual void executeGraph(const std::shared_ptr<ZeroInitStructsHolder>& zeroInitStruct,
                                   GraphArguments& args,
                                   std::vector<ze_command_list_handle_t>& commandLists,
@@ -146,8 +141,6 @@ public:
                  ze_fence_handle_t inferenceFence,
                  ze_event_handle_t event,
                  ze_graph_profiling_pool_handle_t profiling) override;
-
-    void getBinding(GraphArguments& args) override;
 
     uint64_t get_num_subgraphs() const override;
 
