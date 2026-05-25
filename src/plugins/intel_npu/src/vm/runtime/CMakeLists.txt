@@ -18,4 +18,5 @@ ov_add_clang_format_target(${TARGET_NAME}_clang FOR_TARGETS ${TARGET_NAME})
 ov_developer_package_export_targets(TARGET openvino::npu_vm_runtime_api
                                     INSTALL_INCLUDE_DIRECTORIES
                                         ${CMAKE_CURRENT_SOURCE_DIR}/include/)
+# 添加了头文件： src/plugins/intel_npu/src/vm/runtime/include/intel_npu
 ov_install_static_lib(npu_vm_runtime_api ${NPU_PLUGIN_COMPONENT})

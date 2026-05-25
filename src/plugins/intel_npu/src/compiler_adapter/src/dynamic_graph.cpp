@@ -119,7 +119,7 @@ void DynamicGraphImpl::createExecutionEngine(std::optional<ov::Tensor>& blob) {
     blobDesc.pInput = reinterpret_cast<const uint8_t*>(blob.value().data());
     blobDesc.inputSize = blob.value().get_byte_size();
 
-    if (npuVMRuntimeCreate(&blobDesc, &_engine, &_engineProperties) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+    if (_runtimeApi->npuVMRuntimeCreate(&blobDesc, &_engine, &_engineProperties) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
         OPENVINO_THROW("Failed to create VM runtime engine");
     }
 }
@@ -206,7 +206,12 @@ static IODescriptor getIODescriptor(const ze_graph_argument_properties_3_t& arg,
             isStateOutput,
             isShapeTensor,
             isInitInputWeights,
-            isInitOutputWeights,
+                explicit DynamicGraphImpl(std::shared_ptr<NPUVMRuntimeApi> runtimeApi)
+                    : _runtimeApi(std::move(runtimeApi)),
+                      _engineProperties{},
+                      _logger("DynamicGraphImpl", Logger::global().level()) {
+                    OPENVINO_ASSERT(_runtimeApi != nullptr, "VM runtime API is not initialized");
+                }
             isMainInputWeights,
             std::nullopt,
             arg.debug_friendly_name,
@@ -223,7 +228,8 @@ void DynamicGraphImpl::prepareMetadata(NetworkMetadata& metadata) {
         ze_graph_argument_metadata_t meta;
         std::vector<int64_t> upperBound;
         upperBound.reserve(ZE_MAX_GRAPH_ARGUMENT_DIMENSIONS_SIZE);
-        if (npuVMRuntimeGetMetadata(_engine, i, &arg, &meta, upperBound.data()) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+        if (_runtimeApi->npuVMRuntimeGetMetadata(_engine, i, &arg, &meta, upperBound.data()) !=
+            NPU_VM_RUNTIME_RESULT_SUCCESS) {
             OPENVINO_THROW("Failed to get VM runtime metadata");
         }
         IODescriptor ioDesc = getIODescriptor(arg, meta);
@@ -231,12 +237,13 @@ void DynamicGraphImpl::prepareMetadata(NetworkMetadata& metadata) {
         ioDesc.indexUsedByDriver = i;
         ioDesc.supportsStridedLayout = true;
         switch (arg.type) {
-        case ZE_GRAPH_ARGUMENT_TYPE_INPUT: {
+                        _runtimeApi->npuVMRuntimeDestroy(_engine);
             metadata.inputs.push_back(std::move(ioDesc));
         } break;
         case ZE_GRAPH_ARGUMENT_TYPE_OUTPUT: {
             metadata.outputs.push_back(std::move(ioDesc));
         } break;
+                std::shared_ptr<NPUVMRuntimeApi> _runtimeApi;
         default: {
             OPENVINO_THROW("Invalid ze_graph_argument_type_t found in ze_graph_argument_properties_3_t object: ",
                            arg.type);
@@ -307,7 +314,7 @@ void DynamicGraphImpl::executeGraph(const std::shared_ptr<ZeroInitStructsHolder>
     _logger.debug("Start to execute graph with runtime engine");
     std::shared_ptr<DynamicGraph::GraphArgumentsImpl> argsImpl =
         args._impl ? std::static_pointer_cast<DynamicGraph::GraphArgumentsImpl>(args._impl)
-                   : std::make_shared<DynamicGraph::GraphArgumentsImpl>();
+                   : std::make_shared<DynamicGraph::GraphArgumentsImpl>(_runtimeApi);
 
     bool noTensorChange = true;
     npu_vm_runtime_execute_params_t* params = &argsImpl->_executeParams;
@@ -315,7 +322,7 @@ void DynamicGraphImpl::executeGraph(const std::shared_ptr<ZeroInitStructsHolder>
         std::shared_ptr<DynamicGraph::MemRefTypeImpl> inImpl =
             std::static_pointer_cast<DynamicGraph::MemRefTypeImpl>(in._impl);
         if (inImpl == nullptr) {
-            inImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>();
+            inImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>(_runtimeApi);
             in._impl = inImpl;
         }
         inImpl->UpdateMemRefHandleStatus(in);
@@ -329,7 +336,7 @@ void DynamicGraphImpl::executeGraph(const std::shared_ptr<ZeroInitStructsHolder>
         std::shared_ptr<DynamicGraph::MemRefTypeImpl> outImpl =
             std::static_pointer_cast<DynamicGraph::MemRefTypeImpl>(out._impl);
         if (outImpl == nullptr) {
-            outImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>();
+            outImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>(_runtimeApi);
             out._impl = outImpl;
         }
         outImpl->UpdateMemRefHandleStatus(out);
@@ -362,7 +369,8 @@ void DynamicGraphImpl::executeGraph(const std::shared_ptr<ZeroInitStructsHolder>
 
     // Prepare execution context for each graph arguments
     if (params->executionContext == nullptr) {
-        if (npuVMRuntimeCreateExecutionContext(_engine, &params->executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+        if (_runtimeApi->npuVMRuntimeCreateExecutionContext(_engine, &params->executionContext) !=
+            NPU_VM_RUNTIME_RESULT_SUCCESS) {
             OPENVINO_THROW("Failed to create a VM execution context");
         } else {
             _logger.debug("Execution context is created successfully.");
@@ -383,7 +391,7 @@ void DynamicGraphImpl::executeGraph(const std::shared_ptr<ZeroInitStructsHolder>
     params->event = event;
 
     _logger.debug("Execute graph with runtime engine");
-    if (npuVMRuntimeExecute(_engine, params) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+    if (_runtimeApi->npuVMRuntimeExecute(_engine, params) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
         OPENVINO_THROW("Failed to execute VM runtime engine");
     }
 
@@ -399,7 +407,7 @@ void DynamicGraphImpl::predictOutputShape(std::vector<MemRefType>& inputDescript
         std::shared_ptr<DynamicGraph::MemRefTypeImpl> inImpl =
             std::static_pointer_cast<DynamicGraph::MemRefTypeImpl>(in._impl);
         if (inImpl == nullptr) {
-            inImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>();
+            inImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>(_runtimeApi);
             in._impl = inImpl;
         }
         inImpl->UpdateMemRefHandleStatus(in);
@@ -410,7 +418,7 @@ void DynamicGraphImpl::predictOutputShape(std::vector<MemRefType>& inputDescript
         std::shared_ptr<DynamicGraph::MemRefTypeImpl> outImpl =
             std::static_pointer_cast<DynamicGraph::MemRefTypeImpl>(out._impl);
         if (outImpl == nullptr) {
-            outImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>();
+            outImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>(_runtimeApi);
             out._impl = outImpl;
         }
         outImpl->UpdateMemRefHandleStatus(out);
@@ -423,7 +431,7 @@ void DynamicGraphImpl::predictOutputShape(std::vector<MemRefType>& inputDescript
     params.pOutputs = outputs.data();
     params.numOfOutputs = static_cast<uint32_t>(outputs.size());
 
-    if (npuVMRuntimePredictOutputShape(_engine, &params) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+    if (_runtimeApi->npuVMRuntimePredictOutputShape(_engine, &params) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
         OPENVINO_THROW("Failed to execute VM runtime engine");
     } else {
         for (auto& out : outputDescriptors) {
@@ -444,6 +452,7 @@ DynamicGraph::DynamicGraph(const std::shared_ptr<ZeroInitStructsHolder>& zeroIni
                            const FilteredConfig& config)
     : _zeroInitStruct(zeroInitStruct),
       _blob(std::move(blob)),
+    _runtimeApi(NPUVMRuntimeApi::getInstanceFromBlob(_blob->data(), _blob->get_byte_size())),
       _logger("DynamicGraph", config.get<LOG_LEVEL>()) {
     _logger.info("Create DynamicGraph");
     if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()) {
@@ -451,7 +460,7 @@ DynamicGraph::DynamicGraph(const std::shared_ptr<ZeroInitStructsHolder>& zeroIni
         return;
     }
 
-    _impl = std::make_unique<DynamicGraphImpl>();
+    _impl = std::make_unique<DynamicGraphImpl>(_runtimeApi);
 
     // TODO: metadata needs to be parsed even when CREATE_EXECUTOR is 0 or DEFER_WEIGHTS_LOAD is YES, keep here to
     // support pure compilation without vm runtime initialize VM execution engine, metadata, input&output
@@ -583,7 +592,7 @@ void DynamicGraph::initialize_impl(const FilteredConfig& config) {
     _logger.debug("Graph initialize start");
 
     if (!_impl) {
-        _impl = std::make_unique<DynamicGraphImpl>();
+        _impl = std::make_unique<DynamicGraphImpl>(_runtimeApi);
         // initialize VM execution engine, metadata, input&output descriptors
         _impl->initialize(_blob, _metadata);
         _num_of_subgraphs = _impl->getNumSubgraphs();

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <string_view>
 
 #include "intel_npu/runtime/npu_vm_runtime.hpp"
@@ -40,16 +41,15 @@ public:
 
     ~NPUVMRuntimeApi() = default;
 
-    // Must be called before the first getInstance() invocation.
-    // Re-initialization with the same library is a no-op after the singleton has been created.
-    // Throws only if re-initialized with a different library after creation.
+    // Selects the default runtime library used by the legacy wrapper entry points and warms the cache.
     static void initialize(std::string_view libName);
 
     // Inspects the blob header to select the appropriate runtime library and calls initialize().
-    // Selects "npu_interpreter_runtime" for NPUByte blobs, "npu_mlir_runtime" otherwise.
     static void initializeFromBlob(const void* data, size_t size);
 
-    static const std::shared_ptr<NPUVMRuntimeApi>& getInstance();
+    static std::shared_ptr<NPUVMRuntimeApi> getInstance();
+    static std::shared_ptr<NPUVMRuntimeApi> getInstance(std::string_view libName);
+    static std::shared_ptr<NPUVMRuntimeApi> getInstanceFromBlob(const void* data, size_t size);
 
 #define nmr_symbol_statement(symbol) decltype(&::symbol) symbol;
     nmr_symbols_list();
