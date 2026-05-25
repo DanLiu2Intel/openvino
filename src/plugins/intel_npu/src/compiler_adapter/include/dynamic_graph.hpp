@@ -22,8 +22,11 @@ public:
         bool _ptrUpdated = false;
         bool _shapeUpdated = false;
         bool _strideUpdated = false;
+                std::shared_ptr<NPUVMRuntimeApi> _runtimeApi;
 
-        MemRefTypeImpl() : _memRef(nullptr) {}
+                explicit MemRefTypeImpl(std::shared_ptr<NPUVMRuntimeApi> runtimeApi)
+                        : _memRef(nullptr),
+                            _runtimeApi(std::move(runtimeApi)) {}
 
         ~MemRefTypeImpl() {
             destroyMemRef();
@@ -64,13 +67,15 @@ public:
                     _strideUpdated = false;
                 }
             }
-            auto result = npuVMRuntimeSetMemRef(_memRef,
-                                                memref._basePtr,
-                                                memref._data,
-                                                memref._offset,
-                                                memref._sizes.data(),
-                                                memref._strides.data(),
-                                                memref._dimsCount);
+            OPENVINO_ASSERT(_runtimeApi != nullptr, "VM runtime API is not initialized");
+
+            auto result = _runtimeApi->npuVMRuntimeSetMemRef(_memRef,
+                                                             memref._basePtr,
+                                                             memref._data,
+                                                             memref._offset,
+                                                             memref._sizes.data(),
+                                                             memref._strides.data(),
+                                                             memref._dimsCount);
             if (result != NPU_VM_RUNTIME_RESULT_SUCCESS) {
                 throw std::runtime_error("Failed to update MemRef handle");
             }
@@ -81,13 +86,15 @@ public:
                 return;
             }
 
-            if (npuVMRuntimeParseMemRef(_memRef,
-                                        &memref._basePtr,
-                                        &memref._data,
-                                        &memref._offset,
-                                        memref._sizes.data(),
-                                        memref._strides.data(),
-                                        &memref._dimsCount) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+            OPENVINO_ASSERT(_runtimeApi != nullptr, "VM runtime API is not initialized");
+
+            if (_runtimeApi->npuVMRuntimeParseMemRef(_memRef,
+                                                     &memref._basePtr,
+                                                     &memref._data,
+                                                     &memref._offset,
+                                                     memref._sizes.data(),
+                                                     memref._strides.data(),
+                                                     &memref._dimsCount) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
                 throw std::runtime_error("Failed to parse MemRef handle");
             }
         }
@@ -95,7 +102,9 @@ public:
     private:
         void createMemRef(int64_t dimsCount) {
             if (_memRef == nullptr) {
-                auto result = npuVMRuntimeCreateMemRef(dimsCount, &_memRef);
+                OPENVINO_ASSERT(_runtimeApi != nullptr, "VM runtime API is not initialized");
+
+                auto result = _runtimeApi->npuVMRuntimeCreateMemRef(dimsCount, &_memRef);
                 if (result != NPU_VM_RUNTIME_RESULT_SUCCESS) {
                     OPENVINO_THROW("Failed to create MemRef handle");
                 }
@@ -104,7 +113,9 @@ public:
 
         void destroyMemRef() {
             if (_memRef != nullptr) {
-                npuVMRuntimeDestroyMemRef(_memRef);
+                OPENVINO_ASSERT(_runtimeApi != nullptr, "VM runtime API is not initialized");
+
+                _runtimeApi->npuVMRuntimeDestroyMemRef(_memRef);
                 _memRef = nullptr;
             }
         }
@@ -114,10 +125,16 @@ public:
         std::vector<npu_vm_runtime_mem_ref_handle_t> _inputMemRefs;
         std::vector<npu_vm_runtime_mem_ref_handle_t> _outputMemRefs;
         npu_vm_runtime_execute_params_t _executeParams = {};
+        std::shared_ptr<NPUVMRuntimeApi> _runtimeApi;
+
+        explicit GraphArgumentsImpl(std::shared_ptr<NPUVMRuntimeApi> runtimeApi)
+            : _runtimeApi(std::move(runtimeApi)) {}
 
         ~GraphArgumentsImpl() {
             if (_executeParams.executionContext != nullptr) {
-                npuVMRuntimeDestroyExecutionContext(_executeParams.executionContext);
+                OPENVINO_ASSERT(_runtimeApi != nullptr, "VM runtime API is not initialized");
+
+                _runtimeApi->npuVMRuntimeDestroyExecutionContext(_executeParams.executionContext);
                 _executeParams.executionContext = nullptr;
             }
         }
@@ -232,6 +249,8 @@ private:
      * @details The attribute contains a value only if the plugin performs the batches splitting operation.
      */
     std::optional<std::size_t> _batchSize = std::nullopt;
+
+    std::shared_ptr<NPUVMRuntimeApi> _runtimeApi;
 
     Logger _logger;
 
