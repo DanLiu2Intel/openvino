@@ -220,6 +220,7 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<MemRefType>& outputProp
     // bool reCreatePipeline = false;
     // Predict output shapes based on current inputs
     intel_npu::IDynamicGraph* dynamicGraph = dynamic_cast<intel_npu::IDynamicGraph*>(_graph.get());
+    OPENVINO_ASSERT(dynamicGraph != nullptr, "DynamicPipeline::predict_shapes requires IDynamicGraph");
 
     if (dynamicGraph->get_vm_runtime_handle() != nullptr && _isTensorChanged) {
         // MemRef slots are sized from network metadata; per-element data/shape/strides are populated

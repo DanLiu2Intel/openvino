@@ -68,6 +68,7 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
     _logger.debug("DynamicPipeline - event pool and command queue setup completed");
 
     intel_npu::IDynamicGraph* dynamicGraph = dynamic_cast<intel_npu::IDynamicGraph*>(_graph.get());
+    OPENVINO_ASSERT(dynamicGraph != nullptr, "DynamicPipeline requires IDynamicGraph");
     uint64_t num_of_subgraphs = dynamicGraph->get_num_subgraphs();
 
     _command_lists.reserve(_batch_size);
