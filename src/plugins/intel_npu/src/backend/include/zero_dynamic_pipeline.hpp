@@ -10,6 +10,8 @@
 
 namespace intel_npu {
 
+class IDynamicGraph;
+
 class DynamicPipeline final : public IPipeline {
     struct PipelinedCommandLists {
         GraphArguments _binding;
@@ -118,6 +120,7 @@ private:
                             ze_event_handle_t event);
 
     std::vector<std::unique_ptr<PipelinedCommandLists>> _command_lists;
+    std::shared_ptr<IDynamicGraph> _dynamic_graph;
 };
 
 }  // namespace intel_npu

@@ -50,7 +50,8 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
                                  const std::vector<std::vector<std::shared_ptr<ZeroTensor>>>& input_tensors,
                                  const std::vector<std::shared_ptr<ZeroTensor>>& output_tensors,
                                  size_t batch_size)
-    : IPipeline(init_structs, graph, batch_size, config, "DynamicPipeline") {
+        : IPipeline(init_structs, graph, batch_size, config, "DynamicPipeline"),
+            _dynamic_graph(std::dynamic_pointer_cast<IDynamicGraph>(graph)) {
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "Zero_infer_request::DynamicPipeline::DynamicPipeline");
 
     OPENVINO_ASSERT(!_run_inferences_sequentially, "In-order execution doesn't work for dynamic pipeline");
@@ -67,9 +68,8 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
     }
     _logger.debug("DynamicPipeline - event pool and command queue setup completed");
 
-    intel_npu::IDynamicGraph* dynamicGraph = dynamic_cast<intel_npu::IDynamicGraph*>(_graph.get());
-    OPENVINO_ASSERT(dynamicGraph != nullptr, "DynamicPipeline requires IDynamicGraph");
-    uint64_t num_of_subgraphs = dynamicGraph->get_num_subgraphs();
+    OPENVINO_ASSERT(_dynamic_graph != nullptr, "DynamicPipeline requires IDynamicGraph");
+    uint64_t num_of_subgraphs = _dynamic_graph->get_num_subgraphs();
 
     _command_lists.reserve(_batch_size);
     for (size_t i = 0; i < _batch_size; i++) {
@@ -155,9 +155,8 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
 void DynamicPipeline::push() {
     _logger.debug("push - started");
 
-    intel_npu::IDynamicGraph* dynamicGraph = dynamic_cast<intel_npu::IDynamicGraph*>(_graph.get());
-    OPENVINO_ASSERT(dynamicGraph != nullptr, "DynamicPipeline::push requires IDynamicGraph");
-    _npu_vm_runtime_handle_t* const vmRuntime = dynamicGraph->get_vm_runtime_handle();
+    OPENVINO_ASSERT(_dynamic_graph != nullptr, "DynamicPipeline::push requires IDynamicGraph");
+    _npu_vm_runtime_handle_t* const vmRuntime = _dynamic_graph->get_vm_runtime_handle();
     OPENVINO_ASSERT(vmRuntime != nullptr, "DynamicPipeline requires a valid VM runtime engine");
 
     const auto command_queue_desc = _graph->get_command_queue_desc();
