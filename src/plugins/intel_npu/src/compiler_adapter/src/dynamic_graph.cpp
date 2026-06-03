@@ -472,6 +472,12 @@ DynamicGraph::~DynamicGraph() {
     if (!_lastSubmittedEvent.empty()) {
         _lastSubmittedEvent.clear();
     }
+
+    ///清除_executeParams的内容
+    if (_executeParams.executionContext != nullptr) {
+        npuVMRuntimeDestroyExecutionContext(_executeParams.executionContext);
+        _executeParams.executionContext = nullptr;
+    }
 }
 
 npu_vm_runtime_handle_t DynamicGraph::get_vm_runtime_handle() const {

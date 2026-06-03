@@ -14,6 +14,9 @@
 #include "intel_npu/utils/zero/zero_init.hpp"
 #include "openvino/runtime/so_ptr.hpp"
 
+#include "dynamic_graph.hpp"
+#include "intel_npu/runtime/npu_vm_runtime.hpp"
+
 namespace intel_npu {
 class DynamicGraph final : public IDynamicGraph {
 public:
@@ -60,6 +63,34 @@ public:
 
     std::optional<std::string_view> get_compatibility_descriptor() const override;
 
+    //需要全局共享runtimeContext
+    void getvmRuntimeContext(npu_vm_runtime_execution_context_handle_t args){
+        //params->executionContext;
+        // std::shared_ptr<DynamicArgumentsImpl> argsImpl =
+        // args._impl ? std::static_pointer_cast<DynamicArgumentsImpl>(args._impl)
+        //            : std::make_shared<DynamicArgumentsImpl>()
+        // npu_vm_runtime_execute_params_t* params = &argsImpl->_executeParams;
+
+        args = _executeParams.executionContext;
+        args = _executionContext;
+    }
+
+    void createVmRuntimeContext(npu_vm_runtime_handle_t engine, npu_vm_runtime_execution_context_handle_t executionContext){
+        //params->executionContext;
+        // std::shared_ptr<DynamicArgumentsImpl> argsImpl =
+        // args._impl ? std::static_pointer_cast<DynamicArgumentsImpl>(args._impl)
+        //            : std::make_shared<DynamicArgumentsImpl>()
+        // npu_vm_runtime_execute_params_t* params = &argsImpl->_executeParams;
+
+        if (executionContext == nullptr) {
+        if (npuVMRuntimeCreateExecutionContext(engine, executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+            OPENVINO_THROW("Failed to create a VM execution context");
+        } else {
+            _logger.debug("Execution context is created successfully.");
+        }
+    }
+    }
+
 private:
     void initialize_impl(const FilteredConfig& config) override;
 
@@ -97,7 +128,11 @@ private:
 
     Logger _logger;
 
-    std::unique_ptr<Impl> _impl;
+    std::unique_ptr<Impl> _impl;//指向dynamicGraphImpl
+
+    //context 需要的内容
+    npu_vm_runtime_execute_params_t _executeParams;
+    npu_vm_runtime_execution_context_handle_t _executionContext;
 };
 
 }  // namespace intel_npu
