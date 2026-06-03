@@ -20,6 +20,7 @@
 namespace intel_npu {
 class DynamicGraph final : public IDynamicGraph {
 public:
+    ///这个还有必要吗？删了DynamicGraphImpl就没必要了
     class Impl {
     public:
         virtual void initialize(std::optional<ov::Tensor>& blob, NetworkMetadata& metadata) = 0;
@@ -40,6 +41,7 @@ public:
     ~DynamicGraph() override;
 
     const NetworkMetadata& get_metadata() const override;
+    ///如果要删除DynamicGraphImpl, 那么这部分内容需要找一个地方更新metadata
 
     void update_network_name(std::string_view name) override;
 
@@ -56,8 +58,13 @@ public:
     uint32_t get_last_submitted_id() const override;
 
     npu_vm_runtime_handle_t get_vm_runtime_handle() const override;
+    //返回的是DynamicGraphImpl的内容，那这部分也可以删除
 
     uint64_t get_num_subgraphs() const override;
+    ///这个和_engineProperties.numOfSubGraphs;相关，删除DynamicGraphImpl后，
+    //需要在engine创建后拿到这个值，或许这样的话，就不需要这个函数了，
+    //传入engineProperties,拿到这个值
+    //直接在调用地拿到这个值
 
     std::optional<bool> is_profiling_blob() const override;
 
@@ -75,6 +82,7 @@ public:
         args = _executionContext;
     }
 
+    //这里的engine可以从 DynamicGraphImpl::_engine 中拿到
     void createVmRuntimeContext(npu_vm_runtime_handle_t engine, npu_vm_runtime_execution_context_handle_t executionContext){
         //params->executionContext;
         // std::shared_ptr<DynamicArgumentsImpl> argsImpl =
@@ -83,12 +91,12 @@ public:
         // npu_vm_runtime_execute_params_t* params = &argsImpl->_executeParams;
 
         if (executionContext == nullptr) {
-        if (npuVMRuntimeCreateExecutionContext(engine, executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-            OPENVINO_THROW("Failed to create a VM execution context");
-        } else {
-            _logger.debug("Execution context is created successfully.");
+            if (npuVMRuntimeCreateExecutionContext(engine, executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+                OPENVINO_THROW("Failed to create a VM execution context");
+            } else {
+                _logger.debug("Execution context is created successfully.");
+            }
         }
-    }
     }
 
 private:
