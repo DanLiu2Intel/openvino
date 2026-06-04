@@ -155,6 +155,9 @@ void DynamicGraph::initialize_engine() {
     if (!_engineInitialized) {
         create_execution_engine();
         prepare_metadata();
+        if (npuVMRuntimeCreateExecutionContext(_engine, &_executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+            OPENVINO_THROW("Failed to create a VM execution context");
+        }
         _engineInitialized = true;
         _num_of_subgraphs = _engineProperties.numOfSubGraphs;
 
@@ -445,16 +448,7 @@ npu_vm_runtime_handle_t DynamicGraph::get_vm_runtime_handle() const {
     return _engine;
 }
 
-npu_vm_runtime_execution_context_handle_t DynamicGraph::ensure_execution_context() {
-    std::lock_guard<std::mutex> lock(_executionContextMutex);
-    if (_executionContext != nullptr) {
-        return _executionContext;
-    }
-    OPENVINO_ASSERT(_engine != nullptr,
-                    "DynamicGraph::ensure_execution_context requires the VM runtime engine to be initialized");
-    if (npuVMRuntimeCreateExecutionContext(_engine, &_executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-        OPENVINO_THROW("Failed to create a VM execution context");
-    }
+npu_vm_runtime_execution_context_handle_t DynamicGraph::get_execution_context() const {
     return _executionContext;
 }
 

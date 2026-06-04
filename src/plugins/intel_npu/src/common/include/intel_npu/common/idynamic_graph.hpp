@@ -19,10 +19,9 @@ public:
 
     virtual uint64_t get_num_subgraphs() const = 0;
 
-    /// Lazily create (on first call) and return the VM execution context owned by the graph.
-    /// The same context is shared across all infer requests of this graph; callers must
-    /// serialize @c npuVMRuntimeExecute on it.
-    virtual _npu_vm_runtime_execution_context_handle_t* ensure_execution_context() = 0;
+    /// Return the VM execution context owned by the graph. Created eagerly during graph
+    /// construction and shared across all infer requests bound to this graph.
+    virtual _npu_vm_runtime_execution_context_handle_t* get_execution_context() const = 0;
 };
 
 }  // namespace intel_npu

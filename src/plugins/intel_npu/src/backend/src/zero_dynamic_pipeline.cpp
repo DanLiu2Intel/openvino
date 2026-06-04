@@ -160,9 +160,8 @@ void DynamicPipeline::push() {
     _npu_vm_runtime_handle_t* const vmRuntime = dynamicGraph->get_vm_runtime_handle();
     OPENVINO_ASSERT(vmRuntime != nullptr, "DynamicPipeline requires a valid VM runtime engine");
 
-    // Resolve the shared execution context once per push; npuVMRuntimeExecute calls on it are
-    // serialized by iterating _command_lists sequentially below.
-    npu_vm_runtime_execution_context_handle_t executionContext = dynamicGraph->ensure_execution_context();
+    // The execution context is created eagerly with the engine, so this is a lock-free read.
+    npu_vm_runtime_execution_context_handle_t executionContext = dynamicGraph->get_execution_context();
 
     const auto command_queue_desc = _graph->get_command_queue_desc();
     const bool command_queue_version_changed = (command_queue_desc.key() != _command_queue->desc().key());
