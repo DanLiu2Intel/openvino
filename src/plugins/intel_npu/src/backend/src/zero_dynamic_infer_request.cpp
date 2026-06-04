@@ -4,6 +4,7 @@
 
 #include "zero_dynamic_infer_request.hpp"
 
+#include "intel_npu/common/idynamic_graph.hpp"
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/prefix.hpp"
 #include "intel_npu/utils/utils.hpp"
@@ -202,7 +203,7 @@ void ZeroDynamicInferRequest::infer_async() {
     _logger.debug("infer_async - started");
     OV_ITT_TASK_CHAIN(ZERO_INFER, itt::domains::LevelZeroBackend, "infer_async", "start");
     // Store the predicted output shapes
-    std::vector<IDynamicGraph::MemRefType> outputPros;
+    std::vector<DynamicMemRefType> outputPros;
     predict_shapes(outputPros);
     check_tensor_and_predicted_shapes(outputPros);
     prepare_inputs();
@@ -213,18 +214,21 @@ void ZeroDynamicInferRequest::infer_async() {
     _pipeline->push();
 }
 
-void ZeroDynamicInferRequest::predict_shapes(std::vector<IDynamicGraph::MemRefType>& outputProps) {
+//除了metadata,剩下的都是临时变量
+void ZeroDynamicInferRequest::predict_shapes(std::vector<DynamicMemRefType>& outputProps) {
     // TODO: If current output tensor is not large enough to be compatible with input tensor, need recreate pipeline
     // But reshape ZeroTensor can be used to avoid recreate pipeline now
     // bool reCreatePipeline = false;
     // Predict output shapes based on current inputs
     intel_npu::IDynamicGraph* dynamicGraph = dynamic_cast<intel_npu::IDynamicGraph*>(_graph.get());
-    if (dynamicGraph && _isTensorChanged) {
-        IDynamicGraph::GraphArguments graphArgs;
-        // Need change to use arguments in pipeline
-        dynamicGraph->getBinding(graphArgs);
-        std::vector<IDynamicGraph::MemRefType> inputPros = graphArgs._inputs;
-        outputProps = graphArgs._outputs;
+    OPENVINO_ASSERT(dynamicGraph != nullptr, "ZeroDynamicInferRequest::predict_shapes requires IDynamicGraph");
+
+    //感觉dynamicGraph->get_vm_runtime_handle()这个也不是很必要.....直接删了或者用原来的比较方法比较好？graph中的感觉可以删了
+    if (dynamicGraph != nullptr && _isTensorChanged) {
+        // MemRef slots are sized from network metadata; per-element data/shape/strides are populated
+        // below from user/level-zero tensors (or metadata fallback) before predict_output_shape().
+        std::vector<DynamicMemRefType> inputPros(_metadata.inputs.size());///临时创建的
+        outputProps.assign(_metadata.outputs.size(), {});
 
         // TODO: Support Batch later
         // Update input Info
@@ -251,7 +255,7 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<IDynamicGraph::MemRefTy
         }
 
         // Update output Info
-        for (size_t i = 0; i < outputProps.size(); ++i) {
+        for (size_t i = 0; i < outputProps.size(); ++i) {  //传进来的一个变量，也是返回值
             auto& levelZeroTensor = _levelZeroOutputTensors.at(i);
             auto& userTensor = _userOutputTensors.at(i);
             if (userTensor != nullptr) {
@@ -274,7 +278,7 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<IDynamicGraph::MemRefTy
 
         auto originalOutputProps = outputProps;
 
-        dynamicGraph->predict_output_shape(inputPros, outputProps);
+        DynamicPipeline::predict_output_shape(*_graph, inputPros, outputProps);
 
         for (size_t i = 0; i < outputProps.size(); i++) {
             if (!originalOutputProps[i].compare(outputProps[i])) {
@@ -285,8 +289,7 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<IDynamicGraph::MemRefTy
     }
 }
 
-void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(
-    const std::vector<IDynamicGraph::MemRefType>& outputProps) {
+void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(const std::vector<DynamicMemRefType>& outputProps) {
     if (outputProps.empty()) {
         _logger.debug("check_tensor_and_predicted_shapes - no output props to check, skip check");
         return;
@@ -334,7 +337,7 @@ void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(
     }
 }
 
-void ZeroDynamicInferRequest::update_tensor(const std::vector<IDynamicGraph::MemRefType>& outputProps) {
+void ZeroDynamicInferRequest::update_tensor(const std::vector<DynamicMemRefType>& outputProps) {
     // Update local level zero buffer shape with predicted shape to prepare for comparasion
     if (outputProps.size() > 0 && _isTensorChanged) {
         for (size_t i = 0; i < _levelZeroOutputTensors.size(); i++) {
