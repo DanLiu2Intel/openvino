@@ -214,6 +214,7 @@ void ZeroDynamicInferRequest::infer_async() {
     _pipeline->push();
 }
 
+//除了metadata,剩下的都是临时变量
 void ZeroDynamicInferRequest::predict_shapes(std::vector<DynamicMemRefType>& outputProps) {
     // TODO: If current output tensor is not large enough to be compatible with input tensor, need recreate pipeline
     // But reshape ZeroTensor can be used to avoid recreate pipeline now
@@ -222,10 +223,11 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<DynamicMemRefType>& out
     intel_npu::IDynamicGraph* dynamicGraph = dynamic_cast<intel_npu::IDynamicGraph*>(_graph.get());
     OPENVINO_ASSERT(dynamicGraph != nullptr, "ZeroDynamicInferRequest::predict_shapes requires IDynamicGraph");
 
-    if (dynamicGraph->get_vm_runtime_handle() != nullptr && _isTensorChanged) {
+    //感觉dynamicGraph->get_vm_runtime_handle()这个也不是很必要.....直接删了或者用原来的比较方法比较好？graph中的感觉可以删了
+    if (dynamicGraph != nullptr && _isTensorChanged) {
         // MemRef slots are sized from network metadata; per-element data/shape/strides are populated
         // below from user/level-zero tensors (or metadata fallback) before predict_output_shape().
-        std::vector<DynamicMemRefType> inputPros(_metadata.inputs.size());
+        std::vector<DynamicMemRefType> inputPros(_metadata.inputs.size());///临时创建的
         outputProps.assign(_metadata.outputs.size(), {});
 
         // TODO: Support Batch later
@@ -253,7 +255,7 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<DynamicMemRefType>& out
         }
 
         // Update output Info
-        for (size_t i = 0; i < outputProps.size(); ++i) {
+        for (size_t i = 0; i < outputProps.size(); ++i) {  //传进来的一个变量，也是返回值
             auto& levelZeroTensor = _levelZeroOutputTensors.at(i);
             auto& userTensor = _userOutputTensors.at(i);
             if (userTensor != nullptr) {

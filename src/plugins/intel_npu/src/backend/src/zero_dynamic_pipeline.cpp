@@ -86,8 +86,8 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
     for (size_t i = 0; i < _batch_size; i++) {
         _logger.debug("DynamicPipeline - set args for command list number: %zu", i);
 
-        _command_lists.at(i)->bind(_graph->get_metadata());
-        auto& graphArguments = _command_lists.at(i)->getBinding();
+        _command_lists.at(i)->bind(_graph->get_metadata());////空的内容
+        auto& graphArguments = _command_lists.at(i)->getBinding();///用metadata初始化一部分内容
 
         size_t io_index = 0;
         for (const auto& desc : _graph->get_metadata().inputs) {
@@ -194,20 +194,26 @@ void DynamicPipeline::push() {
                 _logger.debug("push - output: %s", memType.toString().c_str());
             }
         }
-
-        execute_vm_runtime(vmRuntime, graphArguments, command_lists->getHandles(), commandQueueHandle, fence, event);
+        //engine
+        // execute_vm_runtime(vmRuntime, graphArguments, command_lists->getHandles(), commandQueueHandle, fence, event);
+        execute_vm_runtime(vmRuntime, dynamicGraph, command_lists->getHandles(), commandQueueHandle, fence, event);
     }
 
     _logger.debug("push - completed");
 }
 
-void DynamicPipeline::execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
-                                         DynamicArguments& args,
+void DynamicPipeline::execute_vm_runtime(//_npu_vm_runtime_handle_t* vmRuntime,
+                                         intel_npu::IDynamicGraph* graph,
+                                        DynamicArguments& args,
                                          std::vector<ze_command_list_handle_t>& commandLists,
                                          ze_command_queue_handle_t commandQueue,
                                          ze_fence_handle_t fence,
                                          ze_event_handle_t event) {
     _logger.debug("Start to execute graph with runtime engine");
+
+    // _npu_vm_runtime_handle_t* const vmRuntime = dynamicGraph->get_vm_runtime_handle();
+    // auto& graphArguments = command_lists->getBinding();
+
 
     const bool firstExecution = (args._impl == nullptr);
     std::shared_ptr<DynamicArgumentsImpl> argsImpl =
@@ -215,7 +221,9 @@ void DynamicPipeline::execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
                        : std::static_pointer_cast<DynamicArgumentsImpl>(args._impl);
 
     bool noTensorChange = true;
-    npu_vm_runtime_execute_params_t* params = &argsImpl->_executeParams;
+    // npu_vm_runtime_execute_params_t* params = &argsImpl->_executeParams;
+    npu_vm_runtime_execute_params_t* params;
+    params = graph->getvmRuntimeContext(params);
 
     for (auto& in : args._inputs) {
         auto inImpl = std::static_pointer_cast<DynamicMemRefImpl>(in._impl);
@@ -267,7 +275,9 @@ void DynamicPipeline::execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
     }
 
     // Lazily create the VM execution context (owned by argsImpl, destroyed with it).
-    argsImpl->ensureExecutionContext(vmRuntime);
+    // argsImpl->ensureExecutionContext(vmRuntime);
+    npu_vm_runtime_execution_context_handle_t executionContext;//应该在哪里拿
+    graph->createVmRuntimeContext(vmRuntime, executionContext);
 
     params->pInputs = argsImpl->_inputMemRefs.data();
     params->numOfInputs = static_cast<uint32_t>(argsImpl->_inputMemRefs.size());
@@ -335,6 +345,7 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
     params.pOutputs = outputs.data();
     params.numOfOutputs = static_cast<uint32_t>(outputs.size());
 
+    //需要以一个engine, 一个临时变量npu_vm_runtime_predict_output_shape_params_t
     if (npuVMRuntimePredictOutputShape(vmRuntime, &params) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
         OPENVINO_THROW("Failed to predict output shapes via VM runtime engine");
     }

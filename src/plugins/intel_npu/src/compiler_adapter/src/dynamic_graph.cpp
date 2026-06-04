@@ -19,6 +19,10 @@
 
 namespace intel_npu {
 
+
+//这部分涉及到npuVMRuntimeDestroy， npu_vm_runtime_handle_t和npu_vm_runtime_properties_t的更新
+//vm runtime的创建和销毁，以及metadata的更新
+//以及vm runtime的更新
 class DynamicGraphImpl : public DynamicGraph::Impl {
 public:
     DynamicGraphImpl() : _engineProperties{}, _logger("DynamicGraphImpl", Logger::global().level()) {}

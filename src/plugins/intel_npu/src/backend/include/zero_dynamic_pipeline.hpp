@@ -110,12 +110,18 @@ public:
                                      std::vector<DynamicMemRefType>& outputs);
 
 private:
-    void execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
-                            DynamicArguments& args,
-                            std::vector<ze_command_list_handle_t>& commandLists,
-                            ze_command_queue_handle_t commandQueue,
-                            ze_fence_handle_t fence,
-                            ze_event_handle_t event);
+    // void execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
+    //                         
+    //                         std::vector<ze_command_list_handle_t>& commandLists,
+    //                         ze_command_queue_handle_t commandQueue,
+    //                         ze_fence_handle_t fence,
+    //                         ze_event_handle_t event);
+    void execute_vm_runtime(intel_npu::IDynamicGraph* graph,
+                        DynamicArguments& args,
+                        std::vector<ze_command_list_handle_t>& commandLists,
+                        ze_command_queue_handle_t commandQueue,
+                        ze_fence_handle_t fence,
+                        ze_event_handle_t event);
 
     std::vector<std::unique_ptr<PipelinedCommandLists>> _command_lists;
 };
