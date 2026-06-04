@@ -114,10 +114,9 @@ struct DynamicMemRefType {
 
 /**
  * @brief Runtime-side implementation strongly attached to a @ref DynamicArguments.
- * @details Owns the VM execution context and the flattened MemRef-handle arrays used by
- * @c npuVMRuntimeExecute. The execution context is created lazily via
- * @ref ensureExecutionContext on the first execute call and destroyed when this struct is
- * destroyed -- Create/Destroy of the context are paired in the same translation unit.
+ * @details Owns the flattened MemRef-handle arrays used by @c npuVMRuntimeExecute. The VM
+ * execution context referenced by @c _executeParams.executionContext is NOT owned here -- it
+ * is created and destroyed by the owning @ref IDynamicGraph and merely assigned per-execute.
  */
 struct DynamicArgumentsImpl {
     std::vector<npu_vm_runtime_mem_ref_handle_t> _inputMemRefs;
@@ -128,9 +127,6 @@ struct DynamicArgumentsImpl {
     DynamicArgumentsImpl(const DynamicArgumentsImpl&) = delete;
     DynamicArgumentsImpl& operator=(const DynamicArgumentsImpl&) = delete;
     ~DynamicArgumentsImpl();
-
-    /// Lazily create the VM execution context for @p vmRuntime. No-op if already created.
-    void ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime);
 };
 
 struct DynamicArguments {

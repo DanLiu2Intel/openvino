@@ -229,21 +229,6 @@ void DynamicMemRefImpl::destroyMemRef() {
     }
 }
 
-DynamicArgumentsImpl::~DynamicArgumentsImpl() {
-    if (_executeParams.executionContext != nullptr) {
-        npuVMRuntimeDestroyExecutionContext(_executeParams.executionContext);
-        _executeParams.executionContext = nullptr;
-    }
-}
-
-void DynamicArgumentsImpl::ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime) {
-    if (_executeParams.executionContext != nullptr) {
-        return;
-    }
-    if (npuVMRuntimeCreateExecutionContext(vmRuntime, &_executeParams.executionContext) !=
-        NPU_VM_RUNTIME_RESULT_SUCCESS) {
-        OPENVINO_THROW("Failed to create a VM execution context");
-    }
-}
+DynamicArgumentsImpl::~DynamicArgumentsImpl() = default;
 
 }  // namespace intel_npu

@@ -48,6 +48,8 @@ public:
 
     uint64_t get_num_subgraphs() const override;
 
+    npu_vm_runtime_execution_context_handle_t ensure_execution_context() override;
+
     std::optional<bool> is_profiling_blob() const override;
 
     std::optional<std::string_view> get_compatibility_descriptor() const override;
@@ -96,6 +98,12 @@ private:
     npu_vm_runtime_handle_t _engine = nullptr;
     npu_vm_runtime_properties_t _engineProperties{};
     bool _engineInitialized = false;
+
+    // VM execution context shared by all infer requests bound to this graph; created lazily on
+    // first execute. Serialized by the runtime's per-context single-threaded contract -- callers
+    // (DynamicPipeline::execute_vm_runtime) must not invoke npuVMRuntimeExecute on it in parallel.
+    npu_vm_runtime_execution_context_handle_t _executionContext = nullptr;
+    std::mutex _executionContextMutex;
 };
 
 }  // namespace intel_npu

@@ -160,6 +160,10 @@ void DynamicPipeline::push() {
     _npu_vm_runtime_handle_t* const vmRuntime = dynamicGraph->get_vm_runtime_handle();
     OPENVINO_ASSERT(vmRuntime != nullptr, "DynamicPipeline requires a valid VM runtime engine");
 
+    // Resolve the shared execution context once per push; npuVMRuntimeExecute calls on it are
+    // serialized by iterating _command_lists sequentially below.
+    npu_vm_runtime_execution_context_handle_t executionContext = dynamicGraph->ensure_execution_context();
+
     const auto command_queue_desc = _graph->get_command_queue_desc();
     const bool command_queue_version_changed = (command_queue_desc.key() != _command_queue->desc().key());
     if (command_queue_version_changed) {
@@ -195,13 +199,14 @@ void DynamicPipeline::push() {
             }
         }
 
-        execute_vm_runtime(vmRuntime, graphArguments, command_lists->getHandles(), commandQueueHandle, fence, event);
+        execute_vm_runtime(vmRuntime, executionContext, graphArguments, command_lists->getHandles(), commandQueueHandle, fence, event);
     }
 
     _logger.debug("push - completed");
 }
 
 void DynamicPipeline::execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
+                                         npu_vm_runtime_execution_context_handle_t executionContext,
                                          DynamicArguments& args,
                                          std::vector<ze_command_list_handle_t>& commandLists,
                                          ze_command_queue_handle_t commandQueue,
@@ -265,8 +270,8 @@ void DynamicPipeline::execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
         }
     }
 
-    // Lazily create the VM execution context (owned by argsImpl, destroyed with it).
-    argsImpl->ensureExecutionContext(vmRuntime);
+    // Use the VM execution context owned by the DynamicGraph (shared across infer requests).
+    params->executionContext = executionContext;
 
     params->pInputs = argsImpl->_inputMemRefs.data();
     params->numOfInputs = static_cast<uint32_t>(argsImpl->_inputMemRefs.size());
