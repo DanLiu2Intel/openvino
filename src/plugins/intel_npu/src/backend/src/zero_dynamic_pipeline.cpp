@@ -222,18 +222,16 @@ void DynamicPipeline::execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
     bool noTensorChange = true;
 
     for (auto& in : args._inputs) {
-        auto& inImpl = in.ensure_impl();
-        inImpl.updateMemRefHandleStatus(in);
-        inputMemRefs.push_back(inImpl._memRef);
-        if (inImpl._ptrUpdated || inImpl._shapeUpdated || inImpl._strideUpdated) {
+        in.updateMemRefHandleStatus();
+        inputMemRefs.push_back(in._memRef);
+        if (in._ptrUpdated || in._shapeUpdated || in._strideUpdated) {
             noTensorChange = false;
         }
     }
     for (auto& out : args._outputs) {
-        auto& outImpl = out.ensure_impl();
-        outImpl.updateMemRefHandleStatus(out);
-        outputMemRefs.push_back(outImpl._memRef);
-        if (outImpl._ptrUpdated || outImpl._shapeUpdated || outImpl._strideUpdated) {
+        out.updateMemRefHandleStatus();
+        outputMemRefs.push_back(out._memRef);
+        if (out._ptrUpdated || out._shapeUpdated || out._strideUpdated) {
             noTensorChange = false;
         }
     }
@@ -302,17 +300,15 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
     std::vector<npu_vm_runtime_mem_ref_handle_t> inputs;
     inputs.reserve(inputDescriptors.size());
     for (auto& in : inputDescriptors) {
-        auto& inImpl = in.ensure_impl();
-        inImpl.updateMemRefHandleStatus(in);
-        inputs.push_back(inImpl._memRef);
+        in.updateMemRefHandleStatus();
+        inputs.push_back(in._memRef);
     }
 
     std::vector<npu_vm_runtime_mem_ref_handle_t> outputs;
     outputs.reserve(outputDescriptors.size());
     for (auto& out : outputDescriptors) {
-        auto& outImpl = out.ensure_impl();
-        outImpl.updateMemRefHandleStatus(out);
-        outputs.push_back(outImpl._memRef);
+        out.updateMemRefHandleStatus();
+        outputs.push_back(out._memRef);
     }
 
     npu_vm_runtime_predict_output_shape_params_t params{};
@@ -326,9 +322,7 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
     }
 
     for (auto& out : outputDescriptors) {
-        OPENVINO_ASSERT(out._impl != nullptr,
-                        "DynamicMemRefType implementation is broken, unknown error happens in shape prediction.");
-        out._impl->alignWithHandle(out);
+        out.alignWithHandle();
     }
 
     logger.debug("predict_output_shape - completed");

@@ -40,8 +40,8 @@ class DynamicPipeline final : public IPipeline {
         /// Allocate per-IO MemRef slots driven by the network metadata. The pipeline ctor fills
         /// each slot's data/shape/strides via setArgumentProperties; this just sizes the vectors.
         void bind(const NetworkMetadata& metadata) {
-            _binding._inputs.assign(metadata.inputs.size(), {});
-            _binding._outputs.assign(metadata.outputs.size(), {});
+            _binding._inputs.resize(metadata.inputs.size());
+            _binding._outputs.resize(metadata.outputs.size());
         }
 
         std::vector<ze_command_list_handle_t>& getHandles() {
