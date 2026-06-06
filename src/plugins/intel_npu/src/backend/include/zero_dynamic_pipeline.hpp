@@ -118,6 +118,7 @@ private:
                             ze_event_handle_t event);
 
     std::vector<std::unique_ptr<PipelinedCommandLists>> _command_lists;
+    bool _firstExecution=false;
 };
 
 }  // namespace intel_npu
