@@ -226,7 +226,8 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<DynamicMemRefType>& out
         // MemRef slots are sized from network metadata; per-element data/shape/strides are populated
         // below from user/level-zero tensors (or metadata fallback) before predict_output_shape().
         std::vector<DynamicMemRefType> inputPros(_metadata.inputs.size());
-        outputProps.assign(_metadata.outputs.size(), {});
+        outputProps.clear();
+        outputProps.resize(_metadata.outputs.size());
 
         // TODO: Support Batch later
         // Update input Info
