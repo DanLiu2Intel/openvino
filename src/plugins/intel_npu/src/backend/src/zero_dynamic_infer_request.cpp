@@ -223,8 +223,6 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<DynamicMemRefType>& out
     OPENVINO_ASSERT(dynamicGraph != nullptr, "ZeroDynamicInferRequest::predict_shapes requires IDynamicGraph");
 
     if (dynamicGraph->get_vm_runtime_handle() != nullptr && _isTensorChanged) {
-        // MemRef slots are sized from network metadata; per-element data/shape/strides are populated
-        // below from user/level-zero tensors (or metadata fallback) before predict_output_shape().
         std::vector<DynamicMemRefType> inputPros(_metadata.inputs.size());
         outputProps.clear();
         outputProps.resize(_metadata.outputs.size());
@@ -275,28 +273,19 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<DynamicMemRefType>& out
             }
         }
 
-        // Snapshot only the fields that DynamicMemRefType::compare inspects, since
-        // DynamicMemRefType itself is non-copyable.
-        struct OutputShapeSnapshot {
-            int64_t dimsCount;
-            std::vector<int64_t> sizes;
-            std::vector<int64_t> strides;
-        };
-        std::vector<OutputShapeSnapshot> originalOutputProps;
-        originalOutputProps.reserve(outputProps.size());
-        for (const auto& props : outputProps) {
-            originalOutputProps.push_back({props._dimsCount, props._sizes, props._strides});
+        std::vector<DynamicMemRefType> originalOutputProps;
+        originalOutputProps.resize(outputProps.size());
+
+        for (size_t i = 0; i < outputProps.size(); ++i) {
+            originalOutputProps[i]._dimsCount = outputProps[i]._dimsCount;
+            originalOutputProps[i]._sizes = outputProps[i]._sizes;
+            originalOutputProps[i]._strides = outputProps[i]._strides;
         }
 
         DynamicPipeline::predict_output_shape(*_graph, inputPros, outputProps);
 
         for (size_t i = 0; i < outputProps.size(); i++) {
-            const auto& original = originalOutputProps[i];
-            const auto& predicted = outputProps[i];
-            bool unchanged = (original.dimsCount == predicted._dimsCount) &&
-                             (original.sizes == predicted._sizes) &&
-                             (original.strides == predicted._strides);
-            if (!unchanged) {
+            if (!originalOutputProps[i].compare(outputProps[i])) {
                 _logger.debug("predict_shapes - output shape change detected");
                 break;
             }

@@ -209,9 +209,7 @@ void DynamicPipeline::execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
                                          ze_event_handle_t event) {
     _logger.debug("Start to execute graph with runtime engine");
 
-    // _executedOnce is flipped only after a successful npuVMRuntimeExecute below, so until
-    // then the command lists are not yet populated and the "no tensor change -> reuse
-    // command list" fast path must be skipped.
+    // _executedOnce is true only after a successful npuVMRuntimeExecute below
     const bool firstExecution = !args._executedOnce;
 
     std::vector<npu_vm_runtime_mem_ref_handle_t> inputMemRefs;
@@ -258,7 +256,7 @@ void DynamicPipeline::execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
         }
     }
 
-    // Lazily create the VM execution context (owned by args, destroyed with it).
+    // Create the VM execution context (owned by args, destroyed with it).
     args.ensureExecutionContext(vmRuntime);
 
     npu_vm_runtime_execute_params_t params{};
@@ -279,6 +277,8 @@ void DynamicPipeline::execute_vm_runtime(_npu_vm_runtime_handle_t* vmRuntime,
     _logger.debug("Execute graph with runtime engine");
     if (npuVMRuntimeExecute(vmRuntime, &params) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
         OPENVINO_THROW("Failed to execute VM runtime engine");
+    } else {
+        _logger.debug("Execution context is created successfully.");
     }
 
     args._executedOnce = true;
@@ -325,7 +325,7 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
         out.alignWithHandle();
     }
 
-    logger.debug("predict_output_shape - completed");
+    logger.debug("Output shape prediction is done successfully.");
 }
 
 void DynamicPipeline::pull() {

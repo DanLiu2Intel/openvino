@@ -102,9 +102,7 @@ public:
                                 const std::shared_ptr<ov::ITensor>& userTensor = nullptr) override;
 
     /// Run VM-runtime output shape prediction. Independent of pipeline instance state
-    /// (depends only on the graph's VM runtime handle), so it is callable before the
-    /// pipeline is constructed -- in particular from the first inference's predict_shapes
-    /// path, which runs prior to lazy pipeline creation in prepare_inputs().
+    /// (depends only on the graph's VM runtime handle)
     static void predict_output_shape(const IGraph& graph,
                                      std::vector<DynamicMemRefType>& inputs,
                                      std::vector<DynamicMemRefType>& outputs);

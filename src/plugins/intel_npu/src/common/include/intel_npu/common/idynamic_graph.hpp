@@ -14,7 +14,6 @@ public:
     ~IDynamicGraph() override = default;
 
     virtual _npu_vm_runtime_handle_t* get_vm_runtime_handle() const = 0;
-
     virtual uint64_t get_num_subgraphs() const = 0;
 };
 
