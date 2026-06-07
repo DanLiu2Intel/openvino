@@ -275,12 +275,28 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<DynamicMemRefType>& out
             }
         }
 
-        auto originalOutputProps = outputProps;
+        // Snapshot only the fields that DynamicMemRefType::compare inspects, since
+        // DynamicMemRefType itself is non-copyable.
+        struct OutputShapeSnapshot {
+            int64_t dimsCount;
+            std::vector<int64_t> sizes;
+            std::vector<int64_t> strides;
+        };
+        std::vector<OutputShapeSnapshot> originalOutputProps;
+        originalOutputProps.reserve(outputProps.size());
+        for (const auto& props : outputProps) {
+            originalOutputProps.push_back({props._dimsCount, props._sizes, props._strides});
+        }
 
         DynamicPipeline::predict_output_shape(*_graph, inputPros, outputProps);
 
         for (size_t i = 0; i < outputProps.size(); i++) {
-            if (!originalOutputProps[i].compare(outputProps[i])) {
+            const auto& original = originalOutputProps[i];
+            const auto& predicted = outputProps[i];
+            bool unchanged = (original.dimsCount == predicted._dimsCount) &&
+                             (original.sizes == predicted._sizes) &&
+                             (original.strides == predicted._strides);
+            if (!unchanged) {
                 _logger.debug("predict_shapes - output shape change detected");
                 break;
             }
