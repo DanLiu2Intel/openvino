@@ -15,7 +15,7 @@ const std::vector<ov::AnyMap> configs = {
     {{"NPU_COMPILER_TYPE", "PLUGIN"},
      {"NPU_COMPILATION_MODE", "HostCompile"},
      {"NPU_CREATE_EXECUTOR", "0"},
-     {"NPU_COMPILATION_MODE_PARAMS", "dynamic-dim-alignment=false enable-auto-unrolling=false"}}};
+     }};
 
 INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
                          InferWithHostCompileTests,
