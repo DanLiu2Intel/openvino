@@ -4,11 +4,12 @@
 
 #pragma once
 
-#include "intel_npu/common/dynamic_arguments.hpp"
+#include "intel_npu/utils/vm/dynamic_arguments.hpp"
 #include "intel_npu/common/network_metadata.hpp"
 #include "zero_pipeline.hpp"
 
 namespace intel_npu {
+
 
 class DynamicPipeline final : public IPipeline {
     struct PipelinedCommandLists {

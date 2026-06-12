@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "intel_npu/common/dynamic_arguments.hpp"
+#include "intel_npu/utils/vm/dynamic_arguments.hpp"
 
 #include <sstream>
 
@@ -10,7 +10,6 @@
 #include "openvino/core/except.hpp"
 
 namespace intel_npu {
-
 void DynamicMemRefType::setArg(const void* arg) {
     _basePtr = _data = arg;
 }
@@ -66,22 +65,9 @@ void DynamicMemRefType::set(const void* arg, int64_t offset, std::shared_ptr<ov:
     for (int64_t j = 0; j < _dimsCount; j++) {
         _sizes[j] = static_cast<int64_t>(shape[j]);
     }
-
     auto& strides = tensor->get_strides();
-    if (_dimsCount != static_cast<int64_t>(strides.size())) {
-        OPENVINO_THROW("Stride count mismatch. Current dimension count: ",
-                       _dimsCount,
-                       ", stride count: ",
-                       strides.size());
-    }
     size_t elementSize = tensor->get_element_type().bitwidth() < 8 ? 1 : tensor->get_element_type().size();
     for (int64_t j = 0; j < _dimsCount; j++) {
-        OPENVINO_ASSERT(strides[j] % elementSize == 0,
-                        "Stride ",
-                        strides[j],
-                        " bytes is not aligned to element size ",
-                        elementSize,
-                        " bytes. Strides must be multiples of element size.");
         _strides[j] = static_cast<int64_t>(strides[j] / elementSize);
     }
 }
@@ -133,9 +119,9 @@ std::string DynamicMemRefType::toString() {
 }
 
 void DynamicArguments::setArgumentProperties(uint32_t argi,
-                                             const void* argv,
-                                             const ov::Shape& sizes,
-                                             const std::vector<size_t>& strides) {
+                                           const void* argv,
+                                           const ov::Shape& sizes,
+                                           const std::vector<size_t>& strides) {
     auto assign_slot = [&](DynamicMemRefType& slot) {
         slot._basePtr = slot._data = const_cast<void*>(argv);
         if (slot._dimsCount == 0) {
@@ -146,11 +132,6 @@ void DynamicArguments::setArgumentProperties(uint32_t argi,
             OPENVINO_THROW("Dimension count mismatch. Current dimension count: ",
                            slot._dimsCount,
                            ", new dimension count: ",
-                           sizes.size());
-        } else if (strides.size() != static_cast<size_t>(sizes.size())) {
-            OPENVINO_THROW("Stride count mismatch. Current stride count: ",
-                           strides.size(),
-                           ", new stride count: ",
                            sizes.size());
         }
         for (int64_t i = 0; i < slot._dimsCount; i++) {
@@ -166,114 +147,6 @@ void DynamicArguments::setArgumentProperties(uint32_t argi,
         if (idx < _outputs.size()) {
             assign_slot(_outputs[idx]);
         }
-    }
-}
-
-DynamicMemRefType::DynamicMemRefType(DynamicMemRefType&& other) noexcept
-    : _basePtr(other._basePtr),
-      _data(other._data),
-      _offset(other._offset),
-      _sizes(std::move(other._sizes)),
-      _strides(std::move(other._strides)),
-      _dimsCount(other._dimsCount),
-      _memRef(other._memRef),
-      _ptrUpdated(other._ptrUpdated),
-      _shapeUpdated(other._shapeUpdated),
-      _strideUpdated(other._strideUpdated) {
-    other._memRef = nullptr;
-}
-
-DynamicMemRefType& DynamicMemRefType::operator=(DynamicMemRefType&& other) noexcept {
-    if (this != &other) {
-        destroyMemRef();
-        _basePtr = other._basePtr;
-        _data = other._data;
-        _offset = other._offset;
-        _sizes = std::move(other._sizes);
-        _strides = std::move(other._strides);
-        _dimsCount = other._dimsCount;
-        _memRef = other._memRef;
-        _ptrUpdated = other._ptrUpdated;
-        _shapeUpdated = other._shapeUpdated;
-        _strideUpdated = other._strideUpdated;
-        other._memRef = nullptr;
-    }
-    return *this;
-}
-
-DynamicMemRefType::~DynamicMemRefType() {
-    destroyMemRef();
-}
-
-void DynamicMemRefType::updateMemRefHandleStatus() {
-    if (_memRef == nullptr) {
-        createMemRef();
-    } else {
-        // Read back the device-side description and diff against our host-side state.
-        const void* deviceBasePtr = nullptr;
-        const void* deviceData = nullptr;
-        int64_t deviceOffset = 0;
-        std::vector<int64_t> deviceSizes(_sizes.size());
-        std::vector<int64_t> deviceStrides(_strides.size());
-        int64_t deviceDimsCount = 0;
-        if (npuVMRuntimeParseMemRef(_memRef,
-                                    &deviceBasePtr,
-                                    &deviceData,
-                                    &deviceOffset,
-                                    deviceSizes.data(),
-                                    deviceStrides.data(),
-                                    &deviceDimsCount) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-            OPENVINO_THROW("Failed to parse MemRef handle");
-        }
-        _ptrUpdated = (_basePtr != deviceBasePtr || _data != deviceData || _offset != deviceOffset);
-        _shapeUpdated = (_sizes != deviceSizes);
-        _strideUpdated = (_strides != deviceStrides);
-    }
-    auto result = npuVMRuntimeSetMemRef(_memRef, _basePtr, _data, _offset, _sizes.data(), _strides.data(), _dimsCount);
-    if (result != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-        OPENVINO_THROW("Failed to update MemRef handle");
-    }
-}
-
-void DynamicMemRefType::alignWithHandle() {
-    if (_memRef == nullptr) {
-        return;
-    }
-    if (npuVMRuntimeParseMemRef(_memRef, &_basePtr, &_data, &_offset, _sizes.data(), _strides.data(), &_dimsCount) !=
-        NPU_VM_RUNTIME_RESULT_SUCCESS) {
-        OPENVINO_THROW("Failed to parse MemRef handle");
-    }
-}
-
-void DynamicMemRefType::createMemRef() {
-    if (_memRef == nullptr) {
-        auto result = npuVMRuntimeCreateMemRef(_dimsCount, &_memRef);
-        if (result != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-            OPENVINO_THROW("Failed to create MemRef handle");
-        }
-    }
-}
-
-void DynamicMemRefType::destroyMemRef() {
-    if (_memRef != nullptr) {
-        npuVMRuntimeDestroyMemRef(_memRef);
-        _memRef = nullptr;
-    }
-}
-
-DynamicArguments::~DynamicArguments() {
-    if (_executionContext != nullptr) {
-        npuVMRuntimeDestroyExecutionContext(_executionContext);
-        _executionContext = nullptr;
-    }
-}
-
-void DynamicArguments::ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime) {
-    if (_executionContext != nullptr) {
-        return;
-    }
-    if (npuVMRuntimeCreateExecutionContext(vmRuntime, &_executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-        OPENVINO_THROW("Failed to create a VM execution context");
     }
 }
 
