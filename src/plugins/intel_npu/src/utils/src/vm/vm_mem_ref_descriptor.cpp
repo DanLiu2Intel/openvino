@@ -10,8 +10,9 @@
 
 namespace intel_npu {
 
-void VmMemRefDescriptor::setArg(const void* arg) {
+void VmMemRefDescriptor::setArg(const void* arg, int64_t offset) {
     _basePtr = _data = arg;
+    _offset = offset;
 }
 
 void VmMemRefDescriptor::setSize(const ov::Shape& shape) {
@@ -43,6 +44,32 @@ void VmMemRefDescriptor::setStrides(const ov::Strides& strides, int32_t elementS
 
     for (int64_t i = 0; i < _dimsCount; ++i) {
         _strides[i] = static_cast<int64_t>(strides[i] / elementSize);
+    }
+}
+
+void VmMemRefDescriptor::setProperties(const void* arg, const ov::Shape& shape, const std::vector<size_t>& strides) {
+    if (strides.size() != shape.size()) {
+        OPENVINO_THROW("Stride count mismatch. Current stride count: ",
+                       strides.size(),
+                       ", new stride count: ",
+                       shape.size());
+    }
+
+    _basePtr = _data = arg;
+    if (_dimsCount == 0) {
+        _dimsCount = static_cast<int64_t>(shape.size());
+        _sizes.resize(shape.size());
+        _strides.resize(shape.size());
+    } else if (_dimsCount != static_cast<int64_t>(shape.size())) {
+        OPENVINO_THROW("Dimension count mismatch. Current dimension count: ",
+                       _dimsCount,
+                       ", new dimension count: ",
+                       shape.size());
+    }
+
+    for (int64_t i = 0; i < _dimsCount; i++) {
+        _sizes[i] = static_cast<int64_t>(shape[i]);
+        _strides[i] = static_cast<int64_t>(strides[i]);
     }
 }
 
@@ -93,6 +120,21 @@ void VmMemRefDescriptor::updateStride() {
     }
 }
 
+void VmMemRefDescriptor::copyShapeAndStridesFrom(const VmMemRefDescriptor& memRef) {
+    _dimsCount = memRef._dimsCount;
+    _sizes = memRef._sizes;
+    _strides = memRef._strides;
+}
+
+ov::Shape VmMemRefDescriptor::getShape() const {
+    ov::Shape shape;
+    shape.reserve(_sizes.size());
+    for (int64_t size : _sizes) {
+        shape.push_back(static_cast<size_t>(size));
+    }
+    return shape;
+}
+
 bool VmMemRefDescriptor::compare(const VmMemRefDescriptor& memRef) const {
     if (memRef._dimsCount != _dimsCount || _sizes.size() != memRef._sizes.size() ||
         _strides.size() != memRef._strides.size())
@@ -106,6 +148,10 @@ bool VmMemRefDescriptor::compare(const VmMemRefDescriptor& memRef) const {
         }
     }
     return true;
+}
+
+bool VmMemRefDescriptor::hasUpdates() const noexcept {
+    return _ptrUpdated || _shapeUpdated || _strideUpdated;
 }
 
 std::ostream& operator<<(std::ostream& os, const VmMemRefDescriptor& memRef) {

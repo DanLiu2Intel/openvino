@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <iosfwd>
 #include <memory>
@@ -23,6 +24,32 @@ namespace intel_npu {
  * It can be populated from OpenVINO tensor metadata and synchronized with the VM runtime handle.
  */
 struct VmMemRefDescriptor {
+    VmMemRefDescriptor() = default;
+    VmMemRefDescriptor(const VmMemRefDescriptor&) = delete;
+    VmMemRefDescriptor& operator=(const VmMemRefDescriptor&) = delete;
+    VmMemRefDescriptor(VmMemRefDescriptor&& other) noexcept = default;
+    VmMemRefDescriptor& operator=(VmMemRefDescriptor&& other) noexcept = default;
+    ~VmMemRefDescriptor() = default;
+
+    void setArg(const void* arg, int64_t offset = 0);
+    void setSize(const ov::Shape& shape);
+    void setStrides(const ov::Strides& strides, int32_t elementSize = 1);
+    void setProperties(const void* arg, const ov::Shape& shape, const std::vector<size_t>& strides);
+    void set(const void* basePtr, int64_t offset, std::shared_ptr<ov::ITensor> tensor);
+    void updateStride();
+    void copyShapeAndStridesFrom(const VmMemRefDescriptor& memRef);
+    ov::Shape getShape() const;
+    bool compare(const VmMemRefDescriptor& memRef) const;
+    bool hasUpdates() const noexcept;
+
+    void updateMemRefHandleStatus();
+    void alignWithHandle();
+    npu_vm_runtime_mem_ref_handle_t getMemRefHandle() const noexcept;
+
+    friend std::ostream& operator<<(std::ostream& os, const VmMemRefDescriptor& memRef);
+    std::string toString() const;
+
+private:
     const void* _basePtr = nullptr;
     const void* _data = nullptr;
     int64_t _offset = 0;
@@ -35,27 +62,6 @@ struct VmMemRefDescriptor {
     bool _ptrUpdated = false;
     bool _shapeUpdated = false;
     bool _strideUpdated = false;
-
-    VmMemRefDescriptor() = default;
-    VmMemRefDescriptor(const VmMemRefDescriptor&) = delete;
-    VmMemRefDescriptor& operator=(const VmMemRefDescriptor&) = delete;
-    VmMemRefDescriptor(VmMemRefDescriptor&& other) noexcept = default;
-    VmMemRefDescriptor& operator=(VmMemRefDescriptor&& other) noexcept = default;
-    ~VmMemRefDescriptor() = default;
-
-    void setArg(const void* arg);
-    void setSize(const ov::Shape& shape);
-    void setStrides(const ov::Strides& strides, int32_t elementSize = 1);
-    void set(const void* basePtr, int64_t offset, std::shared_ptr<ov::ITensor> tensor);
-    void updateStride();
-    bool compare(const VmMemRefDescriptor& memRef) const;
-
-    void updateMemRefHandleStatus();
-    void alignWithHandle();
-    npu_vm_runtime_mem_ref_handle_t getMemRefHandle() const noexcept;
-
-    friend std::ostream& operator<<(std::ostream& os, const VmMemRefDescriptor& memRef);
-    std::string toString() const;
 };
 
 }  // namespace intel_npu

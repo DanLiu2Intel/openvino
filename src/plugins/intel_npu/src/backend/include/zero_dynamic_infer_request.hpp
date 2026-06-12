@@ -41,7 +41,7 @@ protected:
 
 private:
     // Store the vm context before predicted output shapes
-    std::shared_ptr<DynamicArguments> _arguments;
+    std::shared_ptr<DynamicPipelineArguments> _arguments;
 };
 
 }  //  namespace intel_npu

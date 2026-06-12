@@ -21,29 +21,50 @@ namespace intel_npu {
  * multiple executes. The context is created lazily via ensureExecutionContext on
  * the first execute call.
  */
-struct DynamicArguments {
-    std::vector<VmMemRefDescriptor> _inputs;
-    std::vector<VmMemRefDescriptor> _outputs;
-    std::vector<npu_vm_runtime_mem_ref_handle_t> _inputMemRefs;
-    std::vector<npu_vm_runtime_mem_ref_handle_t> _outputMemRefs;
-    VmExecutionContext _executionContext;
-    // Set by the caller after the first successful @c npuVMRuntimeExecute.
-    bool _executedOnce = false;
-
-    DynamicArguments() = default;
-    DynamicArguments(const DynamicArguments&) = delete;
-    DynamicArguments& operator=(const DynamicArguments&) = delete;
-    DynamicArguments(DynamicArguments&&) = delete;
-    DynamicArguments& operator=(DynamicArguments&&) = delete;
-    ~DynamicArguments() = default;
+struct DynamicPipelineArguments {
+    DynamicPipelineArguments() = default;
+    DynamicPipelineArguments(const DynamicPipelineArguments&) = delete;
+    DynamicPipelineArguments& operator=(const DynamicPipelineArguments&) = delete;
+    DynamicPipelineArguments(DynamicPipelineArguments&&) = delete;
+    DynamicPipelineArguments& operator=(DynamicPipelineArguments&&) = delete;
+    ~DynamicPipelineArguments() = default;
 
     /// Create the VM execution context for vmRuntime. No-op if already created.
     void ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime);
+    npu_vm_runtime_execution_context_handle_t getExecutionContextHandle() const noexcept;
+
+    std::vector<VmMemRefDescriptor>& inputs() noexcept;
+    std::vector<VmMemRefDescriptor>& outputs() noexcept;
+    const std::vector<VmMemRefDescriptor>& inputs() const noexcept;
+    const std::vector<VmMemRefDescriptor>& outputs() const noexcept;
+    void resizeInputs(size_t size);
+    void resizeOutputs(size_t size);
+
+    void clearMemRefHandles();
+    void reserveMemRefHandles();
+    void addInputMemRefHandle(npu_vm_runtime_mem_ref_handle_t memRef);
+    void addOutputMemRefHandle(npu_vm_runtime_mem_ref_handle_t memRef);
+    npu_vm_runtime_mem_ref_handle_t* inputMemRefHandlesData() noexcept;
+    npu_vm_runtime_mem_ref_handle_t* outputMemRefHandlesData() noexcept;
+    uint32_t inputMemRefCount() const;
+    uint32_t outputMemRefCount() const;
+
+    bool executedOnce() const noexcept;
+    void markExecuted() noexcept;
 
     void setArgumentProperties(uint32_t argi,
                                const void* argv,
                                const ov::Shape& shapes,
                                const std::vector<size_t>& strides);
+
+private:
+    std::vector<VmMemRefDescriptor> _inputs;
+    std::vector<VmMemRefDescriptor> _outputs;
+    std::vector<npu_vm_runtime_mem_ref_handle_t> _inputMemRefs;
+    std::vector<npu_vm_runtime_mem_ref_handle_t> _outputMemRefs;
+    VmExecutionContext _executionContext;
+    // Set after the first successful @c npuVMRuntimeExecute.
+    bool _executedOnce = false;
 };
 
 }  // namespace intel_npu
