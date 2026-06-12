@@ -204,7 +204,7 @@ void ZeroDynamicInferRequest::infer_async() {
     OV_ITT_TASK_CHAIN(ZERO_INFER, itt::domains::LevelZeroBackend, "infer_async", "start");
 
     // Store the predicted output shapes
-    std::vector<DynamicMemRefType> outputMemRef;
+    std::vector<VmMemRefDescriptor> outputMemRef;
     predict_output_shapes(outputMemRef);
     check_tensor_and_predicted_shapes(outputMemRef);
     prepare_inputs();
@@ -215,18 +215,18 @@ void ZeroDynamicInferRequest::infer_async() {
     _pipeline->push();
 }
 
-void ZeroDynamicInferRequest::predict_output_shapes(std::vector<DynamicMemRefType>& outputMemRef) {
+void ZeroDynamicInferRequest::predict_output_shapes(std::vector<VmMemRefDescriptor>& outputMemRef) {
     // TODO: If current output tensor is not large enough to be compatible with input tensor, need recreate pipeline
     // But reshape ZeroTensor can be used to avoid recreate pipeline now
     // bool reCreatePipeline = false;
     // Predict output shapes based on current inputs
 
     if (_arguments == nullptr) {
-        _arguments = std::make_shared<DynamicArguments>();
+        _arguments = std::make_shared<DynamicPipelineArguments>();
     }
 
     if (_graph->get_handle() != nullptr && _isTensorChanged) {
-        std::vector<DynamicMemRefType> inputMemRef(_metadata.inputs.size());
+        std::vector<VmMemRefDescriptor> inputMemRef(_metadata.inputs.size());
         outputMemRef.clear();
         outputMemRef.resize(_metadata.outputs.size());
 
@@ -247,10 +247,8 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<DynamicMemRefTyp
             } else {
                 // If all tensors are not set, use metadata
                 inputMemRef[i].setArg(nullptr);
-                inputMemRef[i]._offset = 0;
                 // TODO : BatchSize not checked here
-                inputMemRef[i].setSize(_metadata.inputs.at(i).shapeFromCompiler.get_max_shape());
-                inputMemRef[i].updateStride();
+                inputMemRef[i].setContiguousShape(_metadata.inputs.at(i).shapeFromCompiler.get_max_shape());
             }
         }
 
@@ -269,24 +267,20 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<DynamicMemRefTyp
             } else {
                 // If all tensors are not set, use metadata
                 outputMemRef[i].setArg(nullptr);
-                outputMemRef[i]._offset = 0;
                 // TODO : BatchSize not checked here
-                outputMemRef[i].setSize(_metadata.outputs.at(i).shapeFromCompiler.get_max_shape());
-                outputMemRef[i].updateStride();
+                outputMemRef[i].setContiguousShape(_metadata.outputs.at(i).shapeFromCompiler.get_max_shape());
             }
         }
 
-        std::vector<DynamicMemRefType> originalOutputMemRef;
+        std::vector<VmMemRefDescriptor> originalOutputMemRef;
         originalOutputMemRef.resize(outputMemRef.size());
 
         for (size_t i = 0; i < outputMemRef.size(); ++i) {
-            originalOutputMemRef[i]._dimsCount = outputMemRef[i]._dimsCount;
-            originalOutputMemRef[i]._sizes = outputMemRef[i]._sizes;
-            originalOutputMemRef[i]._strides = outputMemRef[i]._strides;
+            originalOutputMemRef[i].copyShapeAndStridesFrom(outputMemRef[i]);
         }
 
         // Get VM context before invoking VM shape prediction."
-        DynamicArguments& dynamicArguments = *_arguments;
+        DynamicPipelineArguments& dynamicArguments = *_arguments;
         DynamicPipeline::predict_output_shape(*_graph, dynamicArguments, inputMemRef, outputMemRef);
 
         for (size_t i = 0; i < outputMemRef.size(); i++) {
@@ -298,7 +292,7 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<DynamicMemRefTyp
     }
 }
 
-void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(const std::vector<DynamicMemRefType>& outputMemRef) {
+void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(const std::vector<VmMemRefDescriptor>& outputMemRef) {
     if (outputMemRef.empty()) {
         _logger.debug("check_tensor_and_predicted_shapes - no output props to check, skip check");
         return;
@@ -317,10 +311,7 @@ void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(const std::vecto
             continue;
         }
 
-        ov::Shape predictedShape;
-        for (int64_t j = 0; j < outputMemRef[i]._dimsCount; j++) {
-            predictedShape.push_back(outputMemRef[i]._sizes[j]);
-        }
+        ov::Shape predictedShape = outputMemRef[i].getShape();
         if (userTensor != nullptr) {
             // User set output tensor, need check size and throw exception if not large enough
             if (shape_size(userTensor->get_shape()) < shape_size(predictedShape)) {
@@ -346,7 +337,7 @@ void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(const std::vecto
     }
 }
 
-void ZeroDynamicInferRequest::update_tensor(const std::vector<DynamicMemRefType>& outputMemRef) {
+void ZeroDynamicInferRequest::update_tensor(const std::vector<VmMemRefDescriptor>& outputMemRef) {
     // Update local level zero buffer shape with predicted shape to prepare for comparasion
     if (outputMemRef.size() > 0 && _isTensorChanged) {
         for (size_t i = 0; i < _levelZeroOutputTensors.size(); i++) {
@@ -355,10 +346,7 @@ void ZeroDynamicInferRequest::update_tensor(const std::vector<DynamicMemRefType>
                 // Do not need to update user output tensor
                 continue;
             }
-            ov::Shape predictedShape;
-            for (int64_t j = 0; j < outputMemRef[i]._dimsCount; j++) {
-                predictedShape.push_back(outputMemRef[i]._sizes[j]);
-            }
+            ov::Shape predictedShape = outputMemRef[i].getShape();
             if (levelZeroTensor->get_shape() != predictedShape) {
                 _logger.info("update_tensor - reshape output tensor %d from %s to predicted shape %s",
                              i,
