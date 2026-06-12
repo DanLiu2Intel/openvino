@@ -17,7 +17,7 @@
 
 namespace intel_npu {
 
-struct DynamicMemRefType {
+struct MemRefType {
     const void* _basePtr;
     const void* _data;
     int64_t _offset;
@@ -26,14 +26,14 @@ struct DynamicMemRefType {
     int64_t _dimsCount;
     std::shared_ptr<void> _impl;
 
-    DynamicMemRefType() : _basePtr(nullptr), _data(nullptr), _offset(0), _sizes(), _strides(), _dimsCount(0) {}
+    MemRefType() : _basePtr(nullptr), _data(nullptr), _offset(0), _sizes(), _strides(), _dimsCount(0) {}
 
-    DynamicMemRefType(const void* basePtr,
-                      const void* data,
-                      int64_t offset,
-                      const std::vector<int64_t>& sizes,
-                      const std::vector<int64_t>& strides,
-                      int64_t dimsCount)
+    MemRefType(const void* basePtr,
+               const void* data,
+               int64_t offset,
+               const std::vector<int64_t>& sizes,
+               const std::vector<int64_t>& strides,
+               int64_t dimsCount)
         : _basePtr(basePtr),
           _data(data),
           _offset(offset),
@@ -43,14 +43,14 @@ struct DynamicMemRefType {
 
     // Copy intentionally drops the runtime impl: VM MemRef handles must not be aliased
     // across copies (would cause double-destroy / shared device state).
-    DynamicMemRefType(const DynamicMemRefType& other)
+    MemRefType(const MemRefType& other)
         : _basePtr(other._basePtr),
           _data(other._data),
           _offset(other._offset),
           _sizes(other._sizes),
           _strides(other._strides),
           _dimsCount(other._dimsCount) {}
-    DynamicMemRefType& operator=(const DynamicMemRefType& other) {
+    MemRefType& operator=(const MemRefType& other) {
         if (this != &other) {
             _basePtr = other._basePtr;
             _data = other._data;
@@ -62,9 +62,9 @@ struct DynamicMemRefType {
         }
         return *this;
     }
-    DynamicMemRefType(DynamicMemRefType&&) noexcept = default;
-    DynamicMemRefType& operator=(DynamicMemRefType&&) noexcept = default;
-    ~DynamicMemRefType() = default;
+    MemRefType(MemRefType&&) noexcept = default;
+    MemRefType& operator=(MemRefType&&) noexcept = default;
+    ~MemRefType() = default;
 
     // /// Return the runtime-side impl, lazily creating it on first access.
     // DynamicMemRefImpl& ensure_impl();
@@ -74,14 +74,14 @@ struct DynamicMemRefType {
     void setStrides(const ov::Strides& strides, int32_t elementSize = 1);
     void set(const void* basePtr, int64_t offset, std::shared_ptr<ov::ITensor> tensor);
     void updateStride();
-    bool compare(const DynamicMemRefType& memref);
-    friend std::ostream& operator<<(std::ostream& os, const DynamicMemRefType& memRef);
+    bool compare(const MemRefType& memref);
+    friend std::ostream& operator<<(std::ostream& os, const MemRefType& memRef);
     std::string toString();
 };
 
-    struct DynamicArguments {
-    std::vector<DynamicMemRefType> _inputs;
-    std::vector<DynamicMemRefType> _outputs;
+struct DynamicArguments {
+    std::vector<MemRefType> _inputs;
+    std::vector<MemRefType> _outputs;
     std::shared_ptr<void> _impl;
 
     DynamicArguments() = default;

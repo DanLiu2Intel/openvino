@@ -9,11 +9,11 @@
 
 #include <sstream>
 
-#include "intel_npu/common/dynamic_arguments.hpp"
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/prefix.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
+#include "intel_npu/utils/vm/dynamic_arguments.hpp"
 #include "intel_npu/utils/vm/npu_vm_runtime_api.hpp"
 #include "intel_npu/utils/zero/zero_api.hpp"
 #include "intel_npu/utils/zero/zero_cmd_queue_pool.hpp"
@@ -100,11 +100,11 @@ struct MemRefTypeImpl {
         } else {
             // Create a temporary MemRefType based on current handle and compare, use arg to create right size
             MemRefType tempMemRef(memref._basePtr,
-                                    memref._data,
-                                    memref._offset,
-                                    memref._sizes,
-                                    memref._strides,
-                                    memref._dimsCount);
+                                  memref._data,
+                                  memref._offset,
+                                  memref._sizes,
+                                  memref._strides,
+                                  memref._dimsCount);
             alignWithHandle(tempMemRef);
             // Check ptr
             if (memref._basePtr != tempMemRef._basePtr || memref._data != tempMemRef._data ||
@@ -165,15 +165,15 @@ struct DynamicArgumentsImpl {
     npu_vm_runtime_execution_context_handle_t _executionContext = nullptr;
 
     //     /// Create the VM execution context for vmRuntime. No-op if already created.
-void DynamicArgumentsImpl::ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime) {
-    if (_executionContext != nullptr) {
-        Logger::global().debug("Execution context already exists");
-        return;
+    void ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime) {
+        if (_executionContext != nullptr) {
+            Logger::global().debug("Execution context already exists");
+            return;
+        }
+        if (npuVMRuntimeCreateExecutionContext(vmRuntime, &_executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
+            OPENVINO_THROW("Failed to create a VM execution context");
+        }
     }
-    if (npuVMRuntimeCreateExecutionContext(vmRuntime, &_executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-        OPENVINO_THROW("Failed to create a VM execution context");
-    }
-}
 
     ~DynamicArgumentsImpl() {
         if (_executionContext != nullptr) {
@@ -182,7 +182,6 @@ void DynamicArgumentsImpl::ensureExecutionContext(npu_vm_runtime_handle_t vmRunt
         }
     }
 };
-
 
 ///// new add ----
 
@@ -348,12 +347,11 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
                                          ze_fence_handle_t fence,
                                          ze_event_handle_t event) {
     _logger.debug("Start to execute graph with runtime engine");
-        std::shared_ptr<DynamicArgumentsImpl> argsImpl =
-        args._impl ? std::static_pointer_cast<DynamicArgumentsImpl>(args._impl)
-                   : std::make_shared<DynamicArgumentsImpl>();
+    std::shared_ptr<DynamicArgumentsImpl> argsImpl = args._impl
+                                                         ? std::static_pointer_cast<DynamicArgumentsImpl>(args._impl)
+                                                         : std::make_shared<DynamicArgumentsImpl>();
     bool noTensorChange = true;
     const bool firstExecution = (args._impl == nullptr);
-
 
     // _executedOnce is true only after a successful npuVMRuntimeExecute below
     // const bool firstExecution = !args._executedOnce;
@@ -381,14 +379,14 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
     // }
     auto processDescriptors = [&](auto& descriptors, auto& targetMemRefs) {
         for (auto& desc : descriptors) {
-            auto impl = std::static_pointer_cast<DynamicGraph::MemRefTypeImpl>(desc._impl);
+            auto impl = std::static_pointer_cast<MemRefTypeImpl>(desc._impl);
             if (impl == nullptr) {
-                impl = std::make_shared<DynamicGraph::MemRefTypeImpl>();
+                impl = std::make_shared<MemRefTypeImpl>();
                 desc._impl = impl;
             }
-            
+
             impl->UpdateMemRefHandleStatus(desc);
-            
+
             if (args._impl == nullptr) {
                 targetMemRefs.push_back(impl->_memRef);
             } else if (impl->_ptrUpdated || impl->_shapeUpdated || impl->_strideUpdated) {
@@ -457,66 +455,25 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
 
 void DynamicPipeline::predict_output_shape(const IGraph& graph,
                                            DynamicArguments& args,
-                                           std::vector<DynamicMemRefType>& inputsMemRef,
-                                           std::vector<DynamicMemRefType>& outputsMemRef) {
+                                           std::vector<MemRefType>& inputsMemRef,
+                                           std::vector<MemRefType>& outputsMemRef) {
     Logger logger("DynamicPipeline::predict_output_shape", Logger::global().level());
     logger.debug("predict_output_shape - started");
 
     const npu_vm_runtime_handle_t vmRuntime = static_cast<npu_vm_runtime_handle_t>(graph.get_handle());
     OPENVINO_ASSERT(vmRuntime != nullptr, "predict_output_shape requires a valid VM runtime engine");
 
-    // std::vector<npu_vm_runtime_mem_ref_handle_t> inputs;
-    // inputs.reserve(inputsMemRef.size());
-    // for (auto& in : inputsMemRef) {
-    //     in.updateMemRefHandleStatus();
-    //     inputs.push_back(in._memRef);
-    // }
-
-    // std::vector<npu_vm_runtime_mem_ref_handle_t> outputs;
-    // outputs.reserve(outputsMemRef.size());
-    // for (auto& out : outputsMemRef) {
-    //     out.updateMemRefHandleStatus();
-    //     outputs.push_back(out._memRef);
-    // }
-
-
-    // // Init VM context before VM shape prediction.
-    // args.ensureExecutionContext(vmRuntime);
-///////
-    // std::vector<npu_vm_runtime_mem_ref_handle_t> inputs;  // 临时变量？
-    // for (auto& in : inputDescriptors) {
-    //     std::shared_ptr<DynamicGraph::MemRefTypeImpl> inImpl =
-    //         std::static_pointer_cast<DynamicGraph::MemRefTypeImpl>(in._impl);
-    //     if (inImpl == nullptr) {
-    //         inImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>();
-    //         in._impl = inImpl;
-    //     }
-    //     inImpl->UpdateMemRefHandleStatus(in);
-    //     inputs.push_back(inImpl->_memRef);
-    // }
-    // std::vector<npu_vm_runtime_mem_ref_handle_t> outputs;
-    // for (auto& out : outputDescriptors) {
-    //     std::shared_ptr<DynamicGraph::MemRefTypeImpl> outImpl =
-    //         std::static_pointer_cast<DynamicGraph::MemRefTypeImpl>(out._impl);
-    //     if (outImpl == nullptr) {
-    //         outImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>();
-    //         out._impl = outImpl;
-    //     }
-    //     outImpl->UpdateMemRefHandleStatus(out);
-    //     outputs.push_back(outImpl->_memRef);
-    // }
-
-    std::shared_ptr<DynamicArgumentsImpl> argsImpl = args._impl ? std::static_pointer_cast<DynamicArgumentsImpl>(args._impl)
-                   : std::make_shared<DynamicArgumentsImpl>();
-
+    std::shared_ptr<DynamicArgumentsImpl> argsImpl = args._impl
+                                                         ? std::static_pointer_cast<DynamicArgumentsImpl>(args._impl)
+                                                         : std::make_shared<DynamicArgumentsImpl>();
 
     auto processMemRefType = [&](auto& memrefDescriptors, auto& targetMemRefsVector) {
         targetMemRefsVector.reserve(memrefDescriptors.size());
 
         for (auto& desc : memrefDescriptors) {
-            auto impl = std::static_pointer_cast<DynamicGraph::MemRefTypeImpl>(desc._impl);
+            auto impl = std::static_pointer_cast<MemRefTypeImpl>(desc._impl);
             if (impl == nullptr) {
-                impl = std::make_shared<DynamicGraph::MemRefTypeImpl>();
+                impl = std::make_shared<MemRefTypeImpl>();
                 desc._impl = impl;
             }
             impl->UpdateMemRefHandleStatus(desc);
@@ -546,14 +503,8 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
             }
             outImpl->alignWithHandle(out);
         }
-        _logger.debug("Output shape prediction is done successfully.");
+        logger.debug("Output shape prediction is done successfully.");
     }
-
-    // for (auto& out : outputsMemRef) {
-    //     out.alignWithHandle();
-    // }
-
-    // logger.debug("Output shape prediction is done successfully.");
 }
 
 void DynamicPipeline::pull() {

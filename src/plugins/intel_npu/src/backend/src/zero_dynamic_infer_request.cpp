@@ -204,7 +204,7 @@ void ZeroDynamicInferRequest::infer_async() {
     OV_ITT_TASK_CHAIN(ZERO_INFER, itt::domains::LevelZeroBackend, "infer_async", "start");
 
     // Store the predicted output shapes
-    std::vector<DynamicMemRefType> outputMemRef;
+    std::vector<MemRefType> outputMemRef;
     predict_output_shapes(outputMemRef);
     check_tensor_and_predicted_shapes(outputMemRef);
     prepare_inputs();
@@ -215,7 +215,7 @@ void ZeroDynamicInferRequest::infer_async() {
     _pipeline->push();
 }
 
-void ZeroDynamicInferRequest::predict_output_shapes(std::vector<DynamicMemRefType>& outputMemRef) {
+void ZeroDynamicInferRequest::predict_output_shapes(std::vector<MemRefType>& outputMemRef) {
     // TODO: If current output tensor is not large enough to be compatible with input tensor, need recreate pipeline
     // But reshape ZeroTensor can be used to avoid recreate pipeline now
     // bool reCreatePipeline = false;
@@ -226,7 +226,7 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<DynamicMemRefTyp
     }
 
     if (_graph->get_handle() != nullptr && _isTensorChanged) {
-        std::vector<DynamicMemRefType> inputMemRef(_metadata.inputs.size());
+        std::vector<MemRefType> inputMemRef(_metadata.inputs.size());
         outputMemRef.clear();
         outputMemRef.resize(_metadata.outputs.size());
 
@@ -276,7 +276,7 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<DynamicMemRefTyp
             }
         }
 
-        std::vector<DynamicMemRefType> originalOutputMemRef;
+        std::vector<MemRefType> originalOutputMemRef;
         originalOutputMemRef.resize(outputMemRef.size());
 
         for (size_t i = 0; i < outputMemRef.size(); ++i) {
@@ -298,7 +298,7 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<DynamicMemRefTyp
     }
 }
 
-void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(const std::vector<DynamicMemRefType>& outputMemRef) {
+void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(const std::vector<MemRefType>& outputMemRef) {
     if (outputMemRef.empty()) {
         _logger.debug("check_tensor_and_predicted_shapes - no output props to check, skip check");
         return;
@@ -346,7 +346,7 @@ void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(const std::vecto
     }
 }
 
-void ZeroDynamicInferRequest::update_tensor(const std::vector<DynamicMemRefType>& outputMemRef) {
+void ZeroDynamicInferRequest::update_tensor(const std::vector<MemRefType>& outputMemRef) {
     // Update local level zero buffer shape with predicted shape to prepare for comparasion
     if (outputMemRef.size() > 0 && _isTensorChanged) {
         for (size_t i = 0; i < _levelZeroOutputTensors.size(); i++) {

@@ -4,12 +4,11 @@
 
 #pragma once
 
-#include "intel_npu/utils/vm/dynamic_arguments.hpp"
 #include "intel_npu/common/network_metadata.hpp"
+#include "intel_npu/utils/vm/dynamic_arguments.hpp"
 #include "zero_pipeline.hpp"
 
 namespace intel_npu {
-
 
 class DynamicPipeline final : public IPipeline {
     struct PipelinedCommandLists {
@@ -135,8 +134,8 @@ public:
     /// (depends only on the graph's VM runtime handle)
     static void predict_output_shape(const IGraph& graph,
                                      DynamicArguments& args,
-                                     std::vector<DynamicMemRefType>& inputsMemRef,
-                                     std::vector<DynamicMemRefType>& outputsMemRef);
+                                     std::vector<MemRefType>& inputsMemRef,
+                                     std::vector<MemRefType>& outputsMemRef);
 
 private:
     void execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
