@@ -4,7 +4,6 @@
 
 #include "zero_dynamic_arguments.hpp"
 
-#include "intel_npu/utils/vm/npu_vm_runtime_api.hpp"
 #include "openvino/core/except.hpp"
 
 namespace intel_npu {
@@ -46,20 +45,8 @@ void DynamicArguments::setArgumentProperties(uint32_t argi,
     }
 }
 
-DynamicArguments::~DynamicArguments() {
-    if (_executionContext != nullptr) {
-        npuVMRuntimeDestroyExecutionContext(_executionContext);
-        _executionContext = nullptr;
-    }
-}
-
 void DynamicArguments::ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime) {
-    if (_executionContext != nullptr) {
-        return;
-    }
-    if (npuVMRuntimeCreateExecutionContext(vmRuntime, &_executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-        OPENVINO_THROW("Failed to create a VM execution context");
-    }
+    _executionContext.create(vmRuntime);
 }
 
 }  // namespace intel_npu

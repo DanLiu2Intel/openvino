@@ -277,7 +277,7 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
     args.ensureExecutionContext(vmRuntime);
 
     npu_vm_runtime_execute_params_t params{};
-    params.executionContext = args._executionContext;
+    params.executionContext = args._executionContext.get();
     params.pInputs = args._inputMemRefs.data();
     params.numOfInputs = static_cast<uint32_t>(args._inputMemRefs.size());
     params.pOutputs = args._outputMemRefs.data();
