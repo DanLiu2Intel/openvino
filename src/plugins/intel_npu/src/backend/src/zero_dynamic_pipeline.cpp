@@ -305,8 +305,8 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
 
 void DynamicPipeline::predict_output_shape(const IGraph& graph,
                                            DynamicArguments& args,
-                                           std::vector<DynamicMemRefType>& inputsMemRef,
-                                           std::vector<DynamicMemRefType>& outputsMemRef) {
+                                           std::vector<VmMemRefDescriptor>& inputsMemRef,
+                                           std::vector<VmMemRefDescriptor>& outputsMemRef) {
     Logger logger("DynamicPipeline::predict_output_shape", Logger::global().level());
     logger.debug("predict_output_shape - started");
 

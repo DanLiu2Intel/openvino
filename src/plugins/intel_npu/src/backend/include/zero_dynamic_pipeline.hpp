@@ -135,8 +135,8 @@ public:
     /// (depends only on the graph's VM runtime handle)
     static void predict_output_shape(const IGraph& graph,
                                      DynamicArguments& args,
-                                     std::vector<DynamicMemRefType>& inputsMemRef,
-                                     std::vector<DynamicMemRefType>& outputsMemRef);
+                                     std::vector<VmMemRefDescriptor>& inputsMemRef,
+                                     std::vector<VmMemRefDescriptor>& outputsMemRef);
 
 private:
     void execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
