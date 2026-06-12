@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <iosfwd>
 #include <memory>
@@ -11,21 +12,17 @@
 #include <vector>
 
 #include "intel_npu/runtime/npu_vm_runtime.hpp"
-#include "openvino/core/except.hpp"
+#include "intel_npu/utils/vm/vm_mem_ref.hpp"
 #include "openvino/core/shape.hpp"
 #include "openvino/runtime/itensor.hpp"
 
 namespace intel_npu {
 
 /**
- * @brief Host-side description of a single argument (input or output) plus the VM-runtime
+ * @brief Host-side description of a single dynamic argument plus the VM-runtime
  * MemRef handle that mirrors it on the device.
- * @details All npuVMRuntime* calls live in the corresponding .cpp. The handle is
- * created lazily on the first updateMemRefHandleStatus call and destroyed by the
- * destructor.
- *
- * Non-copyable to keep handle ownership unambiguous; movable so that a
- * std::vector<DynamicMemRefType> can be resized.
+ * @details Shape, stride, and pointer state belong to the Zero dynamic pipeline;
+ * the raw VM handle lifetime is owned by VmMemRef.
  */
 struct DynamicMemRefType {
     const void* _basePtr = nullptr;
@@ -35,9 +32,8 @@ struct DynamicMemRefType {
     std::vector<int64_t> _strides;
     int64_t _dimsCount = 0;
 
-    npu_vm_runtime_mem_ref_handle_t _memRef = nullptr;
-    // Set by updateMemRefHandleStatus to report what changed vs. the previous device-side
-    // value.
+    VmMemRef _memRef;
+    // Set by updateMemRefHandleStatus to report what changed vs. the previous device-side value.
     bool _ptrUpdated = false;
     bool _shapeUpdated = false;
     bool _strideUpdated = false;
@@ -45,9 +41,9 @@ struct DynamicMemRefType {
     DynamicMemRefType() = default;
     DynamicMemRefType(const DynamicMemRefType&) = delete;
     DynamicMemRefType& operator=(const DynamicMemRefType&) = delete;
-    DynamicMemRefType(DynamicMemRefType&& other) noexcept;
-    DynamicMemRefType& operator=(DynamicMemRefType&& other) noexcept;
-    ~DynamicMemRefType();
+    DynamicMemRefType(DynamicMemRefType&& other) noexcept = default;
+    DynamicMemRefType& operator=(DynamicMemRefType&& other) noexcept = default;
+    ~DynamicMemRefType() = default;
 
     void setArg(const void* arg);
     void setSize(const ov::Shape& shape);
@@ -58,13 +54,10 @@ struct DynamicMemRefType {
 
     void updateMemRefHandleStatus();
     void alignWithHandle();
+    npu_vm_runtime_mem_ref_handle_t getMemRefHandle() const noexcept;
 
     friend std::ostream& operator<<(std::ostream& os, const DynamicMemRefType& memRef);
     std::string toString();
-
-private:
-    void createMemRef();
-    void destroyMemRef();
 };
 
 /**

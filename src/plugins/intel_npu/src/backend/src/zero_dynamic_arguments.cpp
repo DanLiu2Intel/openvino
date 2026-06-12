@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "intel_npu/common/dynamic_arguments.hpp"
+#include "zero_dynamic_arguments.hpp"
 
 #include <sstream>
 
@@ -95,7 +95,7 @@ void DynamicMemRefType::updateStride() {
     }
 }
 
-// The comparision only checks shape and strides now
+// The comparison only checks shape and strides now
 bool DynamicMemRefType::compare(const DynamicMemRefType& memref) {
     if (memref._dimsCount != _dimsCount || _sizes.size() != memref._sizes.size() ||
         _strides.size() != memref._strides.size())
@@ -132,6 +132,40 @@ std::string DynamicMemRefType::toString() {
     return stream.str();
 }
 
+void DynamicMemRefType::updateMemRefHandleStatus() {
+    if (!_memRef) {
+        _memRef.create(_dimsCount);
+    } else {
+        const void* deviceBasePtr = nullptr;
+        const void* deviceData = nullptr;
+        int64_t deviceOffset = 0;
+        std::vector<int64_t> deviceSizes(_sizes.size());
+        std::vector<int64_t> deviceStrides(_strides.size());
+        int64_t deviceDimsCount = 0;
+        _memRef.parse(&deviceBasePtr,
+                      &deviceData,
+                      &deviceOffset,
+                      deviceSizes.data(),
+                      deviceStrides.data(),
+                      &deviceDimsCount);
+        _ptrUpdated = (_basePtr != deviceBasePtr || _data != deviceData || _offset != deviceOffset);
+        _shapeUpdated = (_sizes != deviceSizes);
+        _strideUpdated = (_strides != deviceStrides);
+    }
+    _memRef.set(_basePtr, _data, _offset, _sizes.data(), _strides.data(), _dimsCount);
+}
+
+void DynamicMemRefType::alignWithHandle() {
+    if (!_memRef) {
+        return;
+    }
+    _memRef.parse(&_basePtr, &_data, &_offset, _sizes.data(), _strides.data(), &_dimsCount);
+}
+
+npu_vm_runtime_mem_ref_handle_t DynamicMemRefType::getMemRefHandle() const noexcept {
+    return _memRef.get();
+}
+
 void DynamicArguments::setArgumentProperties(uint32_t argi,
                                              const void* argv,
                                              const ov::Shape& sizes,
@@ -166,98 +200,6 @@ void DynamicArguments::setArgumentProperties(uint32_t argi,
         if (idx < _outputs.size()) {
             assign_slot(_outputs[idx]);
         }
-    }
-}
-
-DynamicMemRefType::DynamicMemRefType(DynamicMemRefType&& other) noexcept
-    : _basePtr(other._basePtr),
-      _data(other._data),
-      _offset(other._offset),
-      _sizes(std::move(other._sizes)),
-      _strides(std::move(other._strides)),
-      _dimsCount(other._dimsCount),
-      _memRef(other._memRef),
-      _ptrUpdated(other._ptrUpdated),
-      _shapeUpdated(other._shapeUpdated),
-      _strideUpdated(other._strideUpdated) {
-    other._memRef = nullptr;
-}
-
-DynamicMemRefType& DynamicMemRefType::operator=(DynamicMemRefType&& other) noexcept {
-    if (this != &other) {
-        destroyMemRef();
-        _basePtr = other._basePtr;
-        _data = other._data;
-        _offset = other._offset;
-        _sizes = std::move(other._sizes);
-        _strides = std::move(other._strides);
-        _dimsCount = other._dimsCount;
-        _memRef = other._memRef;
-        _ptrUpdated = other._ptrUpdated;
-        _shapeUpdated = other._shapeUpdated;
-        _strideUpdated = other._strideUpdated;
-        other._memRef = nullptr;
-    }
-    return *this;
-}
-
-DynamicMemRefType::~DynamicMemRefType() {
-    destroyMemRef();
-}
-
-void DynamicMemRefType::updateMemRefHandleStatus() {
-    if (_memRef == nullptr) {
-        createMemRef();
-    } else {
-        // Read back the device-side description and diff against our host-side state.
-        const void* deviceBasePtr = nullptr;
-        const void* deviceData = nullptr;
-        int64_t deviceOffset = 0;
-        std::vector<int64_t> deviceSizes(_sizes.size());
-        std::vector<int64_t> deviceStrides(_strides.size());
-        int64_t deviceDimsCount = 0;
-        if (npuVMRuntimeParseMemRef(_memRef,
-                                    &deviceBasePtr,
-                                    &deviceData,
-                                    &deviceOffset,
-                                    deviceSizes.data(),
-                                    deviceStrides.data(),
-                                    &deviceDimsCount) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-            OPENVINO_THROW("Failed to parse MemRef handle");
-        }
-        _ptrUpdated = (_basePtr != deviceBasePtr || _data != deviceData || _offset != deviceOffset);
-        _shapeUpdated = (_sizes != deviceSizes);
-        _strideUpdated = (_strides != deviceStrides);
-    }
-    auto result = npuVMRuntimeSetMemRef(_memRef, _basePtr, _data, _offset, _sizes.data(), _strides.data(), _dimsCount);
-    if (result != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-        OPENVINO_THROW("Failed to update MemRef handle");
-    }
-}
-
-void DynamicMemRefType::alignWithHandle() {
-    if (_memRef == nullptr) {
-        return;
-    }
-    if (npuVMRuntimeParseMemRef(_memRef, &_basePtr, &_data, &_offset, _sizes.data(), _strides.data(), &_dimsCount) !=
-        NPU_VM_RUNTIME_RESULT_SUCCESS) {
-        OPENVINO_THROW("Failed to parse MemRef handle");
-    }
-}
-
-void DynamicMemRefType::createMemRef() {
-    if (_memRef == nullptr) {
-        auto result = npuVMRuntimeCreateMemRef(_dimsCount, &_memRef);
-        if (result != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-            OPENVINO_THROW("Failed to create MemRef handle");
-        }
-    }
-}
-
-void DynamicMemRefType::destroyMemRef() {
-    if (_memRef != nullptr) {
-        npuVMRuntimeDestroyMemRef(_memRef);
-        _memRef = nullptr;
     }
 }
 

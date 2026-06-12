@@ -9,7 +9,6 @@
 
 #include <sstream>
 
-#include "intel_npu/common/dynamic_arguments.hpp"
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/prefix.hpp"
@@ -239,14 +238,14 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
 
     for (auto& in : args._inputs) {
         in.updateMemRefHandleStatus();
-        args._inputMemRefs.push_back(in._memRef);
+        args._inputMemRefs.push_back(in.getMemRefHandle());
         if (in._ptrUpdated || in._shapeUpdated || in._strideUpdated) {
             noTensorChange = false;
         }
     }
     for (auto& out : args._outputs) {
         out.updateMemRefHandleStatus();
-        args._outputMemRefs.push_back(out._memRef);
+        args._outputMemRefs.push_back(out.getMemRefHandle());
         if (out._ptrUpdated || out._shapeUpdated || out._strideUpdated) {
             noTensorChange = false;
         }
@@ -318,14 +317,14 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
     inputs.reserve(inputsMemRef.size());
     for (auto& in : inputsMemRef) {
         in.updateMemRefHandleStatus();
-        inputs.push_back(in._memRef);
+        inputs.push_back(in.getMemRefHandle());
     }
 
     std::vector<npu_vm_runtime_mem_ref_handle_t> outputs;
     outputs.reserve(outputsMemRef.size());
     for (auto& out : outputsMemRef) {
         out.updateMemRefHandleStatus();
-        outputs.push_back(out._memRef);
+        outputs.push_back(out.getMemRefHandle());
     }
 
     // Init VM context before VM shape prediction.
