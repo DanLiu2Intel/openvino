@@ -32,11 +32,9 @@ struct VmMemRefDescriptor {
     ~VmMemRefDescriptor() = default;
 
     void setArg(const void* arg, int64_t offset = 0);
-    void setSize(const ov::Shape& shape);
-    void setStrides(const ov::Strides& strides, int32_t elementSize = 1);
+    void setContiguousShape(const ov::Shape& shape);
     void setProperties(const void* arg, const ov::Shape& shape, const std::vector<size_t>& strides);
     void set(const void* basePtr, int64_t offset, std::shared_ptr<ov::ITensor> tensor);
-    void updateStride();
     void copyShapeAndStridesFrom(const VmMemRefDescriptor& memRef);
     ov::Shape getShape() const;
     bool compare(const VmMemRefDescriptor& memRef) const;
@@ -50,6 +48,9 @@ struct VmMemRefDescriptor {
     std::string toString() const;
 
 private:
+    void setSize(const ov::Shape& shape);
+    void updateStride();
+
     const void* _basePtr = nullptr;
     const void* _data = nullptr;
     int64_t _offset = 0;

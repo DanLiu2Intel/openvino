@@ -40,14 +40,9 @@ struct DynamicPipelineArguments {
     void resizeInputs(size_t size);
     void resizeOutputs(size_t size);
 
-    void clearMemRefHandles();
-    void reserveMemRefHandles();
-    void addInputMemRefHandle(npu_vm_runtime_mem_ref_handle_t memRef);
-    void addOutputMemRefHandle(npu_vm_runtime_mem_ref_handle_t memRef);
-    npu_vm_runtime_mem_ref_handle_t* inputMemRefHandlesData() noexcept;
-    npu_vm_runtime_mem_ref_handle_t* outputMemRefHandlesData() noexcept;
-    uint32_t inputMemRefCount() const;
-    uint32_t outputMemRefCount() const;
+    bool updateMemRefHandles();
+    std::vector<npu_vm_runtime_mem_ref_handle_t>& inputMemRefs() noexcept;
+    std::vector<npu_vm_runtime_mem_ref_handle_t>& outputMemRefs() noexcept;
 
     bool executedOnce() const noexcept;
     void markExecuted() noexcept;

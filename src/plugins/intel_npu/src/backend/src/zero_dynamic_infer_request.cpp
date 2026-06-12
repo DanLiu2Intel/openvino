@@ -248,8 +248,7 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<VmMemRefDescript
                 // If all tensors are not set, use metadata
                 inputMemRef[i].setArg(nullptr);
                 // TODO : BatchSize not checked here
-                inputMemRef[i].setSize(_metadata.inputs.at(i).shapeFromCompiler.get_max_shape());
-                inputMemRef[i].updateStride();
+                inputMemRef[i].setContiguousShape(_metadata.inputs.at(i).shapeFromCompiler.get_max_shape());
             }
         }
 
@@ -269,8 +268,7 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<VmMemRefDescript
                 // If all tensors are not set, use metadata
                 outputMemRef[i].setArg(nullptr);
                 // TODO : BatchSize not checked here
-                outputMemRef[i].setSize(_metadata.outputs.at(i).shapeFromCompiler.get_max_shape());
-                outputMemRef[i].updateStride();
+                outputMemRef[i].setContiguousShape(_metadata.outputs.at(i).shapeFromCompiler.get_max_shape());
             }
         }
 

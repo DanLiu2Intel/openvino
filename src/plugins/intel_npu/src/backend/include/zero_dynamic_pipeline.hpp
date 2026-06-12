@@ -55,16 +55,14 @@ class DynamicPipeline final : public IPipeline {
                 // Use size as placeholder of stride
                 // For now, only considering the usage and subsequent comparison of dimcount, shape, and strides
                 const auto& shape = metadata.inputs[i].shapeFromCompiler.get_shape();
-                inputs[i].setSize(shape);
-                inputs[i].updateStride();
+                inputs[i].setContiguousShape(shape);
             }
 
             _arguments->resizeOutputs(metadata.outputs.size());
             auto& outputs = _arguments->outputs();
             for (size_t i = 0; i < outputs.size(); ++i) {
                 const auto& shape = metadata.outputs[i].shapeFromCompiler.get_shape();
-                outputs[i].setSize(shape);
-                outputs[i].updateStride();
+                outputs[i].setContiguousShape(shape);
             }
         }
 
@@ -83,16 +81,12 @@ class DynamicPipeline final : public IPipeline {
             // The strides are already divided by element size
             auto& inputs = _arguments->inputs();
             if (arg_index < inputs.size()) {
-                inputs[arg_index].setArg(arg_value);
-                inputs[arg_index].setSize(shapes);
-                inputs[arg_index].setStrides(strides);
+                inputs[arg_index].setProperties(arg_value, shapes, strides);
             } else {
                 auto& outputs = _arguments->outputs();
                 size_t output_index = static_cast<size_t>(arg_index) - inputs.size();
                 if (output_index < outputs.size()) {
-                    outputs[output_index].setArg(arg_value);
-                    outputs[output_index].setSize(shapes);
-                    outputs[output_index].setStrides(strides);
+                    outputs[output_index].setProperties(arg_value, shapes, strides);
                 }
             }
         }

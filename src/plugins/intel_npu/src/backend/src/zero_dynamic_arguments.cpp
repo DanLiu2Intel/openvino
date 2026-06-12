@@ -54,38 +54,33 @@ void DynamicPipelineArguments::resizeOutputs(size_t size) {
     _outputs.resize(size);
 }
 
-void DynamicPipelineArguments::clearMemRefHandles() {
+bool DynamicPipelineArguments::updateMemRefHandles() {
     _inputMemRefs.clear();
     _outputMemRefs.clear();
-}
-
-void DynamicPipelineArguments::reserveMemRefHandles() {
     _inputMemRefs.reserve(_inputs.size());
     _outputMemRefs.reserve(_outputs.size());
+
+    bool hasUpdates = false;
+    for (auto& input : _inputs) {
+        input.updateMemRefHandleStatus();
+        _inputMemRefs.push_back(input.getMemRefHandle());
+        hasUpdates = hasUpdates || input.hasUpdates();
+    }
+    for (auto& output : _outputs) {
+        output.updateMemRefHandleStatus();
+        _outputMemRefs.push_back(output.getMemRefHandle());
+        hasUpdates = hasUpdates || output.hasUpdates();
+    }
+
+    return hasUpdates;
 }
 
-void DynamicPipelineArguments::addInputMemRefHandle(npu_vm_runtime_mem_ref_handle_t memRef) {
-    _inputMemRefs.push_back(memRef);
+std::vector<npu_vm_runtime_mem_ref_handle_t>& DynamicPipelineArguments::inputMemRefs() noexcept {
+    return _inputMemRefs;
 }
 
-void DynamicPipelineArguments::addOutputMemRefHandle(npu_vm_runtime_mem_ref_handle_t memRef) {
-    _outputMemRefs.push_back(memRef);
-}
-
-npu_vm_runtime_mem_ref_handle_t* DynamicPipelineArguments::inputMemRefHandlesData() noexcept {
-    return _inputMemRefs.data();
-}
-
-npu_vm_runtime_mem_ref_handle_t* DynamicPipelineArguments::outputMemRefHandlesData() noexcept {
-    return _outputMemRefs.data();
-}
-
-uint32_t DynamicPipelineArguments::inputMemRefCount() const {
-    return static_cast<uint32_t>(_inputMemRefs.size());
-}
-
-uint32_t DynamicPipelineArguments::outputMemRefCount() const {
-    return static_cast<uint32_t>(_outputMemRefs.size());
+std::vector<npu_vm_runtime_mem_ref_handle_t>& DynamicPipelineArguments::outputMemRefs() noexcept {
+    return _outputMemRefs;
 }
 
 bool DynamicPipelineArguments::executedOnce() const noexcept {

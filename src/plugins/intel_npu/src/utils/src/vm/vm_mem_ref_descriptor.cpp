@@ -32,19 +32,9 @@ void VmMemRefDescriptor::setSize(const ov::Shape& shape) {
     }
 }
 
-void VmMemRefDescriptor::setStrides(const ov::Strides& strides, int32_t elementSize) {
-    if (_dimsCount == 0) {
-        OPENVINO_THROW("Dimension count is zero, shall call setSize before setStrides");
-    } else if (_dimsCount != static_cast<int64_t>(strides.size())) {
-        OPENVINO_THROW("Dimension count mismatch. Current dimension count: ",
-                       _dimsCount,
-                       ", new dimension count: ",
-                       strides.size());
-    }
-
-    for (int64_t i = 0; i < _dimsCount; ++i) {
-        _strides[i] = static_cast<int64_t>(strides[i] / elementSize);
-    }
+void VmMemRefDescriptor::setContiguousShape(const ov::Shape& shape) {
+    setSize(shape);
+    updateStride();
 }
 
 void VmMemRefDescriptor::setProperties(const void* arg, const ov::Shape& shape, const std::vector<size_t>& strides) {

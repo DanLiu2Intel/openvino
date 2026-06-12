@@ -227,26 +227,7 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
     _logger.debug("Start to execute graph with runtime engine");
 
     const bool firstExecution = !args.executedOnce();
-
-    args.clearMemRefHandles();
-    args.reserveMemRefHandles();
-
-    bool noTensorChange = true;
-
-    for (auto& in : args.inputs()) {
-        in.updateMemRefHandleStatus();
-        args.addInputMemRefHandle(in.getMemRefHandle());
-        if (in.hasUpdates()) {
-            noTensorChange = false;
-        }
-    }
-    for (auto& out : args.outputs()) {
-        out.updateMemRefHandleStatus();
-        args.addOutputMemRefHandle(out.getMemRefHandle());
-        if (out.hasUpdates()) {
-            noTensorChange = false;
-        }
-    }
+    const bool noTensorChange = !args.updateMemRefHandles();
 
     if (!firstExecution && noTensorChange) {
         _logger.debug("Reuse command list without update since no tensor change detected");
@@ -273,12 +254,15 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
     // Create the VM execution context (owned by args, destroyed with it).
     args.ensureExecutionContext(vmRuntime);
 
+    auto& inputMemRefs = args.inputMemRefs();
+    auto& outputMemRefs = args.outputMemRefs();
+
     npu_vm_runtime_execute_params_t params{};
     params.executionContext = args.getExecutionContextHandle();
-    params.pInputs = args.inputMemRefHandlesData();
-    params.numOfInputs = args.inputMemRefCount();
-    params.pOutputs = args.outputMemRefHandlesData();
-    params.numOfOutputs = args.outputMemRefCount();
+    params.pInputs = inputMemRefs.data();
+    params.numOfInputs = static_cast<uint32_t>(inputMemRefs.size());
+    params.pOutputs = outputMemRefs.data();
+    params.numOfOutputs = static_cast<uint32_t>(outputMemRefs.size());
     params.ctx = _init_structs->getContext();
     params.device = _init_structs->getDevice();
     params.graphDdiTableExt = _init_structs->getGraphDdiTable().getImpl();
