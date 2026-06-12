@@ -12,6 +12,7 @@ set(MANDATORY_UNIT_TESTS_LIBS
         "openvino::runtime"
         "openvino::reference"
         "openvino::npu_al"
+        "openvino::npu_vm_runtime_api"
         "openvino::npu_logger_utils"
         "openvino_npu_common"
         "openvino::npu_ops"
@@ -39,6 +40,7 @@ ov_add_test_target(
             ${OpenVINO_SOURCE_DIR}/thirdparty/level_zero/level-zero
             ${OpenVINO_SOURCE_DIR}/thirdparty/level_zero/level-zero/include
         OBJECT_FILES
+            $<TARGET_OBJECTS:openvino_npu_vm_utils>
             # plugin/src
             ${OpenVINO_SOURCE_DIR}/src/plugins/intel_npu/src/plugin/src/executor.cpp
             ${OpenVINO_SOURCE_DIR}/src/plugins/intel_npu/src/plugin/src/metadata.cpp
