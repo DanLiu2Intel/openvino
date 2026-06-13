@@ -66,9 +66,6 @@ struct MemRefType {
     MemRefType& operator=(MemRefType&&) noexcept = default;
     ~MemRefType() = default;
 
-    // /// Return the runtime-side impl, lazily creating it on first access.
-    // DynamicMemRefImpl& ensure_impl();
-
     void setArg(const void* arg);
     void setSize(const ov::Shape& shape);
     void setStrides(const ov::Strides& strides, int32_t elementSize = 1);
@@ -90,11 +87,6 @@ struct DynamicArguments {
     DynamicArguments(DynamicArguments&&) noexcept = default;
     DynamicArguments& operator=(DynamicArguments&&) noexcept = default;
     ~DynamicArguments() = default;
-
-    // // /// Return the runtime-side impl, lazily creating it on first access.
-    // // DynamicArgumentsImpl& ensure_impl();
-    // //obtained by igraph
-    // void ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime);
 
     void setArgumentProperties(uint32_t argi,
                                const void* argv,

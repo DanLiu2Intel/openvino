@@ -47,7 +47,7 @@ class DynamicPipeline final : public IPipeline {
 
         /// Allocate per-IO MemRef slots driven by the network metadata. The pipeline ctor fills
         /// each slot's data/shape/strides via setArgumentProperties again.
-        void initArgumentsInOutParam(const NetworkMetadata& metadata, std::shared_ptr<DynamicArguments> args) {
+        void initArguments(const NetworkMetadata& metadata) {
             _arguments->_inputs.resize(metadata.inputs.size());
             auto& inputs = _arguments->_inputs;
             for (size_t i = 0; i < inputs.size(); ++i) {
