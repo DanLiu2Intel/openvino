@@ -37,6 +37,7 @@ struct DynamicArguments {
     /// Create the VM execution context for vmRuntime. No-op if already created.
     void ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime);
 
+    //init _inputs and _outputs' di, shape and stride
     void setArgumentProperties(uint32_t argi,
                                const void* argv,
                                const ov::Shape& shapes,

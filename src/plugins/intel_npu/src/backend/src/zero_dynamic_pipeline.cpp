@@ -373,12 +373,7 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
                                          ze_fence_handle_t fence,
                                          ze_event_handle_t event) {
     _logger.debug("Start to execute graph with runtime engine");
-    // std::shared_ptr<DynamicArgumentsImpl> argsImpl = args._impl
-    //                                                      ? std::static_pointer_cast<DynamicArgumentsImpl>(args._impl)
-    //                                                      : std::make_shared<DynamicArgumentsImpl>();
     bool noTensorChange = true;
-    // const bool firstExecution = (args._impl == nullptr);
-
     // _executedOnce is true only after a successful npuVMRuntimeExecute below
     const bool firstExecution = !args._executedOnce;
 
@@ -391,16 +386,16 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
             }
             impl->UpdateMemRefHandleStatus(memref);
 
-            if (args._impl == nullptr) {
-                targetMemRefHandles.push_back(impl->_memRef);
-            } else if (impl->_ptrUpdated || impl->_shapeUpdated || impl->_strideUpdated) {
+            if(firstExecution) {
+            targetMemRefHandles.push_back(impl->_memRef);
+            }else if (impl->_ptrUpdated || impl->_shapeUpdated || impl->_strideUpdated) {
                 noTensorChange = false;
             }
         }
     };
 
-    processMemRefs(args._inputs, args->_inputMemRefs);
-    processMemRefs(args._outputs, args->_outputMemRefs);
+    processMemRefs(args._inputs, args._inputMemRefHandles);
+    processMemRefs(args._outputs, args._outputMemRefHandles);
 
     if (!firstExecution && noTensorChange) {
         _logger.debug("Reuse command list without update since no tensor change detected");
