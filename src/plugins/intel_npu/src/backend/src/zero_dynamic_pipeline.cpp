@@ -203,12 +203,30 @@ DynamicArguments::~DynamicArguments() {
 }
 
 void DynamicArguments::ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime) {
+    std::cout << "!!!![RUN INTO ensureExecutionContext]." << std::endl;
     if (_executionContext != nullptr) {
+        std::cout << "!!!!Execution context already exists, reuse it for current inference." << std::endl;
+        Logger::global().debug("Execution context already exists");
         return;
     }
+    std::cout << "!!!!No existing execution context, create a new one for current inference." << std::endl;
     if (npuVMRuntimeCreateExecutionContext(vmRuntime, &_executionContext) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
         OPENVINO_THROW("Failed to create a VM execution context");
     }
+}
+
+void printDynamicArguments(const DynamicArguments& arguments){
+    std::cout << "    [1]arguments._inputs.size() is " << arguments._inputs.size()<< std::endl;
+    std::cout << "    [2]arguments._outputs.size() is " << arguments._outputs.size()<< std::endl;
+
+    std::cout << "    [3]arguments._inputMemRefHandles.size() is " << arguments._inputMemRefHandles.size()<< std::endl;
+    std::cout << "    [4]arguments._outputMemRefHandles.size() is " << arguments._outputMemRefHandles.size()<< std::endl;
+    if(arguments._executionContext) {
+        std::cout << "    [5.0]arguments._executionContext is not empty " << std::endl;
+    }
+    std::cout << "    [5.1]arguments._executionContext's Context Handle Address: is " << arguments._executionContext << std::endl;
+    printf("[5.2]arguments._executionContext's Context Handle Address: %p\n", (void*)arguments._executionContext);
+    std::cout << "    [6]arguments._executedOnce is " << arguments._executedOnce << std::endl;
 }
 
 DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& init_structs,
@@ -236,9 +254,13 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
     _logger.debug("DynamicPipeline - event pool and command queue setup completed");
 
     const uint64_t num_of_subgraphs = _graph->get_metadata().numberOfSubgraphs;
+    _logger.debug("===============DynamicPipeline 1================");
+    printDynamicArguments(*arguments);
+    _logger.debug("===============DynamicPipeline 2================");
 
     _command_lists.reserve(_batch_size);
     for (size_t i = 0; i < _batch_size; i++) {
+        ///arguments 在这几个PipelinedCommandLists中共享
         _command_lists.emplace_back(
             std::make_unique<PipelinedCommandLists>(num_of_subgraphs, _init_structs, arguments));
     }
@@ -372,12 +394,17 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
                                          ze_command_queue_handle_t commandQueue,
                                          ze_fence_handle_t fence,
                                          ze_event_handle_t event) {
+    _logger.debug("===============DynamicPipeline 7========execute_vm_runtime========");
+    printDynamicArguments(args);
+    _logger.debug("===============DynamicPipeline 8========execute_vm_runtime========");
     _logger.debug("Start to execute graph with runtime engine");
     bool noTensorChange = true;
     // _executedOnce is true only after a successful npuVMRuntimeExecute below
     const bool firstExecution = !args._executedOnce;
+    std::vector<npu_vm_runtime_mem_ref_handle_t> inputMemRefHandles;
+    std::vector<npu_vm_runtime_mem_ref_handle_t> outputMemRefHandles;
 
-    auto processMemRefs = [&](auto& memRefs, auto& targetMemRefHandles) {
+    auto processMemRefs = [&](auto& memRefs, auto& targetMemRefHandles, auto& backendMemRefHandles) {
         for (auto& memref : memRefs) {
             auto impl = std::static_pointer_cast<MemRefTypeImpl>(memref._impl);
             if (impl == nullptr) {
@@ -387,15 +414,15 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
             impl->UpdateMemRefHandleStatus(memref);
 
             if(firstExecution) {
-            targetMemRefHandles.push_back(impl->_memRef);
+                targetMemRefHandles.push_back(impl->_memRef);
             }else if (impl->_ptrUpdated || impl->_shapeUpdated || impl->_strideUpdated) {
                 noTensorChange = false;
             }
         }
     };
 
-    processMemRefs(args._inputs, args._inputMemRefHandles);
-    processMemRefs(args._outputs, args._outputMemRefHandles);
+    processMemRefs(args._inputs, args._inputMemRefHandles, inputMemRefHandles);
+    processMemRefs(args._outputs, args._outputMemRefHandles, outputMemRefHandles);
 
     if (!firstExecution && noTensorChange) {
         _logger.debug("Reuse command list without update since no tensor change detected");
@@ -423,19 +450,37 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
     args.ensureExecutionContext(vmRuntime);
 
     npu_vm_runtime_execute_params_t params{};
-    params.executionContext = args._executionContext;
-    params.pInputs = args._inputMemRefHandles.data();
-    params.numOfInputs = static_cast<uint32_t>(args._inputMemRefHandles.size());
-    params.pOutputs = args._outputMemRefHandles.data();
-    params.numOfOutputs = static_cast<uint32_t>(args._outputMemRefHandles.size());
-    params.ctx = _init_structs->getContext();
-    params.device = _init_structs->getDevice();
-    params.graphDdiTableExt = _init_structs->getGraphDdiTable().getImpl();
-    params.commandLists = commandLists.data();
-    params.numCommandLists = static_cast<uint64_t>(commandLists.size());
-    params.commandQueue = commandQueue;
-    params.inferenceFence = fence;
-    params.event = event;
+    ///    npu_vm_runtime_execute_params_t* params = &argsImpl->_executeParams;  这个会是个问题吗？
+    const char* env_p = std::getenv("RUN_WITH_LOCAL");
+    if (env_p == nullptr) {
+        params.executionContext = args._executionContext;
+        params.pInputs = args._inputMemRefHandles.data();
+        params.numOfInputs = static_cast<uint32_t>(args._inputMemRefHandles.size());
+        params.pOutputs = args._outputMemRefHandles.data();
+        params.numOfOutputs = static_cast<uint32_t>(args._outputMemRefHandles.size());
+        params.ctx = _init_structs->getContext();
+        params.device = _init_structs->getDevice();
+        params.graphDdiTableExt = _init_structs->getGraphDdiTable().getImpl();
+        params.commandLists = commandLists.data();
+        params.numCommandLists = static_cast<uint64_t>(commandLists.size());
+        params.commandQueue = commandQueue;
+        params.inferenceFence = fence;
+        params.event = event;
+    } else {
+        params.executionContext = args._executionContext;
+        params.pInputs = inputMemRefHandles.data();
+        params.numOfInputs = static_cast<uint32_t>(inputMemRefHandles.size());
+        params.pOutputs = outputMemRefHandles.data();
+        params.numOfOutputs = static_cast<uint32_t>(outputMemRefHandles.size());
+        params.ctx = _init_structs->getContext();
+        params.device = _init_structs->getDevice();
+        params.graphDdiTableExt = _init_structs->getGraphDdiTable().getImpl();
+        params.commandLists = commandLists.data();
+        params.numCommandLists = static_cast<uint64_t>(commandLists.size());
+        params.commandQueue = commandQueue;
+        params.inferenceFence = fence;
+        params.event = event;
+    }
 
     _logger.debug("Execute graph with runtime engine");
     if (npuVMRuntimeExecute(vmRuntime, &params) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
@@ -449,6 +494,9 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
     _logger.debug("Completed to execute graph with runtime engine");
 }
 
+
+//因为传进来的inputsMemRefs和outputsMemRefs是局部变量，所以每次pushback一定没有什么问题
+//唯一的问题就是在这里的
 void DynamicPipeline::predict_output_shape(const IGraph& graph,
                                            DynamicArguments& args,
                                            std::vector<MemRefType>& inputsMemRefs,
@@ -459,37 +507,51 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
     const npu_vm_runtime_handle_t vmRuntime = static_cast<npu_vm_runtime_handle_t>(graph.get_handle());
     OPENVINO_ASSERT(vmRuntime != nullptr, "predict_output_shape requires a valid VM runtime engine");
 
-    // std::shared_ptr<DynamicArgumentsImpl> argsImpl = args._impl
-    //                                                      ? std::static_pointer_cast<DynamicArgumentsImpl>(args._impl)
-    //                                                      : std::make_shared<DynamicArgumentsImpl>();
+    std::vector<npu_vm_runtime_mem_ref_handle_t> inputMemRefHandles;
+    std::vector<npu_vm_runtime_mem_ref_handle_t> outputMemRefHandles;
 
-    auto processMemRefs = [&](auto& memRefs, auto& targetMemRefHandles) {
+    auto processMemRefs = [&](auto& memRefs, auto& targetMemRefHandles, auto& backendMemRefHandles) {
         targetMemRefHandles.clear();
         targetMemRefHandles.reserve(memRefs.size());
 
         for (auto& memref : memRefs) {
+            // return nullptr, 除非本身就是nullptr
             auto impl = std::static_pointer_cast<MemRefTypeImpl>(memref._impl);
             if (impl == nullptr) {
                 impl = std::make_shared<MemRefTypeImpl>();
                 memref._impl = impl;
             }
+
             impl->UpdateMemRefHandleStatus(memref);
             targetMemRefHandles.push_back(impl->_memRef);
+            backendMemRefHandles.push_back(impl->_memRef);
         }
     };
 
-    processMemRefs(inputsMemRefs, args._inputMemRefHandles);
-    processMemRefs(outputsMemRefs, args._outputMemRefHandles);
+    processMemRefs(inputsMemRefs, args._inputMemRefHandles, inputMemRefHandles);
+    processMemRefs(outputsMemRefs, args._outputMemRefHandles, outputMemRefHandles);
+
 
     // Init VM context before VM shape prediction2
     args.ensureExecutionContext(vmRuntime);
 
     npu_vm_runtime_predict_output_shape_params_t params{};
-    params.pInputs = args._inputMemRefHandles.data();
-    params.numOfInputs = static_cast<uint32_t>(args._inputMemRefHandles.size());
-    params.pOutputs = args._outputMemRefHandles.data();
-    params.numOfOutputs = static_cast<uint32_t>(args._outputMemRefHandles.size());
 
+    const char* env_p = std::getenv("RUN_WITH_LOCAL");
+
+    if (env_p == nullptr) {
+        params.pInputs = args._inputMemRefHandles.data();
+        params.numOfInputs = static_cast<uint32_t>(args._inputMemRefHandles.size());
+        params.pOutputs = args._outputMemRefHandles.data();
+        params.numOfOutputs = static_cast<uint32_t>(args._outputMemRefHandles.size());
+    } else {///？？？这里是什么问题？一会编译会知道的。。。
+        params.pInputs = inputMemRefHandles.data();
+        params.numOfInputs = static_cast<uint32_t>(inputMemRefHandles.size());
+        params.pOutputs = outputMemRefHandles.data();
+        params.numOfOutputs = static_cast<uint32_t>(outputMemRefHandles.size());
+    }
+
+    //param自己不也是个局部变量吗?在异步的时候这个还存在吗？
     if (npuVMRuntimePredictOutputShape(vmRuntime, &params) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
         OPENVINO_THROW("Failed to predict output shapes via VM runtime engine");
     } else {
@@ -497,7 +559,7 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
             std::shared_ptr<MemRefTypeImpl> outImpl = std::static_pointer_cast<MemRefTypeImpl>(out._impl);
             if (outImpl == nullptr) {
                 OPENVINO_THROW("MemRefType implementation is broken, unknown error happens in shape prediction.");
-            }
+            }//g更新道返回的outputMemref中
             outImpl->alignWithHandle(out);
         }
         logger.debug("Output shape prediction is done successfully.");

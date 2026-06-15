@@ -21,6 +21,11 @@ ZeroDynamicInferRequest::ZeroDynamicInferRequest(const std::shared_ptr<ZeroInitS
 void ZeroDynamicInferRequest::create_pipeline_impl() {
     _logger.debug("create_pipeline_impl - constructing pipeline");
     auto batchSize = _graph->get_batch_size();
+
+    if(_arguments->_executionContext) {
+        std::cout << "    [create_pipeline_impl]arguments._executionContext is not empty " << std::endl;
+    }
+    std::cout << "    [create_pipeline_impl]arguments._executionContext's Context Handle Address: is " << _arguments->_executionContext << std::endl;
     // Construct pipeline
     _pipeline =
         std::make_unique<DynamicPipeline>(_initStructs,
@@ -215,6 +220,20 @@ void ZeroDynamicInferRequest::infer_async() {
     _pipeline->push();
 }
 
+void printDynamicArguments(const DynamicArguments& arguments){
+    std::cout << "    [1]arguments._inputs.size() is " << arguments._inputs.size()<< std::endl;
+    std::cout << "    [2]arguments._outputs.size() is " << arguments._outputs.size()<< std::endl;
+
+    std::cout << "    [3]arguments._inputMemRefHandles.size() is " << arguments._inputMemRefHandles.size()<< std::endl;
+    std::cout << "    [4]arguments._outputMemRefHandles.size() is " << arguments._outputMemRefHandles.size()<< std::endl;
+    if(arguments._executionContext) {
+        std::cout << "    [5.0]arguments._executionContext is not empty " << std::endl;
+    }
+    std::cout << "    [5.1]arguments._executionContext's Context Handle Address: is " << arguments._executionContext << std::endl;
+    printf("[5.2]arguments._executionContext's Context Handle Address: %p\n", (void*)arguments._executionContext);
+    std::cout << "    [6]arguments._executedOnce is " << arguments._executedOnce << std::endl;
+}
+
 void ZeroDynamicInferRequest::predict_output_shapes(std::vector<MemRefType>& outputMemRef) {
     // TODO: If current output tensor is not large enough to be compatible with input tensor, need recreate pipeline
     // But reshape ZeroTensor can be used to avoid recreate pipeline now
@@ -222,12 +241,19 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<MemRefType>& out
     // Predict output shapes based on current inputs
 
     if (_arguments == nullptr) {
+        _logger.debug("[TEST]1.1 create share_ptr DynamicArguments for ZeroDynamicInferRequest::_arguments.");
         _arguments = std::make_shared<DynamicArguments>();
+    } else {
+        _logger.debug("[TEST]1.2 share_ptr DynamicArguments for ZeroDynamicInferRequest::_arguments is aleady create.");
     }
+
+    _logger.debug("==========1================");
+    printDynamicArguments(*_arguments);
+    _logger.debug("===========2===============");
 
     if (_graph->get_handle() != nullptr && _isTensorChanged) {
         std::vector<MemRefType> inputMemRef(_metadata.inputs.size());
-        outputMemRef.clear();
+        outputMemRef.clear();//这个是不是有点多余，或者input应该也需要？？？
         outputMemRef.resize(_metadata.outputs.size());
 
         // TODO: Support Batch later
@@ -287,7 +313,14 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<MemRefType>& out
 
         // Get VM context before invoking VM shape prediction.
         DynamicArguments& dynamicArguments = *_arguments;
+        _logger.debug("===========3===============");
+        printDynamicArguments(*_arguments);
+        _logger.debug("===========4===============");
         DynamicPipeline::predict_output_shape(*_graph, dynamicArguments, inputMemRef, outputMemRef);
+
+        _logger.debug("===========5===============");
+        printDynamicArguments(*_arguments);
+        _logger.debug("===========6===============");
 
         for (size_t i = 0; i < outputMemRef.size(); i++) {
             if (!originalOutputMemRef[i].compare(outputMemRef[i])) {
