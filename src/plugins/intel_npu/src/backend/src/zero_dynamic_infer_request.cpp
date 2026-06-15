@@ -285,7 +285,7 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<MemRefType>& out
             originalOutputMemRef[i]._strides = outputMemRef[i]._strides;
         }
 
-        // Get VM context before invoking VM shape prediction."
+        // Get VM context before invoking VM shape prediction.
         DynamicArguments& dynamicArguments = *_arguments;
         DynamicPipeline::predict_output_shape(*_graph, dynamicArguments, inputMemRef, outputMemRef);
 

@@ -9,6 +9,39 @@
 #include "zero_pipeline.hpp"
 
 namespace intel_npu {
+/**
+ * @brief Argument descriptors plus the runtime-side state used to invoke npuVMRuntimeExecute.
+ * @details Owns the VM execution context across multiple executes (it caches device-side
+ * state and must not be re-created per call). The context is created lazily via
+ * ensureExecutionContext on the first execute call and destroyed by the destructor.
+ */
+struct DynamicArguments {
+    std::vector<MemRefType> _inputs;
+    std::vector<MemRefType> _outputs;
+
+    //save to keep vector to pass for vm excution and vm predict.
+    std::vector<npu_vm_runtime_mem_ref_handle_t> _inputMemRefHandles;
+    std::vector<npu_vm_runtime_mem_ref_handle_t> _outputMemRefHandles;
+    //save context for different inferrequest
+    npu_vm_runtime_execution_context_handle_t _executionContext = nullptr;
+    // Set by the caller after the first successful @c npuVMRuntimeExecute.
+    bool _executedOnce = false;
+
+    DynamicArguments() = default;
+    DynamicArguments(const DynamicArguments&) = delete;
+    DynamicArguments& operator=(const DynamicArguments&) = delete;
+    DynamicArguments(DynamicArguments&&) = delete;
+    DynamicArguments& operator=(DynamicArguments&&) = delete;
+    ~DynamicArguments();
+
+    /// Create the VM execution context for vmRuntime. No-op if already created.
+    void ensureExecutionContext(npu_vm_runtime_handle_t vmRuntime);
+
+    void setArgumentProperties(uint32_t argi,
+                               const void* argv,
+                               const ov::Shape& shapes,
+                               const std::vector<size_t>& strides);
+};
 
 class DynamicPipeline final : public IPipeline {
     struct PipelinedCommandLists {
