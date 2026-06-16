@@ -65,10 +65,8 @@ class DynamicPipeline final : public IPipeline {
             }
 
             if (args != nullptr) {
-                Logger::global().debug("[PipelinedCommandLists] share_ptr DynamicArguments is not empty, maybe pass from .");
                 _arguments = args;
             } else {
-                Logger::global().debug("[PipelinedCommandLists] share_ptr DynamicArguments is not empty.");
                 _arguments = std::make_shared<DynamicArguments>();
             }
         }
