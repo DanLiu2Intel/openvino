@@ -41,8 +41,13 @@ struct FakeMemRefState {
 std::unordered_map<uintptr_t, FakeMemRefState> g_memRefs;
 int g_predictShapeCalls = 0;
 bool g_forcePredictFailure = false;
+int g_createMemRefCalls = 0;
+int g_setMemRefCalls = 0;
+int g_parseMemRefCalls = 0;
+int g_createExecutionContextCalls = 0;
 
 npu_vm_runtime_result_t fakeCreateMemRef(int64_t dimsCount, npu_vm_runtime_mem_ref_handle_t* phMemRef) {
+    ++g_createMemRefCalls;
     auto* token = new int(1);
     *phMemRef = reinterpret_cast<npu_vm_runtime_mem_ref_handle_t>(token);
 
@@ -69,6 +74,7 @@ npu_vm_runtime_result_t fakeSetMemRef(npu_vm_runtime_mem_ref_handle_t hMemRef,
                                       int64_t* pSizes,
                                       int64_t* pStrides,
                                       int64_t dimsCount) {
+    ++g_setMemRefCalls;
     auto key = reinterpret_cast<uintptr_t>(hMemRef);
     auto& state = g_memRefs[key];
 
@@ -89,6 +95,7 @@ npu_vm_runtime_result_t fakeParseMemRef(npu_vm_runtime_mem_ref_handle_t hMemRef,
                                         int64_t* pSizes,
                                         int64_t* pStrides,
                                         int64_t* pDimsCount) {
+    ++g_parseMemRefCalls;
     auto key = reinterpret_cast<uintptr_t>(hMemRef);
     const auto& state = g_memRefs.at(key);
 
@@ -107,6 +114,7 @@ npu_vm_runtime_result_t fakeParseMemRef(npu_vm_runtime_mem_ref_handle_t hMemRef,
 
 npu_vm_runtime_result_t fakeCreateExecutionContext(npu_vm_runtime_handle_t,
                                                    npu_vm_runtime_execution_context_handle_t* phExecutionHandle) {
+    ++g_createExecutionContextCalls;
     *phExecutionHandle = reinterpret_cast<npu_vm_runtime_execution_context_handle_t>(0x9999);
     return NPU_VM_RUNTIME_RESULT_SUCCESS;
 }
@@ -220,6 +228,53 @@ TEST(DynamicPipelinePredictShapeTest, PredictShapeUpdatesOutputsAndClearsHandleV
     EXPECT_EQ(outputs[0]._sizes, (std::vector<int64_t>{3, 3}));
     EXPECT_EQ(outputs[0]._strides, (std::vector<int64_t>{3, 1}));
 
+    EXPECT_TRUE(args._inputMemRefHandles.empty());
+    EXPECT_TRUE(args._outputMemRefHandles.empty());
+}
+
+TEST(DynamicPipelinePredictShapeTest, PredictShapeCallsExpectedVmRuntimeApiFlow) {
+    RuntimeFunctionGuard guard;
+    installRuntimeMocks();
+
+    g_memRefs.clear();
+    g_predictShapeCalls = 0;
+    g_forcePredictFailure = false;
+    g_createMemRefCalls = 0;
+    g_setMemRefCalls = 0;
+    g_parseMemRefCalls = 0;
+    g_createExecutionContextCalls = 0;
+
+    FakeGraph graph(reinterpret_cast<void*>(0x3333));
+    DynamicArguments args;
+
+    std::vector<MemRefType> inputs(1);
+    std::vector<MemRefType> outputs(1);
+
+    int inputData = 11;
+    int outputData = 22;
+
+    inputs[0].setArg(&inputData);
+    inputs[0].setSize(ov::Shape{2, 3});
+    inputs[0].setStrides(ov::Strides{3, 1});
+
+    outputs[0].setArg(&outputData);
+    outputs[0].setSize(ov::Shape{1, 1});
+    outputs[0].setStrides(ov::Strides{1, 1});
+
+    DynamicPipeline::predict_output_shape(graph, args, inputs, outputs);
+
+    // input+output each create one memref
+    EXPECT_EQ(g_createMemRefCalls, 2);
+    // input+output each set one memref
+    EXPECT_EQ(g_setMemRefCalls, 2);
+    // context created once for this call
+    EXPECT_EQ(g_createExecutionContextCalls, 1);
+    // VM prediction called exactly once
+    EXPECT_EQ(g_predictShapeCalls, 1);
+    // output alignWithHandle() parses one memref
+    EXPECT_EQ(g_parseMemRefCalls, 1);
+
+    // API clears temporary vectors after prediction
     EXPECT_TRUE(args._inputMemRefHandles.empty());
     EXPECT_TRUE(args._outputMemRefHandles.empty());
 }
