@@ -137,6 +137,9 @@ install(TARGETS ${TARGET_NAME}
 
 target_sources(${TARGET_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/npu/executor_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/npu/dynamic_arguments_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/npu/dynamic_pipeline_predict_output_shape_test.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/npu/npu_vm_runtime_api_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/npuw/llm_compiled_model_graph_options_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/npuw/stored_tokens_state_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/npuw/lincache_utils_test.cpp
