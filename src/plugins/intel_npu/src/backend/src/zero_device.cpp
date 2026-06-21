@@ -4,6 +4,7 @@
 
 #include "zero_device.hpp"
 
+#include "intel_npu/common/idynamic_graph.hpp"
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/utils/zero/zero_api.hpp"
 #include "intel_npu/utils/zero/zero_utils.hpp"
