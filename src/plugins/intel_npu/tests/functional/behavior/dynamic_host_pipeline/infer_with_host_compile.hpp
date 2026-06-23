@@ -101,6 +101,7 @@ inline std::shared_ptr<ov::Model> createMultiplyModel() {
     // making input and output to be NHWC
     const char* env_p = std::getenv("MY_APP_MODE");
     if (env_p == nullptr) {
+        std::cout << "MY_APP_MODE is NOT set, Use layput NHWC" << std::endl;
         auto preProc = ov::preprocess::PrePostProcessor(model);
         preProc.input(0).tensor().set_layout("NHWC");
         preProc.input(0).model().set_layout("NCHW");
@@ -108,6 +109,8 @@ inline std::shared_ptr<ov::Model> createMultiplyModel() {
         preProc.output(0).model().set_layout("NCHW");
 
         model = preProc.build();
+    } else {
+        std::cout << "MY_APP_MODE is set, Use layput NCHW" << std::endl;
     }
 
     return model;
