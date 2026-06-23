@@ -13,8 +13,9 @@ const std::vector<std::string> devices = {"NPU.4000", "NPU.5010"};
 
 const std::vector<ov::AnyMap> configs = {
     {{"NPU_COMPILER_TYPE", "PLUGIN"},
-     {"NPU_COMPILATION_MODE", "HostCompile"},
+     {"NPU_COMPILATION_MODE", "HostCompile_Interpreter"},
      {"NPU_CREATE_EXECUTOR", "0"},
+     {"NPU_COMPILATION_MODE_PARAMS", "dynamic-dim-alignment=false auto-unrolling-mode=disabled"}
      }};
 
 INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,

@@ -21,23 +21,18 @@ namespace ov {
 namespace test {
 namespace behavior {
 
-inline std::shared_ptr<ov::Model> createMaxPoolModel() {
+inline std::shared_ptr<ov::Model> createMultiplyModel() {
     auto input = std::make_shared<ov::op::v0::Parameter>(ov::element::f16,
                                                          ov::PartialShape{1, 16, ov::Dimension(10, 720), ov::Dimension(10, 1280)});
     input->set_friendly_name("input1");
 
-    auto maxpool = std::make_shared<ov::op::v1::MaxPool>(input,
-                                                         Strides{1, 1},
-                                                         Shape{0, 0},
-                                                         Shape{0, 0},
-                                                         Shape{1, 1},
-                                                         op::RoundingType::FLOOR,
-                                                         op::PadType::EXPLICIT);
-    maxpool->set_friendly_name("MaxPool_2");
+    auto multiplier = ov::op::v0::Constant::create(ov::element::f16, ov::Shape{1}, {2.0f});
+    auto multiply = std::make_shared<ov::op::v1::Multiply>(input, multiplier);
+    multiply->set_friendly_name("Multiply_2");
 
-    auto result = std::make_shared<ov::op::v0::Result>(maxpool);
+    auto result = std::make_shared<ov::op::v0::Result>(multiply);
     result->set_friendly_name("output");
-    auto model = std::make_shared<Model>(ResultVector{result}, ParameterVector{input}, "MaxPool");
+    auto model = std::make_shared<Model>(ResultVector{result}, ParameterVector{input}, "Multiply");
 
     // making input and output to be NHWC
     auto preProc = ov::preprocess::PrePostProcessor(model);
@@ -263,7 +258,7 @@ TEST_P(InferWithHostCompileTests, CompileAndImportAndInfer) {
     if (!isTargetDevice) {
         GTEST_SKIP() << "Skip test for current device";
     }
-    auto model = createMaxPoolModel();
+    auto model = createMultiplyModel();
 
     ov::CompiledModel compiledModel;
     // Compilation shall pass since load of npu_mlir_runtime is deffered with NPU_CREATE_EXECUTOR=0
@@ -296,7 +291,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithDecreasedSize) {
         GTEST_SKIP() << "Skip test for current device";
     }
 
-    auto model = createMaxPoolModel();
+    auto model = createMultiplyModel();
     ScopedLogCapture logCapture;
 
     core->set_property("NPU", ov::log::level(ov::log::Level::DEBUG));
@@ -366,7 +361,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithIncreasedSize) {
         GTEST_SKIP() << "Skip test for current device";
     }
 
-    auto model = createMaxPoolModel();
+    auto model = createMultiplyModel();
     ScopedLogCapture logCapture;
 
     core->set_property("NPU", ov::log::level(ov::log::Level::DEBUG));
@@ -436,7 +431,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithZeroTensor) {
         GTEST_SKIP() << "Skip test for current device";
     }
 
-    auto model = createMaxPoolModel();
+    auto model = createMultiplyModel();
     ScopedLogCapture logCapture;
 
     core->set_property("NPU", ov::log::level(ov::log::Level::DEBUG));
