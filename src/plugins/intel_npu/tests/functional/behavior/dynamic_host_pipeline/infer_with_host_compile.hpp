@@ -5,11 +5,13 @@
 #pragma once
 
 #include <common_test_utils/ov_tensor_utils.hpp>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include "common/npu_test_env_cfg.hpp"
 #include "openvino/openvino.hpp"
 #include "openvino/opsets/opset6.hpp"
 #include "openvino/pass/manager.hpp"
@@ -22,17 +24,30 @@ namespace test {
 namespace behavior {
 
 inline std::shared_ptr<ov::Model> createMultiplyModel() {
-    auto input = std::make_shared<ov::op::v0::Parameter>(ov::element::f16,
-                                                         ov::PartialShape{1, 16, ov::Dimension(10, 720), ov::Dimension(10, 1280)});
-    input->set_friendly_name("input1");
+    namespace fs = std::filesystem;
+    static constexpr auto kModelXmlName = "CustomNet_canonical_strides_1x1_no_fork.xml";
 
-    auto multiplier = ov::op::v0::Constant::create(ov::element::f16, ov::Shape{1}, {2.0f});
-    auto multiply = std::make_shared<ov::op::v1::Multiply>(input, multiplier);
-    multiply->set_friendly_name("Multiply_2");
+    const auto blobPath = ov::test::utils::NpuTestEnvConfig::getInstance().OV_NPU_TESTS_BLOBS_PATH;
+    std::vector<fs::path> candidatePaths;
+    if (!blobPath.empty()) {
+        candidatePaths.emplace_back(fs::path(blobPath) / kModelXmlName);
+    }
+    candidatePaths.emplace_back(fs::path(kModelXmlName));
+    candidatePaths.emplace_back(fs::path("..") / kModelXmlName);
+    candidatePaths.emplace_back(fs::path("../..") / kModelXmlName);
 
-    auto result = std::make_shared<ov::op::v0::Result>(multiply);
-    result->set_friendly_name("output");
-    auto model = std::make_shared<Model>(ResultVector{result}, ParameterVector{input}, "Multiply");
+    fs::path modelPath;
+    for (const auto& candidate : candidatePaths) {
+        if (fs::exists(candidate)) {
+            modelPath = candidate;
+            break;
+        }
+    }
+
+    OPENVINO_ASSERT(!modelPath.empty(), "Cannot locate ", kModelXmlName, " for dynamic host pipeline tests");
+
+    ov::Core modelReader;
+    auto model = modelReader.read_model(modelPath.string());
 
     // making input and output to be NHWC
     auto preProc = ov::preprocess::PrePostProcessor(model);
@@ -305,7 +320,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithDecreasedSize) {
     auto& testContext = setupResult.context;
 
     // Start with the largest shape in the dynamic range.
-    ov::Shape shape = {1, 720, 1280, 16};
+    ov::Shape shape = {1, 1080, 1920, 16};
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -338,7 +353,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithDecreasedSize) {
         << logCapture.str();
 
     logCapture.clear();
-    ov::Shape shape2 = {1, 720, 720, 16};
+    ov::Shape shape2 = {1, 720, 1920, 16};
     ov::Tensor inTensor3 = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape2, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -376,7 +391,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithIncreasedSize) {
     auto& testContext = setupResult.context;
 
     // Start with a smaller valid dynamic shape.
-    ov::Shape shape = {1, 720, 720, 16};
+    ov::Shape shape = {1, 360, 1920, 16};
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -409,7 +424,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithIncreasedSize) {
         << logCapture.str();
 
     logCapture.clear();
-    ov::Shape shape2 = {1, 720, 1280, 16};
+    ov::Shape shape2 = {1, 1080, 1920, 16};
     ov::Tensor inTensor3 = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape2, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -445,7 +460,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithZeroTensor) {
     auto& testContext = setupResult.context;
 
     // Start from a regular host tensor.
-    ov::Shape shape = {1, 720, 1280, 16};
+    ov::Shape shape = {1, 720, 1920, 16};
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,

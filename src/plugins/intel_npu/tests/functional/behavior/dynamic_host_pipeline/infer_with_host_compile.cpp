@@ -18,7 +18,13 @@ const std::vector<ov::AnyMap> configs = {
      {"NPU_COMPILATION_MODE_PARAMS", "dynamic-dim-alignment=false auto-unrolling-mode=disabled"}
      }};
 
-INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
+const std::vector<ov::AnyMap> configs2 = {
+    {{"NPU_COMPILER_TYPE", "PLUGIN"},
+     {"NPU_COMPILATION_MODE", "HostCompile_Interpreter"},
+     {"NPU_CREATE_EXECUTOR", "0"},
+     }};
+
+INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests_NoCOMPILATION_MODE_PARAMS,
                          InferWithHostCompileTests,
-                         ::testing::Combine(::testing::ValuesIn(devices), ::testing::ValuesIn(configs)),
+                         ::testing::Combine(::testing::ValuesIn(devices), ::testing::ValuesIn(configs2)),
                          ov::test::utils::appendPlatformTypeTestName<InferWithHostCompileTests>);
