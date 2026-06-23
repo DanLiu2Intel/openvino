@@ -5,13 +5,11 @@
 #pragma once
 
 #include <common_test_utils/ov_tensor_utils.hpp>
-#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include "common/npu_test_env_cfg.hpp"
 #include "openvino/openvino.hpp"
 #include "openvino/opsets/opset6.hpp"
 #include "openvino/pass/manager.hpp"
@@ -19,44 +17,98 @@
 #include "openvino/runtime/make_tensor.hpp"
 #include "shared_test_classes/base/ov_behavior_test_utils.hpp"
 
+#include <cstdlib> // 必须引入该头文件
+
 namespace ov {
 namespace test {
 namespace behavior {
 
 inline std::shared_ptr<ov::Model> createMultiplyModel() {
-    namespace fs = std::filesystem;
-    static constexpr auto kModelXmlName = "CustomNet_canonical_strides_1x1_no_fork.xml";
+    auto input = std::make_shared<ov::op::v0::Parameter>(ov::element::f16,
+                                                         ov::PartialShape{1, 16, ov::Dimension(1, 1080), 1920});
+    input->set_friendly_name("Parameter_59");
 
-    const auto blobPath = ov::test::utils::NpuTestEnvConfig::getInstance().OV_NPU_TESTS_BLOBS_PATH;
-    std::vector<fs::path> candidatePaths;
-    if (!blobPath.empty()) {
-        candidatePaths.emplace_back(fs::path(blobPath) / kModelXmlName);
-    }
-    candidatePaths.emplace_back(fs::path(kModelXmlName));
-    candidatePaths.emplace_back(fs::path("..") / kModelXmlName);
-    candidatePaths.emplace_back(fs::path("../..") / kModelXmlName);
+    auto make_conv_add = [](const ov::Output<ov::Node>& data,
+                            const std::string& convName,
+                            const std::string& addName,
+                            float weightValue,
+                            float biasValue) -> ov::Output<ov::Node> {
+        const std::vector<float> weightValues(16 * 16, weightValue);
+        const std::vector<float> biasValues(16, biasValue);
 
-    fs::path modelPath;
-    for (const auto& candidate : candidatePaths) {
-        if (fs::exists(candidate)) {
-            modelPath = candidate;
-            break;
-        }
-    }
+        auto weights = ov::op::v0::Constant::create(ov::element::f16, ov::Shape{16, 16, 1, 1}, weightValues);
+        auto conv = std::make_shared<ov::op::v1::Convolution>(data,
+                                                               weights,
+                                                               ov::Strides{1, 1},
+                                                               ov::CoordinateDiff{0, 0},
+                                                               ov::CoordinateDiff{0, 0},
+                                                               ov::Strides{1, 1},
+                                                               ov::op::PadType::EXPLICIT);
+        conv->set_friendly_name(convName);
 
-    OPENVINO_ASSERT(!modelPath.empty(), "Cannot locate ", kModelXmlName, " for dynamic host pipeline tests");
+        auto bias = ov::op::v0::Constant::create(ov::element::f16, ov::Shape{1, 16, 1, 1}, biasValues);
+        auto add = std::make_shared<ov::op::v1::Add>(conv, bias);
+        add->set_friendly_name(addName);
+        return add;
+    };
 
-    ov::Core modelReader;
-    auto model = modelReader.read_model(modelPath.string());
+    auto x = make_conv_add(input, "Convolution_61", "Add_63", 0.01f, 0.001f);
+    x = make_conv_add(x, "Convolution_65", "Add_67", 0.011f, 0.001f);
+
+    auto relu68 = std::make_shared<ov::op::v0::Relu>(x);
+    relu68->set_friendly_name("Relu_68");
+    x = relu68;
+
+    x = make_conv_add(x, "Convolution_70", "Add_72", 0.012f, 0.001f);
+    auto relu73 = std::make_shared<ov::op::v0::Relu>(x);
+    relu73->set_friendly_name("Relu_73");
+    x = relu73;
+
+    x = make_conv_add(x, "Convolution_75", "Add_77", 0.013f, 0.001f);
+    auto relu78 = std::make_shared<ov::op::v0::Relu>(x);
+    relu78->set_friendly_name("Relu_78");
+    x = relu78;
+
+    x = make_conv_add(x, "Convolution_82", "Add_84", 0.014f, 0.001f);
+    auto relu85 = std::make_shared<ov::op::v0::Relu>(x);
+    relu85->set_friendly_name("Relu_85");
+    x = relu85;
+
+    x = make_conv_add(x, "Convolution_87", "Add_89", 0.015f, 0.001f);
+    auto relu90 = std::make_shared<ov::op::v0::Relu>(x);
+    relu90->set_friendly_name("Relu_90");
+    x = relu90;
+
+    x = make_conv_add(x, "Convolution_92", "Add_94", 0.016f, 0.001f);
+    auto relu95 = std::make_shared<ov::op::v0::Relu>(x);
+    relu95->set_friendly_name("Relu_95");
+    x = relu95;
+
+    auto multiplyScale = ov::op::v0::Constant::create(ov::element::f16, ov::Shape{1, 16, 1, 1}, {0.5f});
+    auto multiply97 = std::make_shared<ov::op::v1::Multiply>(x, multiplyScale);
+    multiply97->set_friendly_name("Multiply_97");
+
+    auto add98 = std::make_shared<ov::op::v1::Add>(multiply97, multiply97);
+    add98->set_friendly_name("Add_98");
+
+    x = make_conv_add(add98, "Convolution_100", "Add_102", 0.017f, 0.001f);
+
+    auto result = std::make_shared<ov::op::v0::Result>(x);
+    result->set_friendly_name("Result_104");
+
+    auto model = std::make_shared<ov::Model>(ov::ResultVector{result}, ov::ParameterVector{input}, "CustomNet");
 
     // making input and output to be NHWC
-    auto preProc = ov::preprocess::PrePostProcessor(model);
-    preProc.input(0).tensor().set_layout("NHWC");
-    preProc.input(0).model().set_layout("NCHW");
-    preProc.output(0).tensor().set_layout("NHWC");
-    preProc.output(0).model().set_layout("NCHW");
+    const char* env_p = std::getenv("MY_APP_MODE");
+    if (env_p == nullptr) {
+        auto preProc = ov::preprocess::PrePostProcessor(model);
+        preProc.input(0).tensor().set_layout("NHWC");
+        preProc.input(0).model().set_layout("NCHW");
+        preProc.output(0).tensor().set_layout("NHWC");
+        preProc.output(0).model().set_layout("NCHW");
 
-    model = preProc.build();
+        model = preProc.build();
+    }
 
     return model;
 }
@@ -320,7 +372,13 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithDecreasedSize) {
     auto& testContext = setupResult.context;
 
     // Start with the largest shape in the dynamic range.
-    ov::Shape shape = {1, 1080, 1920, 16};
+    const char* env_p = std::getenv("MY_APP_MODE");
+    ov::Shape shape;
+    if (env_p == nullptr) {
+        shape = {1, 1080, 1920, 16};
+    } else {
+        shape = {1, 16, 1080, 1920};
+    }
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -353,7 +411,13 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithDecreasedSize) {
         << logCapture.str();
 
     logCapture.clear();
-    ov::Shape shape2 = {1, 720, 1920, 16};
+
+    ov::Shape shape2;
+    if (env_p == nullptr) {
+        shape2 = {1, 720, 1920, 16};
+    } else {
+        shape2 = {1, 16, 720, 1920};
+    }
     ov::Tensor inTensor3 = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape2, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -391,7 +455,13 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithIncreasedSize) {
     auto& testContext = setupResult.context;
 
     // Start with a smaller valid dynamic shape.
-    ov::Shape shape = {1, 360, 1920, 16};
+    const char* env_p = std::getenv("MY_APP_MODE");
+    ov::Shape shape;
+    if (env_p == nullptr) {
+        shape = {1, 360, 1920, 16};
+    } else {
+        shape = {1, 16, 360, 1920};
+    }
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -424,7 +494,12 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithIncreasedSize) {
         << logCapture.str();
 
     logCapture.clear();
-    ov::Shape shape2 = {1, 1080, 1920, 16};
+    ov::Shape shape2;
+    if (env_p == nullptr) {
+        shape2 = {1, 1080, 1920, 16};
+    } else {
+        shape2 = {1, 16, 1080, 1920};
+    }
     ov::Tensor inTensor3 = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape2, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -460,7 +535,14 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithZeroTensor) {
     auto& testContext = setupResult.context;
 
     // Start from a regular host tensor.
-    ov::Shape shape = {1, 720, 1920, 16};
+    const char* env_p = std::getenv("MY_APP_MODE");
+    ov::Shape shape;
+    if (env_p == nullptr) {
+        shape = {1, 720, 1920, 16};
+    } else {
+        shape = {1, 16, 720, 1920};
+    }
+
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
