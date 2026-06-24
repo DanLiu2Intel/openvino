@@ -15,7 +15,9 @@ set(MANDATORY_UNIT_TESTS_LIBS
         "openvino::npu_logger_utils"
         "openvino_npu_common"
         "openvino::npu_ops"
+        "openvino_npu_vm_utils"
 )
+message(STATUS "Mandatory unit test libs: openvino_npu_vm_utils not npu_vm_runtime_api")
 
 ov_add_test_target(
         NAME ${TARGET_NAME}

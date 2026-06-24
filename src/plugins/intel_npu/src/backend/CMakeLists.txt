@@ -26,7 +26,10 @@ target_link_libraries(${TARGET_NAME}
     PRIVATE
         openvino_npu_common
         openvino::npu_al
+        openvino_npu_vm_utils
 )
+message(STATUS "openvino_npu_level_zero_backend add_library====TEST====")
+
 #
 # targets install
 #
