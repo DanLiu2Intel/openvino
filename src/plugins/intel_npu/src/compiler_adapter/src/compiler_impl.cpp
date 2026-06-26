@@ -165,6 +165,7 @@ VCLCompilerImpl::~VCLCompilerImpl() {
 }
 
 std::shared_ptr<void> VCLCompilerImpl::getLinkedLibrary() const {
+    std::cout << "===[1] VCLCompilerImpl::getLinkedLibrary" << std::endl;
     return VCLApi::getInstance()->getLibrary();
 }
 

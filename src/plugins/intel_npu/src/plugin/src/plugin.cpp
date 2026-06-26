@@ -329,6 +329,7 @@ void init_config(const IEngineBackend* backend, OptionsDesc& options, FilteredCo
 namespace intel_npu {
 
 Plugin::Plugin() : _logger("NPUPlugin", Logger::global().level()) {
+    std::cout << "===[-1] Plugin::Plugin()" << std::endl;
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::Plugin");
     set_device_name("NPU");
 
@@ -360,10 +361,13 @@ Plugin::Plugin() : _logger("NPUPlugin", Logger::global().level()) {
     /// Init and register properties
     OV_ITT_TASK_NEXT(PLUGIN, "RegisterProperties");
     _propertiesManager = std::make_unique<Properties>(PropertiesType::PLUGIN, config, metrics, _backend);
+    std::cout << "===[-1] Plugin::Plugin() DONE" << std::endl;
 }
 
 void Plugin::set_property(const ov::AnyMap& properties) {
+    std::cout << "===[-3] Plugin::set_property() "  << std::endl;
     if (properties.empty()) {
+    std::cout << "===[-3.1] Plugin::set_property() "  << std::endl;
         return;
     }
     update_log_level(properties);
@@ -373,6 +377,7 @@ void Plugin::set_property(const ov::AnyMap& properties) {
     }
 
     _propertiesManager->setProperty(properties);
+    std::cout << "===[-3.2] Plugin::set_property() "  << std::endl;
 }
 
 ov::CompatibilityCheck Plugin::validate_compatibility_descriptor(ov::intel_npu::CompilerType compilerType,
@@ -430,6 +435,7 @@ ov::CompatibilityCheck Plugin::validate_compatibility_descriptor(ov::intel_npu::
 }
 
 ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& arguments) const {
+    std::cout << "===[-2] Plugin::get_property() name: " << name << std::endl;
     // Special cases that need to be treated outside of the property manager.
     // Checking runtime requirements requires access to plugin's metadata
     if (name == ov::compatibility_check.name()) {
@@ -456,7 +462,7 @@ ov::Any Plugin::get_property(const std::string& name, const ov::AnyMap& argument
 
         return copyPropertiesManager->getProperty(name);
     }
-
+    std::cout << "===[-2] Plugin::get_property() name: " << name << "DONE " << std::endl;
     return _propertiesManager->getProperty(name);
 }
 
@@ -485,6 +491,7 @@ bool Plugin::is_property_supported(const std::string& name, const ov::AnyMap& ar
 
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model,
                                                           const ov::AnyMap& properties) const {
+    std::cout << "===[2] Plugin::compile_model() "  << std::endl;
     OV_ITT_SCOPED_TASK(itt::domains::NPUPlugin, "Plugin::compile_model");
     update_log_level(properties);
 
@@ -709,7 +716,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     ++_compiledModelLoadCounter;
     OV_ITT_TASK_SKIP(PLUGIN_COMPILE_MODEL);
-
+    std::cout << "===[2] Plugin::compile_model() DONE"  << std::endl;
     return compiledModel;
 }
 
