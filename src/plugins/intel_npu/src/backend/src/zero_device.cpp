@@ -187,7 +187,7 @@ std::shared_ptr<InferRequest> ZeroDevice::createInferRequest(const std::shared_p
                                                              const Config& config) {
     if (dynamic_cast<IDynamicGraph*>(compiledModel->get_graph().get())) {
         return std::make_shared<ZeroDynamicInferRequest>(_initStructs, compiledModel, config);
-    }
+    }////
     return std::make_shared<ZeroInferRequest>(_initStructs, compiledModel, config);
 }
 

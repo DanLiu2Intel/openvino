@@ -228,6 +228,8 @@ ZeroInferRequest::FoundPort ZeroInferRequest::find_port(const ov::Output<const o
         }
     }
     ZeroInferRequest::FoundPort::Type type = ZeroInferRequest::FoundPort::Type::INPUT;
+    // _compiledModel->inputs(); -> const std::vector<ov::Output<const ov::Node>>&
+    // _compiledModel->outputs(); -> const std::vector<ov::Output<const ov::Node>>&
     for (const auto& ports : {get_inputs(), get_outputs()}) {
         for (size_t i = 0; i < ports.size(); i++) {
             // The order of the arguments might matter for the "check_tensor_names" call. If the "CompiledModel" object
@@ -463,6 +465,7 @@ void ZeroInferRequest::set_tensor(const ov::Output<const ov::Node>& port, const 
 
         get_user_input(foundPort.idx) = tensor;
     } else {
+        //可以比较这里set 前后的区别吧？
         if (_userOutputTensors.at(foundPort.idx)._ptr == tensor._ptr) {
             // set_tensor called with the same tensor object; no action needed
             _logger.debug("set_tensor - got the same output tensor, do nothing");
@@ -705,6 +708,7 @@ void ZeroInferRequest::sync_zero_tensors_with_graph(const ZeroInferRequest::Foun
     }
 }
 
+/// python-> get_input_tensor call here?
 ov::SoPtr<ov::ITensor> ZeroInferRequest::get_tensor(const ov::Output<const ov::Node>& port) const {
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "get_tensor");
 
@@ -718,6 +722,8 @@ ov::SoPtr<ov::ITensor> ZeroInferRequest::get_tensor(const ov::Output<const ov::N
         OPENVINO_THROW("Cannot return tensors in a tensor.");
     }
 
+    //拿到对应的输入和输出的userTensor  & 是复用的意思吗？
+    //为什么没有get_user_output 和 get_level_zero_output
     auto& userTensor = isInput ? get_user_input(ioIndex) : _userOutputTensors.at(ioIndex);
 
     auto batchSize = _graph->get_batch_size();
@@ -753,7 +759,7 @@ ov::SoPtr<ov::ITensor> ZeroInferRequest::get_tensor(const ov::Output<const ov::N
             // If different shape was found, go further and allocate new zero tensor for it.
         }
     }
-
+    // 这里可以打印，shape 改变之前的值，似乎把这里的值保存下来就可以了？
     auto& metadata = isInput ? _metadata.inputs.at(ioIndex) : _metadata.outputs.at(ioIndex);
     _logger.debug("get_tensor - tensor by index: %zu is not allocated, new tensor %s will be created",
                   ioIndex,

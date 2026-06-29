@@ -37,7 +37,15 @@ protected:
 
     void update_tensor(const std::vector<IDynamicGraph::MemRefType>& outputProps);
 
+    bool isTensorShapeChanged();
+
     bool _isTensorChanged = false;
+
+    //just for save tensor shape if just update shape, without update tensor by set_tensor
+    // std::vector<std::vector<ov::SoPtr<ov::ITensor>>> _refInputTensors;
+    // std::vector<std::shared_ptr<ZeroTensor>> _refInputZeroTensors;
+    std::vector<std::vector<ov::Shape>> _refInputTensorsShapes;
+    std::vector<std::vector<ov::Shape>> _refInputZeroTensorsShapes;
 };
 
 }  //  namespace intel_npu

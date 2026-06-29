@@ -9,13 +9,87 @@
 #include "intel_npu/utils/utils.hpp"
 #include "openvino/runtime/make_tensor.hpp"
 
+#include <cstdlib>
+
 using namespace intel_npu;
+
+bool ZeroDynamicInferRequest::isTensorShapeChanged() {
+    const char* env_p = std::getenv("ENABLE_SIZE_CHECK");
+    if (env_p == nullptr ) {
+        if(_userInputTensors.size() != _refInputTensorsShapes.size()) {
+            OPENVINO_THROW("isTensorShapeChanged PART - _userInputTensors.size() != _refInputTensorsShapes.size()");
+            std::cout << "isTensorShapeChanged PART - _userInputTensors.size() != _refInputTensorsShapes.size()" << std::endl;
+        }
+
+        if(_levelZeroInputTensors.size() != _refInputZeroTensorsShapes.size()) {
+            OPENVINO_THROW("isTensorShapeChanged PART - _levelZeroInputTensors.size() != _refInputZeroTensorsShapes.size()");
+            std::cout << "isTensorShapeChanged PART - _levelZeroInputTensors.size() != _refInputZeroTensorsShapes.size()" << std::endl;
+        }
+    }
+
+    for(size_t i = 0; i < _userInputTensors.size(); i++) {
+        if (_userInputTensors.at(i).size() > 0) {
+            for(size_t j = 0; j < _userInputTensors.at(i).size(); j++) {
+                std::cout << "[check]_refInputTensorsShapes.at(" << i << ").at(" << j << ") = " << _refInputTensorsShapes.at(i).at(j) << std::endl;
+                std::cout << "[check]_userInputTensors.at(" << i << ").at(" << j << ") = " << _userInputTensors.at(i).at(j)->get_shape() << std::endl;
+                if(_refInputTensorsShapes.at(i).at(j) == _userInputTensors.at(i).at(j)->get_shape()) {
+                    std::cout << "[check Same]isTensorShapeChanged - _refInputTensorsShapes.at(" << i << ").at(" << j << ") == _userInputTensors.at(" << i << ").at(" << j << ")->get_shape()" << std::endl;
+                } else {
+                    std::cout << "[check Different]isTensorShapeChanged - _refInputTensorsShapes.at(" << i << ").at(" << j << ") != _userInputTensors.at(" << i << ").at(" << j << ")->get_shape()" << std::endl;
+                    return true;
+                }
+            }
+        }
+    }
+
+    for(size_t i = 0; i < _levelZeroInputTensors.size(); i++) {
+        if (_levelZeroInputTensors.at(i).size() > 0) {
+            for(size_t j = 0; j < _levelZeroInputTensors.at(i).size(); j++) {
+                _refInputZeroTensorsShapes.at(i).at(j) = _levelZeroInputTensors.at(i).at(j)->get_shape();
+                std::cout << "[check]_refInputZeroTensorsShapes.at(" << i << ").at(" << j << ") = " << _refInputZeroTensorsShapes.at(i).at(j) << std::endl;
+                std::cout << "[check]_levelZeroInputTensors.at(" << i << ").at(" << j << ") = " << _levelZeroInputTensors.at(i).at(j)->get_shape() << std::endl;
+                if(_refInputZeroTensorsShapes.at(i).at(j) == _levelZeroInputTensors.at(i).at(j)->get_shape()) {
+                    std::cout << "[check Same]isTensorShapeChanged - _refInputZeroTensorsShapes.at(" << i << ").at(" << j << ") == _levelZeroInputTensors.at(" << i << ").at(" << j << ")->get_shape()" << std::endl;
+                } else {
+                    std::cout << "[check Different]isTensorShapeChanged - _refInputZeroTensorsShapes.at(" << i << ").at(" << j << ") != _levelZeroInputTensors.at(" << i << ").at(" << j << ")->get_shape()" << std::endl;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
 
 ZeroDynamicInferRequest::ZeroDynamicInferRequest(const std::shared_ptr<ZeroInitStructsHolder>& initStructs,
                                                  const std::shared_ptr<const ICompiledModel>& compiledModel,
                                                  const Config& config)
     : ZeroInferRequest(initStructs, compiledModel, config) {
     _logger.setName("ZeroDynamicInferRequest");
+    //update the _refInputTensor and _refInputZeroTensorsShapes
+    std::cout << "ZeroDynamicInferRequest::ZeroDynamicInferRequest constructor called" << std::endl;
+    // _refInputTensors.resize(_userInputTensors.size());
+    // _refInputZeroTensors.resize(_userInputTensors.size());
+    _refInputZeroTensorsShapes.resize(_levelZeroInputTensors.size());
+    _refInputTensorsShapes.resize(_userInputTensors.size());
+    for(size_t i = 0; i < _userInputTensors.size(); i++) {
+        if (_userInputTensors.at(i).size() > 0) {
+            for(size_t j = 0; j < _userInputTensors.at(i).size(); j++) {
+                _refInputTensorsShapes.at(i).at(j) = _userInputTensors.at(i).at(j)->get_shape();
+                std::cout << "_refInputTensorsShapes.at(" << i << ").at(" << j << ") = " << _refInputTensorsShapes.at(i).at(j) << std::endl;
+            }
+        }
+    }
+
+    for(size_t i = 0; i < _levelZeroInputTensors.size(); i++) {
+        if (_levelZeroInputTensors.at(i).size() > 0) {
+            for(size_t j = 0; j < _levelZeroInputTensors.at(i).size(); j++) {
+                _refInputZeroTensorsShapes.at(i).at(j) = _levelZeroInputTensors.at(i).at(j)->get_shape();
+                std::cout << "_refInputZeroTensorsShapes.at(" << i << ").at(" << j << ") = " << _refInputZeroTensorsShapes.at(i).at(j) << std::endl;
+            }
+        }
+    }
+
+    std::cout << "ZeroDynamicInferRequest::ZeroDynamicInferRequest constructor called DONE" << std::endl;
 }
 
 void ZeroDynamicInferRequest::create_pipeline_impl() {
@@ -219,6 +293,9 @@ void ZeroDynamicInferRequest::predict_shapes(std::vector<IDynamicGraph::MemRefTy
     // bool reCreatePipeline = false;
     // Predict output shapes based on current inputs
     intel_npu::IDynamicGraph* dynamicGraph = dynamic_cast<intel_npu::IDynamicGraph*>(_graph.get());
+    std::cout << "predict_shapes - _isTensorChanged is : " << _isTensorChanged << std::endl;
+    _isTensorChanged = isTensorShapeChanged();
+    std::cout << "predict_shapes - after update _isTensorChanged is : " << _isTensorChanged << std::endl;
     if (dynamicGraph && _isTensorChanged) {
         IDynamicGraph::GraphArguments graphArgs;
         // Need change to use arguments in pipeline
@@ -336,6 +413,9 @@ void ZeroDynamicInferRequest::check_tensor_and_predicted_shapes(
 
 void ZeroDynamicInferRequest::update_tensor(const std::vector<IDynamicGraph::MemRefType>& outputProps) {
     // Update local level zero buffer shape with predicted shape to prepare for comparasion
+    std::cout << "update_tensor - _isTensorChanged is : " << _isTensorChanged << std::endl;
+    _isTensorChanged = isTensorShapeChanged();
+    std::cout << "update_tensor - AFTER _isTensorChanged is : " << _isTensorChanged << std::endl;
     if (outputProps.size() > 0 && _isTensorChanged) {
         for (size_t i = 0; i < _levelZeroOutputTensors.size(); i++) {
             auto& levelZeroTensor = _levelZeroOutputTensors.at(i);
