@@ -4,6 +4,7 @@
 
 #include "zero_dynamic_infer_request.hpp"
 
+#include "intel_npu/common/graph_handle_utils.hpp"
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/prefix.hpp"
 #include "intel_npu/utils/utils.hpp"
@@ -224,7 +225,7 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<MemRefType>& out
         _arguments = std::make_shared<DynamicArguments>();
     }
 
-    if (_graph->get_vm_runtime_handle() != nullptr && _isTensorChanged) {
+    if (get_graph_handle_or_throw<npu_vm_runtime_handle_t>(*_graph) != nullptr && _isTensorChanged) {
         std::vector<MemRefType> inputsMemRef(_metadata.inputs.size());
         outputsMemRef.clear();
         outputsMemRef.resize(_metadata.outputs.size());

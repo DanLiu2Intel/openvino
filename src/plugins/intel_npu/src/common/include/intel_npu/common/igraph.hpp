@@ -53,9 +53,6 @@ public:
     //   DynamicGraph -> npu_vm_runtime_handle_t
     virtual NativeHandle get_handle() const;
 
-    ze_graph_handle_t get_ze_graph_handle() const;
-    npu_vm_runtime_handle_t get_vm_runtime_handle() const;
-
     // Returns true if the graph is executed through the VM runtime (dynamic graph), false otherwise.
     virtual bool is_dynamic() const;
 

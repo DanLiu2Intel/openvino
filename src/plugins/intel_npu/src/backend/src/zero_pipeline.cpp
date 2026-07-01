@@ -9,6 +9,7 @@
 
 #include <algorithm>
 
+#include "intel_npu/common/graph_handle_utils.hpp"
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
@@ -258,7 +259,7 @@ Pipeline::Pipeline(const std::shared_ptr<ZeroInitStructsHolder>& init_structs,
             _command_lists.at(i)->appendNpuTimestamp(reinterpret_cast<uint64_t*>(_npu_profiling->npu_ts_infer_start));
         }
 
-        _command_lists.at(i)->appendGraphExecute(_graph->get_ze_graph_handle(),
+        _command_lists.at(i)->appendGraphExecute(get_graph_handle_or_throw<ze_graph_handle_t>(*_graph),
                                                  _profiling_query ? _profiling_query->getHandle() : nullptr);
 
         /// append timestamp command if feature was activated

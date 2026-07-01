@@ -7,6 +7,7 @@
 #include <iterator>
 
 #include "compiler_impl.hpp"
+#include "intel_npu/common/graph_handle_utils.hpp"
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/utils/utils.hpp"
 #include "intel_npu/utils/zero/zero_api.hpp"
@@ -309,7 +310,7 @@ std::optional<bool> Graph::is_profiling_blob() const {
     ze_graph_properties_3_t graphProperties = {};
     graphProperties.stype = ZE_STRUCTURE_TYPE_GRAPH_PROPERTIES_3;
 
-    auto result = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(get_ze_graph_handle(),
+    auto result = _zeroInitStruct->getGraphDdiTable().pfnGetProperties3(get_graph_handle_or_throw<ze_graph_handle_t>(*this),
                                                                         &graphProperties);
     THROW_ON_FAIL_FOR_LEVELZERO_EXT("pfnGetArgumentProperties3", result, _zeroInitStruct->getGraphDdiTable());
 

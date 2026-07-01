@@ -6,6 +6,7 @@
 
 #include <ze_graph_profiling_ext.h>
 
+#include "intel_npu/common/graph_handle_utils.hpp"
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/profiling.hpp"
 #include "intel_npu/utils/zero/zero_api.hpp"
@@ -42,7 +43,7 @@ bool ProfilingPool::create() {
     }
 
     auto ret = _init_structs->getProfilingDdiTable().pfnProfilingPoolCreate(
-        _graph->get_ze_graph_handle(),
+        get_graph_handle_or_throw<ze_graph_handle_t>(*_graph),
         _profiling_count,
         &_handle);
     return ((ZE_RESULT_SUCCESS == ret) && (_handle != nullptr));

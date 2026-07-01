@@ -50,18 +50,6 @@ IGraph::NativeHandle IGraph::get_handle() const {
     OPENVINO_THROW("get_handle not implemented");
 }
 
-ze_graph_handle_t IGraph::get_ze_graph_handle() const {
-    const auto* handle = std::get_if<ze_graph_handle_t>(&get_handle());
-    OPENVINO_ASSERT(handle != nullptr, "Graph handle type mismatch: expected ze_graph_handle_t");
-    return *handle;
-}
-
-npu_vm_runtime_handle_t IGraph::get_vm_runtime_handle() const {
-    const auto* handle = std::get_if<npu_vm_runtime_handle_t>(&get_handle());
-    OPENVINO_ASSERT(handle != nullptr, "Graph handle type mismatch: expected npu_vm_runtime_handle_t");
-    return *handle;
-}
-
 bool IGraph::is_dynamic() const {
     return false;
 }

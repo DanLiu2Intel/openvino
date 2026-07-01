@@ -9,6 +9,7 @@
 
 #include <sstream>
 
+#include "intel_npu/common/graph_handle_utils.hpp"
 #include "intel_npu/common/itt.hpp"
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/prefix.hpp"
@@ -281,7 +282,7 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
 void DynamicPipeline::push() {
     _logger.debug("push - started");
 
-    const npu_vm_runtime_handle_t vmRuntime = _graph->get_vm_runtime_handle();
+    const npu_vm_runtime_handle_t vmRuntime = get_graph_handle_or_throw<npu_vm_runtime_handle_t>(*_graph);
     OPENVINO_ASSERT(vmRuntime != nullptr, "DynamicPipeline requires a valid VM runtime engine");
 
     const auto command_queue_desc = _graph->get_command_queue_desc();
@@ -416,7 +417,7 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
     Logger logger("DynamicPipeline::predict_output_shape", Logger::global().level());
     logger.debug("predict_output_shape - started");
 
-    const npu_vm_runtime_handle_t vmRuntime = graph.get_vm_runtime_handle();
+    const npu_vm_runtime_handle_t vmRuntime = get_graph_handle_or_throw<npu_vm_runtime_handle_t>(graph);
     OPENVINO_ASSERT(vmRuntime != nullptr, "predict_output_shape requires a valid VM runtime engine");
 
     auto processMemRefs = [&](auto& memRefs, auto& targetMemRefHandles) {
