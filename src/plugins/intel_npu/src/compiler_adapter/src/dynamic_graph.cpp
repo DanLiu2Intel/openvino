@@ -416,15 +416,15 @@ void DynamicGraphImpl::executeGraph(const std::shared_ptr<ZeroInitStructsHolder>
     }
 
     _logger.debug("Use interpreter: %s, command list recording required: %s, number of index to update with "
-                  "UpdateMutableCommandList API: %d, optimized dynamic stride supported: %s",
+                  "UpdateMutableCommandList API: %zu, optimized dynamic stride supported: %s",
                   _useInterpreter ? "true" : "false",
                   commandListRecordingRequired ? "true" : "false",
-                  static_cast<int>(commandListIndexArray.size()),
+                  commandListIndexArray.size(),
                   _optimizedDynamicStridesMode ? "true" : "false");
 
     if (firstInference || commandListRecordingRequired) {
         _logger.debug("Reset command list to run with runtime");
-        // Reset commandLists since there are tensor with new shapes or it is the first execution, can not reuse command
+        // Reset commandLists since there are tensor with new shapes or it is the first execution, cannot reuse command
         // list with update
         for (auto& cmdList : commandLists) {
             zeCommandListReset(cmdList);
@@ -435,14 +435,14 @@ void DynamicGraphImpl::executeGraph(const std::shared_ptr<ZeroInitStructsHolder>
             _logger.debug("Update command list and execute directly");
             if (params->executionContext == nullptr) {
                 OPENVINO_THROW(
-                    "Execution context is not created, can not reuse command list with UpdateMutableCommandList API");
+                    "Execution context is not created; cannot reuse command list with UpdateMutableCommandList API");
             }
 
             if (npuVMRuntimeUpdateMutableCommandList(_engine,
                                                      params,
                                                      const_cast<uint64_t*>(commandListIndexArray.data()),
                                                      commandListIndexArray.size()) != NPU_VM_RUNTIME_RESULT_SUCCESS) {
-                OPENVINO_THROW("Failed to execute VM runtime engine to update commandlist");
+                OPENVINO_THROW("Failed to update commandlist via VM runtime engine");
             }
         } else {
             _logger.debug("Reuse command list without update since no tensor change detected");
@@ -499,7 +499,7 @@ void DynamicGraphImpl::predictOutputShape(DynamicGraph::GraphArguments& args,
     std::vector<std::shared_ptr<DynamicGraph::MemRefTypeImpl>> inputMemRefImpls;
     std::vector<npu_vm_runtime_mem_ref_handle_t> inputHandles;
     for (auto& in : inputDescriptors) {
-        std::shared_ptr<DynamicGraph::MemRefTypeImpl> inImpl  = std::make_shared<DynamicGraph::MemRefTypeImpl>();
+        std::shared_ptr<DynamicGraph::MemRefTypeImpl> inImpl = std::make_shared<DynamicGraph::MemRefTypeImpl>();
         inImpl->UpdateMemRefHandleStatus(in);
         inputMemRefImpls.push_back(inImpl);
         inputHandles.push_back(inImpl->_memRef);
@@ -554,11 +554,11 @@ void DynamicGraphImpl::predictOutputShape(DynamicGraph::GraphArguments& args,
     if (result != NPU_VM_RUNTIME_RESULT_SUCCESS) {
         OPENVINO_THROW("Failed to predict output shape with VM runtime engine, error code: ", result);
     } else {
-        for (size_t i = 0;  i < outputDescriptors.size(); ++i) {
+        for (size_t i = 0; i < outputDescriptors.size(); ++i) {
             auto& out = outputDescriptors[i];
             std::shared_ptr<DynamicGraph::MemRefTypeImpl> outImpl = outputMemRefImpls[i];
             if (outImpl == nullptr) {
-                OPENVINO_THROW("MemRefType implementation is broken, unkown error happens in shape prediction.");
+                OPENVINO_THROW("MemRefType implementation is broken, unknown error happens in shape prediction.");
             }
             outImpl->alignWithHandle(out);
         }
@@ -581,7 +581,7 @@ DynamicGraph::DynamicGraph(const std::shared_ptr<ZeroInitStructsHolder>& zeroIni
 
     const size_t headerSize = std::min(_blob->get_byte_size(), size_t{20});
     const std::string_view header(static_cast<const char*>(_blob->data()), headerSize);
-    _useInterpreter = (header.find("NPUByte\x00") != std::string_view::npos) ? true : false;
+    _useInterpreter = (header.find("NPUByte\x00", 0, 8) != std::string_view::npos) ? true : false;
 
     if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()) {
         _logger.info("Graph initialize is deferred from the \"Graph\" constructor");
