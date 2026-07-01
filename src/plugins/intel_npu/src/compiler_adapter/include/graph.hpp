@@ -40,7 +40,7 @@ public:
                                          const std::vector<size_t>& strides) const override;
 
     const NetworkMetadata& get_metadata() const override;
-    void* get_handle() const override;
+    NativeHandle get_handle() const override;
 
     void update_network_name(std::string_view name) override;
 

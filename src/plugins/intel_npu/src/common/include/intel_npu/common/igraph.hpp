@@ -7,10 +7,12 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <variant>
 #include <vector>
 
 #include "intel_npu/common/filtered_config.hpp"
 #include "intel_npu/common/network_metadata.hpp"
+#include "intel_npu/utils/vm/npu_vm_runtime.hpp"
 #include "intel_npu/utils/zero/zero_wrappers.hpp"
 #include "openvino/runtime/itensor.hpp"
 #include "openvino/runtime/profiling_info.hpp"
@@ -20,6 +22,8 @@ namespace intel_npu {
 
 class IGraph : public std::enable_shared_from_this<IGraph> {
 public:
+    using NativeHandle = std::variant<ze_graph_handle_t, npu_vm_runtime_handle_t>;
+
     IGraph() = default;
 
     /**
@@ -44,11 +48,13 @@ public:
     virtual ~IGraph() = default;
 
     virtual const NetworkMetadata& get_metadata() const;
-    // Returns the underlying native handle. Concrete graphs return different handle types:
+    // Returns the underlying native handle.
     //   Graph        -> ze_graph_handle_t
     //   DynamicGraph -> npu_vm_runtime_handle_t
-    // Callers must static_cast the result to the type matching the concrete graph implementation.
-    virtual void* get_handle() const;
+    virtual NativeHandle get_handle() const;
+
+    ze_graph_handle_t get_ze_graph_handle() const;
+    npu_vm_runtime_handle_t get_vm_runtime_handle() const;
 
     // Returns true if the graph is executed through the VM runtime (dynamic graph), false otherwise.
     virtual bool is_dynamic() const;

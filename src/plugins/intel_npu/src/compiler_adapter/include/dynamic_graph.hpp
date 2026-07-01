@@ -24,7 +24,7 @@ public:
 
     std::pair<uint64_t, std::optional<std::vector<uint64_t>>> export_blob(std::ostream& stream) const override;
 
-    void* get_handle() const override;
+    NativeHandle get_handle() const override;
 
     bool is_dynamic() const override {
         return true;

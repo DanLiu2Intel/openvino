@@ -224,7 +224,7 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<MemRefType>& out
         _arguments = std::make_shared<DynamicArguments>();
     }
 
-    if (_graph->get_handle() != nullptr && _isTensorChanged) {
+    if (_graph->get_vm_runtime_handle() != nullptr && _isTensorChanged) {
         std::vector<MemRefType> inputsMemRef(_metadata.inputs.size());
         outputsMemRef.clear();
         outputsMemRef.resize(_metadata.outputs.size());

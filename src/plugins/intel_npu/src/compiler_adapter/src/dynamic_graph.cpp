@@ -318,7 +318,7 @@ void DynamicGraph::set_model_priority(const ov::hint::Priority modelPriority) {
     }
 }
 
-void* DynamicGraph::get_handle() const {
+IGraph::NativeHandle DynamicGraph::get_handle() const {
     return _engine;
 }
 

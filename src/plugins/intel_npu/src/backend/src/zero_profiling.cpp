@@ -42,7 +42,7 @@ bool ProfilingPool::create() {
     }
 
     auto ret = _init_structs->getProfilingDdiTable().pfnProfilingPoolCreate(
-        static_cast<ze_graph_handle_t>(_graph->get_handle()),
+        _graph->get_ze_graph_handle(),
         _profiling_count,
         &_handle);
     return ((ZE_RESULT_SUCCESS == ret) && (_handle != nullptr));
