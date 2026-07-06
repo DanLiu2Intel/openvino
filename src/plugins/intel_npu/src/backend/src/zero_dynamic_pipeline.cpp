@@ -20,6 +20,8 @@
 #include "intel_npu/utils/zero/zero_remote_tensor.hpp"
 #include "intel_npu/utils/zero/zero_types.hpp"
 
+#include <cstdlib> // 必须引入该头文件
+
 namespace intel_npu {
 struct MemRefTypeImpl {
     npu_vm_runtime_mem_ref_handle_t _memRef;
@@ -340,15 +342,22 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
                                          ze_fence_handle_t fence,
                                          ze_event_handle_t event) {
     _logger.debug("Start to execute graph with runtime engine");
-    bool noTensorChange = true;
+
     npu_vm_runtime_execute_params_t* params = &args._executeParams;
+    bool noTensorChange = true;
     bool firstInference = params->graphDdiTableExt == nullptr;
+    if(firstInference) {
+        _logger.warning("First inference");
+    } else{
+        _logger.warning("Subsequent inference");
+    }
 
     auto processMemRefs = [&](auto& memRefs, auto& targetMemRefHandles) {
         targetMemRefHandles.clear();
         targetMemRefHandles.reserve(memRefs.size());
+
         for (auto& memref : memRefs) {
-            auto impl = std::static_pointer_cast<MemRefTypeImpl>(memref._impl);
+            std::shared_ptr<MemRefTypeImpl> impl = std::static_pointer_cast<MemRefTypeImpl>(memref._impl);
             if (impl == nullptr) {
                 impl = std::make_shared<MemRefTypeImpl>();
                 memref._impl = impl;
@@ -357,8 +366,10 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
 
             if (firstInference) {
                 targetMemRefHandles.push_back(impl->_memRef);
+                _logger.warning("First inference2");
             } else if (impl->_ptrUpdated || impl->_shapeUpdated || impl->_strideUpdated) {
                 noTensorChange = false;
+                _logger.warning("Subsequent inference with tensor change");
             }
         }
     };
@@ -390,8 +401,8 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
 
     // Create the VM execution context (owned by args._impl, destroyed with it).
     args.ensureExecutionContext(vmRuntime);
-
     params->executionContext = args._executeParams.executionContext;
+
     params->pInputs = args._inputMemRefHandles.data();
     params->numOfInputs = static_cast<uint32_t>(args._inputMemRefHandles.size());
     params->pOutputs = args._outputMemRefHandles.data();
@@ -422,28 +433,26 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
     Logger logger("DynamicPipeline::predict_output_shape", Logger::global().level());
     logger.debug("predict_output_shape - started");
 
-    std::vector<std::shared_ptr<MemRefTypeImpl>> inputMemRefImpls;
-    std::vector<std::shared_ptr<MemRefTypeImpl>> outputMemRefImpls;
-
     const npu_vm_runtime_handle_t vmRuntime = static_cast<npu_vm_runtime_handle_t>(graph.get_handle());
     OPENVINO_ASSERT(vmRuntime != nullptr, "predict_output_shape requires a valid VM runtime engine");
 
-    auto processMemRefs = [&](auto& memRefs, auto& destMemRefHandles, auto& destMemRefImpls) {
+    auto processMemRefs = [&](auto& memRefs, auto& destMemRefHandles) {
         destMemRefHandles.clear();
         destMemRefHandles.reserve(memRefs.size());
-        destMemRefImpls.clear();
-        destMemRefImpls.reserve(memRefs.size());
 
         for (auto& memref : memRefs) {
-            std::shared_ptr<MemRefTypeImpl> impl = std::make_shared<MemRefTypeImpl>();
+            auto impl = std::static_pointer_cast<MemRefTypeImpl>(memref._impl);
+            if (impl == nullptr) {
+                impl = std::make_shared<MemRefTypeImpl>();
+                memref._impl = impl;
+            }
             impl->UpdateMemRefHandleStatus(memref);
             destMemRefHandles.push_back(impl->_memRef);
-            destMemRefImpls.push_back(impl);
         }
     };
 
-    processMemRefs(inputsMemRefs, args._inputMemRefHandles, inputMemRefImpls);
-    processMemRefs(outputsMemRefs, args._outputMemRefHandles, outputMemRefImpls);
+    processMemRefs(inputsMemRefs, args._inputMemRefHandles);
+    processMemRefs(outputsMemRefs, args._outputMemRefHandles);
 
     npu_vm_runtime_result_t result = NPU_VM_RUNTIME_RESULT_SUCCESS;
     npu_vm_runtime_version_t version{};
@@ -478,7 +487,8 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
     } else {
         for (size_t i = 0; i < outputsMemRefs.size(); ++i) {
             auto& out = outputsMemRefs[i];
-            std::shared_ptr<MemRefTypeImpl> outImpl = outputMemRefImpls[i];
+            std::shared_ptr<MemRefTypeImpl> outImpl =
+                std::static_pointer_cast<MemRefTypeImpl>(out._impl);
 
             if (outImpl == nullptr) {
                 OPENVINO_THROW("MemRefType implementation is broken, unknown error happens in shape prediction.");
@@ -487,6 +497,17 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
         }
         logger.debug("Output shape prediction is done successfully.");
     }
+
+    const char* env_p = std::getenv("CLEAR_ENV");
+    if (env_p != nullptr) {
+        logger.warning("CLEAR_ENV is set, clear memref handles after shape prediction to avoid the next execution using wrong memref handles");
+        // Clear memref handles after shape prediction to avoid the next execution using wrong memref handles
+        args._inputMemRefHandles.clear();
+        args._outputMemRefHandles.clear();
+    } else {
+        logger.warning("CLEAR_ENV is NOT set, keep memref handles after shape prediction for the next execution");
+    }
+
 }
 
 void DynamicPipeline::pull() {
