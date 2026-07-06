@@ -364,12 +364,12 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
             }
             impl->UpdateMemRefHandleStatus(memref);
 
-            if (firstInference) {
-                targetMemRefHandles.push_back(impl->_memRef);
-                _logger.warning("First inference2");
-            } else if (impl->_ptrUpdated || impl->_shapeUpdated || impl->_strideUpdated) {
+            // VM runtime execute path always needs current memref handles.
+            targetMemRefHandles.push_back(impl->_memRef);
+
+            if (impl->_ptrUpdated || impl->_shapeUpdated || impl->_strideUpdated) {
                 noTensorChange = false;
-                _logger.warning("Subsequent inference with tensor change");
+                _logger.error("Subsequent inference with tensor change");
             }
         }
     };
@@ -500,12 +500,12 @@ void DynamicPipeline::predict_output_shape(const IGraph& graph,
 
     const char* env_p = std::getenv("CLEAR_ENV");
     if (env_p != nullptr) {
-        logger.warning("CLEAR_ENV is set, clear memref handles after shape prediction to avoid the next execution using wrong memref handles");
+        logger.error("CLEAR_ENV is set, clear memref handles after shape prediction to avoid the next execution using wrong memref handles");
         // Clear memref handles after shape prediction to avoid the next execution using wrong memref handles
         args._inputMemRefHandles.clear();
         args._outputMemRefHandles.clear();
     } else {
-        logger.warning("CLEAR_ENV is NOT set, keep memref handles after shape prediction for the next execution");
+        logger.error("CLEAR_ENV is NOT set, keep memref handles after shape prediction for the next execution");
     }
 
 }
