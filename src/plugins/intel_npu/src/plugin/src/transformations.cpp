@@ -47,7 +47,7 @@ bool checkModelDynamicDims(const std::shared_ptr<const ov::Model>& model) {
 }
 
 bool validateModelBatch(const std::shared_ptr<const ov::Model>& model, Logger logger) {
-    logger.warning("=======> [validateModelBatch] start");
+    logger.warning("=======> [validateModelBatch] start");//call2
     std::set<ov::Output<const ov::Node>> batchedInputs;
     std::set<ov::Output<const ov::Node>> batchedOutputs;
     std::set<size_t> sBatchSize;
@@ -164,7 +164,7 @@ bool validateModelBatch(const std::shared_ptr<const ov::Model>& model, Logger lo
         node_info_printer(ov_node, "Output");
     }
 
-    logger.warning("=======> [validateModelBatch] return true  end");
+    logger.warning("=======> [validateModelBatch] return true  end");//call 3
     return true;
 }
 
@@ -201,7 +201,7 @@ std::tuple<std::shared_ptr<ov::Model>, bool> handlePluginBatching(
     const std::function<void(ov::intel_npu::BatchMode)>& updateBatchMode,
     std::optional<ov::Dimension>& originalBatch,
     Logger logger) {
-    logger.warning("=======> [handlePluginBatching] start");
+    logger.warning("=======> [handlePluginBatching] start");///call 1
     // Keep the original model for all no-op/early-return paths.
     // A mutable clone is created only when plugin batching is actually about to be applied.
     auto resultModel = std::const_pointer_cast<ov::Model>(model);
@@ -225,6 +225,7 @@ std::tuple<std::shared_ptr<ov::Model>, bool> handlePluginBatching(
 
     try {
         const auto pluginBatchingIsSupported = validateModelBatch(model, logger);
+        //call 2 & 3, return true
 
         if (!pluginBatchingIsSupported) {
             if (batchModeIsAvailable && batchMode == ov::intel_npu::BatchMode::AUTO) {
@@ -278,7 +279,7 @@ std::tuple<std::shared_ptr<ov::Model>, bool> handlePluginBatching(
             OPENVINO_THROW("Couldn't validate and reshape the model for PLUGIN batch mode. Error: ", ex.what());
         }
     }
-    logger.warning("=======> [handlePluginBatching] end");
+    logger.warning("=======> [handlePluginBatching] end");//call 4
     return {resultModel, successfullyDebatched};
 }
 

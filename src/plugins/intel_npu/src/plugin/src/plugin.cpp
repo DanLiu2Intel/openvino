@@ -581,9 +581,9 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     std::optional<int64_t> batch = std::nullopt;
     if (originalBatch.has_value() && successfullyDebatched) {
-        _logger.warning("===> [compile_model] 1 original batch detected and successfully debatched");
+        _logger.warning("===> [compile_model] 1 original batch detected and successfully debatched");//call
         batch = originalBatch.value().is_static() ? originalBatch.value().get_length() : -1;
-        _logger.warning("===> [compile_model] 2 original batch detected and successfully debatched, batch = %ld", batch);
+        _logger.warning("===> [compile_model] 2 original batch detected and successfully debatched, batch = %ld", batch); //call -1
         if (batch > 0) {
             _logger.warning("===> [compile_model] 3 original batch detected and successfully debatched");
             // Initial batch setup for static cases
