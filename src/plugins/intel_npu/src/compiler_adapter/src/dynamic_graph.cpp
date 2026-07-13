@@ -691,6 +691,7 @@ void DynamicGraph::initialize_impl(const FilteredConfig& config) {
     _logger.debug("Graph initialize finish");
 
     _batchSize = determine_batch_size();
+    std::cout << "[Graph initialize] determined batch size: " << (_batchSize.has_value() ? std::to_string(_batchSize.value()) : "none") << std::endl;
 
     // To ensure that the initialization of the graph does not exit prematurely due to nullptrs
     _init_completed.store(true, std::memory_order_release);
@@ -718,19 +719,23 @@ uint32_t DynamicGraph::get_last_submitted_id() const {
 }
 
 std::optional<size_t> DynamicGraph::determine_batch_size() {
+    std::cout << "[determine_batch_size] start" << std::endl;
     if (!_metadata.outputs.at(0).shapeFromIRModel.has_value()) {
         _logger.debug("Batching on the plugin is not used, batching is handled by the compiler");
+        std::cout << "[determine_batch_size] return 1 early due to no shape from IR model" << std::endl;
         return std::nullopt;
     }
 
     const ov::PartialShape& firstShape = *_metadata.outputs.at(0).shapeFromIRModel;
     if (firstShape.is_dynamic() || firstShape.rank().get_length() == 0) {
+        std::cout << "[determine_batch_size] return 2 early due to dynamic shape or rank 0" << std::endl;
         return std::nullopt;
     }
 
     const size_t candidateBatchSize = firstShape[utils::BATCH_AXIS].get_max_length();
     if (candidateBatchSize == 0 || candidateBatchSize == utils::DEFAULT_BATCH_SIZE) {
         _logger.debug("Batching on the plugin is not used, batching is handled by the compiler");
+        std::cout << "[determine_batch_size] return 3 early due to candidate batch size 0 or default" << std::endl;
         return std::nullopt;
     }
 
@@ -744,17 +749,19 @@ std::optional<size_t> DynamicGraph::determine_batch_size() {
 
             if (shapeFromCompiler.is_dynamic() || shapeFromCompiler.rank().get_length() == 0 ||
                 *shapeFromCompiler.begin() != utils::DEFAULT_BATCH_SIZE) {
+                std::cout << "[determine_batch_size] return 4 early due to shape from compiler not matching default batch size" << std::endl;
                 return false;
             }
 
             if (!descriptor.isStateInput && !descriptor.isStateOutput && !descriptor.isShapeTensor) {
                 if (shapeFromIRModel.is_dynamic() || shapeFromIRModel.rank().get_length() == 0 ||
                     *shapeFromIRModel.begin() != candidateBatchSize) {
+                    std::cout << "[determine_batch_size] return 5 early due to shape from IR model not matching candidate batch size" << std::endl;
                     return false;
                 }
             }
         }
-
+        std::cout << "[determine_batch_size] [END]return 6 (true)all descriptors passed, candidate batch size is valid" << std::endl;
         return true;
     };
 

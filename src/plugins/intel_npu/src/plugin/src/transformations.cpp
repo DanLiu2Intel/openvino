@@ -47,6 +47,7 @@ bool checkModelDynamicDims(const std::shared_ptr<const ov::Model>& model) {
 }
 
 bool validateModelBatch(const std::shared_ptr<const ov::Model>& model, Logger logger) {
+    logger.warning("=======> [validateModelBatch] start");
     std::set<ov::Output<const ov::Node>> batchedInputs;
     std::set<ov::Output<const ov::Node>> batchedOutputs;
     std::set<size_t> sBatchSize;
@@ -54,6 +55,7 @@ bool validateModelBatch(const std::shared_ptr<const ov::Model>& model, Logger lo
     // Limitation: Plugin batching is not supported when there are dynamic
     // dimensions other than the batch dimension.
     if (checkModelDynamicDims(model) && model->is_dynamic()) {
+        logger.warning("=======> [validateModelBatch] return false 1 due to dynamic dims");
         return false;
     }
 
@@ -95,6 +97,8 @@ bool validateModelBatch(const std::shared_ptr<const ov::Model>& model, Logger lo
             sstream << "Please check input id: " << input_id << " by the name: " << input->get_friendly_name()
                     << ", layout: " << layout.to_string() << ", is_dynamic: " << shape.is_dynamic();
             logger.info("%s", sstream.str().c_str());
+            logger.info("%s", sstream.str().c_str());
+            logger.warning("=======> [validateModelBatch] return false 2 due to input not batched by 0th dimension");
             return false;
         }
     }
@@ -120,6 +124,7 @@ bool validateModelBatch(const std::shared_ptr<const ov::Model>& model, Logger lo
                         "the name: %s, layout: %s",
                         output->get_friendly_name().c_str(),
                         layout.to_string().c_str());
+            logger.warning("=======> [validateModelBatch] return false 3 due to output not batched by 0th dimension");
             return false;
         }
     }
@@ -128,17 +133,20 @@ bool validateModelBatch(const std::shared_ptr<const ov::Model>& model, Logger lo
             "Only networks with inputs/outputs featuring batched dim are supported! Got inputs: %ld, outputs: %ld",
             batchedInputs.size(),
             batchedOutputs.size());
+        logger.warning("=======> [validateModelBatch] return false 4 due to missing batched inputs/outputs");
         return false;
     }
 
     if (sBatchSize.size() != 1) {
         logger.info("Batching size shall have same value for all tensors! Got unique batch sizes number: %ld",
                     sBatchSize.size());
+        logger.warning("=======> [validateModelBatch] return false 5 due to inconsistent batch sizes");
         return false;
     }
 
     if (*sBatchSize.begin() == intel_npu::utils::DEFAULT_BATCH_SIZE) {
         logger.info("PLUGIN batch won't be applied, got default batch value : %ld", *sBatchSize.begin());
+        logger.warning("=======> [validateModelBatch] return false 6 due to default batch size");
         return false;
     }
 
@@ -156,12 +164,14 @@ bool validateModelBatch(const std::shared_ptr<const ov::Model>& model, Logger lo
         node_info_printer(ov_node, "Output");
     }
 
+    logger.warning("=======> [validateModelBatch] return true  end");
     return true;
 }
 
 bool deBatchModel(std::shared_ptr<ov::Model>& model,
                   ov::Dimension newBatch,
                   std::optional<ov::Dimension>& originalBatch) {
+    std::cout << "[deBatchModel] start" << std::endl;
     try {
         std::map<std::string, ov::PartialShape> newShapes;
         auto shapeChanged = false;
@@ -176,9 +186,11 @@ bool deBatchModel(std::shared_ptr<ov::Model>& model,
             newShapes.emplace(item->get_friendly_name(), partShape);
         }
         model->reshape(newShapes);
+        std::cout << "=====> [deBatchModel] return success" << std::endl;
         return shapeChanged;
     } catch (const std::exception&) {
         // Don't throw - let caller handle the failure
+        std::cout << "====-> [deBatchModel] return failed" << std::endl;
         return false;
     }
 }
@@ -189,6 +201,7 @@ std::tuple<std::shared_ptr<ov::Model>, bool> handlePluginBatching(
     const std::function<void(ov::intel_npu::BatchMode)>& updateBatchMode,
     std::optional<ov::Dimension>& originalBatch,
     Logger logger) {
+    logger.warning("=======> [handlePluginBatching] start");
     // Keep the original model for all no-op/early-return paths.
     // A mutable clone is created only when plugin batching is actually about to be applied.
     auto resultModel = std::const_pointer_cast<ov::Model>(model);
@@ -202,6 +215,7 @@ std::tuple<std::shared_ptr<ov::Model>, bool> handlePluginBatching(
             (batchMode == ov::intel_npu::BatchMode::PLUGIN || batchMode == ov::intel_npu::BatchMode::AUTO);
 
         if (!isAutoOrPluginBatch) {
+            logger.warning("=======> [handlePluginBatching] return1");
             return {resultModel, successfullyDebatched};
         }
     } else {
@@ -217,6 +231,7 @@ std::tuple<std::shared_ptr<ov::Model>, bool> handlePluginBatching(
                 logger.info("Batching will be handled by compiler.");
                 updateBatchMode(ov::intel_npu::BatchMode::COMPILER);
             }
+            logger.warning("=======> [handlePluginBatching] return2");
             return {resultModel, successfullyDebatched};
         }
 
@@ -234,6 +249,7 @@ std::tuple<std::shared_ptr<ov::Model>, bool> handlePluginBatching(
                            ex.what());
 
             if (!deBatchModel(resultModel, ov::Dimension(1), originalBatch)) {
+                logger.warning("=======> [handlePluginBatching] return3");
                 OPENVINO_THROW("Cannot debatch a model");
             }
             logger.info("The model has been debatched successfully");
@@ -258,10 +274,11 @@ std::tuple<std::shared_ptr<ov::Model>, bool> handlePluginBatching(
                 updateBatchMode(ov::intel_npu::BatchMode::COMPILER);
             }
         } else {
+            logger.warning("=======> [handlePluginBatching] return4");
             OPENVINO_THROW("Couldn't validate and reshape the model for PLUGIN batch mode. Error: ", ex.what());
         }
     }
-
+    logger.warning("=======> [handlePluginBatching] end");
     return {resultModel, successfullyDebatched};
 }
 
