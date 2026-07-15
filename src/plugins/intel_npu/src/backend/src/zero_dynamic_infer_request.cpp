@@ -28,7 +28,6 @@ void ZeroDynamicInferRequest::create_pipeline_impl() {
                                           _config,
                                           _levelZeroInputTensors,
                                           _levelZeroOutputTensors,
-                                          _executionContext,
                                           batchSize.has_value() ? batchSize.value() : utils::DEFAULT_BATCH_SIZE);
 
     _logger.debug("create_pipeline_impl - completed");
@@ -202,11 +201,11 @@ std::shared_ptr<ZeroTensor> ZeroDynamicInferRequest::allocate_tensor(
 void ZeroDynamicInferRequest::infer_async() {
     _logger.debug("infer_async - started");
     OV_ITT_TASK_CHAIN(ZERO_INFER, itt::domains::LevelZeroBackend, "infer_async", "start");
+    prepare_inputs();
     // Store the predicted output shapes
     std::vector<ov::Shape> predictedShapes;
     predict_output_shapes(predictedShapes);
     check_tensor_and_predicted_shapes(predictedShapes);
-    prepare_inputs();
     prepare_outputs();
     update_tensor(predictedShapes);
 
@@ -251,8 +250,8 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<ov::Shape>& pred
             }
         }
 
-        predictedShapes =
-            DynamicPipeline::predict_output_shapes(*_graph, *_executionContext, inputTensors, outputTensors);
+        auto pipeline = dynamic_cast<DynamicPipeline>(_pipeline);
+        predictedShapes = pipeline->predict_output_shapes(*_graph, inputTensors, outputTensors);
     }
 }
 

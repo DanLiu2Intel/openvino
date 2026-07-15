@@ -141,7 +141,6 @@ public:
                     const Config& config,
                     const std::vector<std::vector<std::shared_ptr<ZeroTensor>>>& input_tensors,
                     const std::vector<std::shared_ptr<ZeroTensor>>& output_tensors,
-                    std::shared_ptr<VMExecutionContext> executionContext,
                     size_t batch_size = 1);
 
     DynamicPipeline(const DynamicPipeline&) = delete;
@@ -159,11 +158,7 @@ public:
                                 size_t batch_index,
                                 const std::shared_ptr<ov::ITensor>& userTensor = nullptr) override;
 
-    // Predicts VM runtime output shapes for the given input/output tensors. A nullptr tensor entry falls
-    // back to the graph metadata max shape. Independent of pipeline instance state, this depends only on the VM runtime
-    // handle and argument-provided context, making it a static method.
-    static std::vector<ov::Shape> predict_output_shapes(const IGraph& graph,
-                                                        VMExecutionContext& executionContext,
+    std::vector<ov::Shape> predict_output_shapes(const IGraph& graph,
                                                         const std::vector<std::shared_ptr<ov::ITensor>>& inputTensors,
                                                         const std::vector<std::shared_ptr<ov::ITensor>>& outputTensors);
 

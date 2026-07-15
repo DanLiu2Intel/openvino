@@ -174,14 +174,11 @@ DynamicPipeline::DynamicPipeline(const std::shared_ptr<ZeroInitStructsHolder>& i
                                  const Config& config,
                                  const std::vector<std::vector<std::shared_ptr<ZeroTensor>>>& input_tensors,
                                  const std::vector<std::shared_ptr<ZeroTensor>>& output_tensors,
-                                 std::shared_ptr<VMExecutionContext> executionContext,
                                  size_t batch_size)
-    : IPipeline(init_structs, graph, batch_size, config, "DynamicPipeline"),
-      _executionContext(std::move(executionContext)) {
+    : IPipeline(init_structs, graph, batch_size, config, "DynamicPipeline") {
     OV_ITT_SCOPED_TASK(itt::domains::LevelZeroBackend, "Zero_infer_request::DynamicPipeline::DynamicPipeline");
 
     OPENVINO_ASSERT(!_run_inferences_sequentially, "In-order execution doesn't work for dynamic pipeline");
-    OPENVINO_ASSERT(_executionContext != nullptr, "DynamicPipeline requires a valid execution context");
 
     _logger.debug("Initialization started, batch size: %zu", _batch_size);
 
@@ -419,7 +416,6 @@ void DynamicPipeline::execute_vm_runtime(npu_vm_runtime_handle_t vmRuntime,
 
 std::vector<ov::Shape> DynamicPipeline::predict_output_shapes(
     const IGraph& graph,
-    VMExecutionContext& executionContext,
     const std::vector<std::shared_ptr<ov::ITensor>>& inputTensors,
     const std::vector<std::shared_ptr<ov::ITensor>>& outputTensors) {
     Logger logger("DynamicPipeline::predict_output_shapes", Logger::global().level());
@@ -507,7 +503,7 @@ std::vector<ov::Shape> DynamicPipeline::predict_output_shapes(
         params.numOfInputs = static_cast<uint32_t>(inputMemRefHandles.size());
         params.pOutputs = outputMemRefHandles.data();
         params.numOfOutputs = static_cast<uint32_t>(outputMemRefHandles.size());
-        params.executionContext = executionContext.ensure(vmRuntime);
+        params.executionContext = _executionContext->ensure(vmRuntime);
 
         result = npuVMRuntimePredictOutputShape2(vmRuntime, &params);
     }
