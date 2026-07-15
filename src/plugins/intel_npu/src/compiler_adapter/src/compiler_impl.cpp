@@ -180,6 +180,10 @@ VCLCompilerImpl::~VCLCompilerImpl() {
     if (_logHandle) {
         _logHandle = nullptr;  // Log handle is released automatically with the compiler
     }
+
+    // Avoid deferring VCL singleton destruction to CRT atexit during DLL detach.
+    VCLApi::releaseInstance();
+
     _logger.info("VCL Compiler destroyed successfully");
 }
 

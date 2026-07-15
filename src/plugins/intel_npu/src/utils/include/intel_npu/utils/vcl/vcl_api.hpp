@@ -50,6 +50,7 @@ public:
     void operator=(VCLApi&&) = delete;
 
     static const std::shared_ptr<VCLApi> getInstance(const std::string& library_dir = std::string());
+    static void releaseInstance();
     std::shared_ptr<void> getLibrary() const {
         return lib;
     }
