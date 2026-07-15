@@ -40,8 +40,10 @@ protected:
     bool _isTensorChanged = false;
 
 private:
-    // VM execution context shared with the pipeline; created lazily, reused across inferences.
-    std::shared_ptr<VMExecutionContext> _executionContext = std::make_shared<VMExecutionContext>();
+    // Non-owning pointer to the concrete dynamic pipeline (owned by _pipeline as an IPipeline).
+    // Lets the infer request call dynamic-specific methods (e.g. predict_output_shapes) without
+    // repeated downcasts. Set in create_pipeline_impl, refreshed whenever the pipeline is recreated.
+    DynamicPipeline* _dynamicPipeline = nullptr;
 };
 
 }  //  namespace intel_npu
