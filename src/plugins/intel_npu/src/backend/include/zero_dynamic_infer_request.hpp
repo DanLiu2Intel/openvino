@@ -38,12 +38,6 @@ protected:
     void update_tensor(const std::vector<ov::Shape>& predictedShapes);
 
     bool _isTensorChanged = false;
-
-private:
-    // Non-owning pointer to the concrete dynamic pipeline (owned by _pipeline as an IPipeline).
-    // Lets the infer request call dynamic-specific methods (e.g. predict_output_shapes) without
-    // repeated downcasts. Set in create_pipeline_impl, refreshed whenever the pipeline is recreated.
-    DynamicPipeline* _dynamicPipeline = nullptr;
 };
 
 }  //  namespace intel_npu

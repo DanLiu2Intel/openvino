@@ -22,17 +22,13 @@ void ZeroDynamicInferRequest::create_pipeline_impl() {
     _logger.debug("create_pipeline_impl - constructing pipeline");
     auto batchSize = _graph->get_batch_size();
     // Construct pipeline. The pipeline owns the VM execution context shared by shape prediction and execution.
-    auto dynamicPipeline =
+    _pipeline =
         std::make_unique<DynamicPipeline>(_initStructs,
                                           _graph,
                                           _config,
                                           _levelZeroInputTensors,
                                           _levelZeroOutputTensors,
                                           batchSize.has_value() ? batchSize.value() : utils::DEFAULT_BATCH_SIZE);
-
-    // Cache the concrete type so the infer request can call dynamic-specific methods without downcasting.
-    _dynamicPipeline = dynamicPipeline.get();
-    _pipeline = std::move(dynamicPipeline);
 
     _logger.debug("create_pipeline_impl - completed");
 }
@@ -257,9 +253,12 @@ void ZeroDynamicInferRequest::predict_output_shapes(std::vector<ov::Shape>& pred
             }
         }
 
-        OPENVINO_ASSERT(_dynamicPipeline != nullptr,
+        OPENVINO_ASSERT(_pipeline != nullptr,
                         "Dynamic pipeline must be created before predicting output shapes");
-        predictedShapes = _dynamicPipeline->predict_output_shapes(inputTensors, outputTensors);
+        // ZeroDynamicInferRequest always constructs a DynamicPipeline in create_pipeline_impl,
+        // so this downcast is safe.
+        predictedShapes =
+            static_cast<DynamicPipeline*>(_pipeline.get())->predict_output_shapes(inputTensors, outputTensors);
     }
 }
 
