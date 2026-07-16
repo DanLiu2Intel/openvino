@@ -205,15 +205,30 @@ void ZeroDynamicInferRequest::infer_async() {
     // shares the pipeline-owned VM execution context with execution.
     prepare_inputs();
     prepare_outputs();
+    //update _command_lists.at(i)->updateMutableCommandList -> update _command_lists._arguments.at(i)->updateMutableCommandList -> _command_lists._arguments.at
 
     // Store the predicted output shapes
     std::vector<ov::Shape> predictedShapes;
     predict_output_shapes(predictedShapes);
+    //use userTesnor or level zeroTensor topredict
+    // covert  tenosr to memref and update the passed predictedShapes
+    //     no update for the _command_lists._arguments
+
     check_tensor_and_predicted_shapes(predictedShapes);
+    // check tensor size with predictedShapes, if not match (lesss than predictShape), will throw exception
+
     update_tensor(predictedShapes);
+    // -> update levelZeroTensor shape 
+    // -> update pipeline->update_graph_arguments
+    //     ->    _command_lists.at(i)->updateMutableCommandList
+    //         ->    update _command_lists._arguments
+    //
 
     OV_ITT_TASK_NEXT(ZERO_INFER, "push");
     _pipeline->push();
+    // update _pipeline._fences
+    // _pipeline.execute_vm_runtime
+    //   -> use  _command_lists._arguments to update the final memrefHandle and run npuVMRuntimeExecute
 }
 
 void ZeroDynamicInferRequest::predict_output_shapes(std::vector<ov::Shape>& predictedShapes) {
