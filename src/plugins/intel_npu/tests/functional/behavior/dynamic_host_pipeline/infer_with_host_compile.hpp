@@ -699,38 +699,30 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithBatchChange) {
     ScopedLogCapture logCapture;
 
     core->set_property("NPU", ov::log::level(ov::log::Level::DEBUG));
-
-    // Compile on NPU (forced HostCompile -> dynamic pipeline) and on the template plugin for reference.
-    ov::CompiledModel compiledModel;
-    try {
-        compiledModel = core->compile_model(model, target_device, configuration);
-    } catch (const ov::Exception& e) {
-        FAIL() << "Failed to compile dynamic-batch model for target device: " << e.what();
+    auto setupResult = prepareRuntimeCompareContext(model);
+    if (setupResult.status == RuntimeCompareStatus::fail) {
+        FAIL() << setupResult.message;
     }
-
-    ov::CompiledModel referenceCompiledModel;
-    try {
-        referenceCompiledModel = core->compile_model(model, ov::test::utils::DEVICE_TEMPLATE);
-    } catch (const ov::Exception& e) {
-        GTEST_SKIP() << "Template plugin is not available for reference comparison: " << e.what();
+    if (setupResult.status == RuntimeCompareStatus::skip) {
+        GTEST_SKIP() << setupResult.message;
     }
-
-    ov::InferRequest reqDynamic;
-    ov::InferRequest reqReference;
-    OV_ASSERT_NO_THROW(reqDynamic = compiledModel.create_infer_request());
-    OV_ASSERT_NO_THROW(reqReference = referenceCompiledModel.create_infer_request());
+    auto& testContext = setupResult.context;
 
     // First inference with batch = 1: the pipeline is created and its command list recorded for the first time.
     const ov::Shape shapeBatch1 = {1, 720, 1280, 16};
     ov::Tensor inBatch1 =
         ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shapeBatch1, 100, 0);
-    setInputInferAndCompare(model, reqDynamic, reqReference, inBatch1, "CompileAndInferWithBatchChange_batch1_first");
+    setInputInferAndCompare(model,
+                            testContext.reqDynamic,
+                            testContext.reqReference,
+                            inBatch1,
+                            "CompileAndInferWithBatchChange_batch1_first");
     ASSERT_TRUE(logContains(logCapture, "Reset command list to run with runtime"))
         << "Expected the first inference to record the command list, but got: " << logCapture.str();
 
     // Same batch again: no tensor change, the command list should be reused.
     logCapture.clear();
-    inferAndCompare(model, reqDynamic, reqReference, "CompileAndInferWithBatchChange_batch1_second");
+    inferAndCompare(model, testContext.reqDynamic, testContext.reqReference, "CompileAndInferWithBatchChange_batch1_second");
     ASSERT_TRUE(logContains(logCapture, "Reuse command list without update since no tensor change detected"))
         << "Expected the command list to be reused for the same batch, but got: " << logCapture.str();
 
@@ -740,7 +732,11 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithBatchChange) {
     const ov::Shape shapeBatch4 = {4, 720, 1280, 16};
     ov::Tensor inBatch4 =
         ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shapeBatch4, 100, 0);
-    setInputInferAndCompare(model, reqDynamic, reqReference, inBatch4, "CompileAndInferWithBatchChange_batch4");
+    setInputInferAndCompare(model,
+                            testContext.reqDynamic,
+                            testContext.reqReference,
+                            inBatch4,
+                            "CompileAndInferWithBatchChange_batch4");
     ASSERT_TRUE(logContains(logCapture, "Reset command list to run with runtime"))
         << "Expected a batch change to rebuild the pipeline and re-record the command list, but got: "
         << logCapture.str();
@@ -750,8 +746,8 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithBatchChange) {
     ov::Tensor inBatch1Again =
         ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shapeBatch1, 100, 0);
     setInputInferAndCompare(model,
-                            reqDynamic,
-                            reqReference,
+                            testContext.reqDynamic,
+                            testContext.reqReference,
                             inBatch1Again,
                             "CompileAndInferWithBatchChange_batch1_again");
     ASSERT_TRUE(logContains(logCapture, "Reset command list to run with runtime"))
@@ -816,10 +812,8 @@ TEST_P(InferWithDefaultHostCompileTests, CompileDynamicModelWithNoHostCompileMod
     OV_ASSERT_NO_THROW(reqDynamic.infer());
 }
 
-// Compile a dynamic model in the default (no explicit host-compile mode) configuration, run one inference with a
-// concrete shape and compare the output against the template plugin reference.
-// This complements CompileDynamicModelWithNoHostCompileMode (which only checks the exported blob type) by also
-// validating numerical correctness for both dynamic-model kinds:
+
+// validating infer result for both dynamic-model kinds:
 //   - MaxPool_NCHW          : dynamic spatial dims  -> bytecode blob, runs through the host-compile DynamicPipeline.
 //   - MaxPool_NCHW_DynBatch : dynamic batch         -> ELF blob, dynamic batch handled by the regular plugin path.
 TEST_P(InferWithDefaultHostCompileTests, CompileDynamicModelInferAndCompareWithTemplate) {
