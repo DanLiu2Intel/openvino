@@ -79,6 +79,14 @@ std::shared_ptr<IGraph> PluginCompilerAdapter::compile(const std::shared_ptr<con
             const auto& inputs = model->inputs();
             const auto& outputs = model->outputs();
             const bool inputsDynamic = std::any_of(inputs.begin(), inputs.end(), isDynamic);
+            //等价于下面的部分
+            // bool inputsDynamic = false;
+            // for (const auto& input : inputs) {
+            //     if (isDynamic(input)) {
+            //         inputsDynamic = true;
+            //     break;
+            //     }
+            // }
             const bool outputsDynamic = std::any_of(outputs.begin(), outputs.end(), isDynamic);
             if (inputsDynamic && outputsDynamic) {
                 _logger.info("NPU_COMPILATION_MODE not set; selecting 'HostCompile_Interpreter' "
