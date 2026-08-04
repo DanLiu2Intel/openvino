@@ -37,8 +37,10 @@ Graph::Graph(const std::shared_ptr<ZeGraphExtWrappers>& zeGraphExt,
       _logger("Graph", config.get<LOG_LEVEL>()) {
     if (compatibilityDescriptor.has_value()) { // or simply: if (compatibilityDescriptor)
         std::cout << "[OV][Graph]  Descriptor: " << *compatibilityDescriptor << std::endl;
+        _logger.info("[OV][Graph]  Descriptor: %s", compatibilityDescriptor->c_str());
     } else {
         std::cout << "[OV][Graph]  Descriptor is empty/nullopt." << std::endl;
+        _logger.info("[OV][Graph]  Descriptor is empty/nullopt.");
     }
     if (!config.get<CREATE_EXECUTOR>() || config.get<DEFER_WEIGHTS_LOAD>()) {
         _logger.info("Graph initialize is deferred from the \"Graph\" constructor");
