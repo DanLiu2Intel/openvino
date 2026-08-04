@@ -193,6 +193,7 @@ std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
     return compile(model, config, false);
 }
 
+/// 调用这些内容是什么？？？？
 std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
     const std::shared_ptr<const ov::Model>& model,
     const FilteredConfig& config,
@@ -303,12 +304,15 @@ std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
     std::optional<std::string> compatibilityString;
     uint64_t compatibilityStringSize = 0;
     result = vclExecutableGetCompatibilityString(executable, nullptr, &compatibilityStringSize);
+    std::cout << "==[ VCLCompilerImpl::compile]====> compatibilityString is " << (compatibilityString ? *compatibilityString : "nullopt") << std::endl;
     if (result == VCL_RESULT_ERROR_UNSUPPORTED_FEATURE) {
+        std::cout << "==[ VCLCompilerImpl::compile][2]====> not supported " << std::endl;
         // Some compilation modes (e.g. HostCompile_Interpreter) do not produce a compatibility descriptor.
         _logger.info("vclExecutableGetCompatibilityString is not supported for this executable (0x%x); "
                      "compatibility string will be absent",
                      uint32_t(result));
     } else if (result != VCL_RESULT_SUCCESS || compatibilityStringSize == 0) {
+        std::cout << "==[ VCLCompilerImpl::compile][3]====> Failed to get compatibility string size." << std::endl;
         if (executable != nullptr) {
             vclExecutableDestroy(executable);
         }
@@ -318,6 +322,7 @@ std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
                        " - ",
                        getLatestVCLLog(_logHandle));
     } else {
+        std::cout << "==[ VCLCompilerImpl::compile][4]====> Getting compatibility string." << std::endl;
         OPENVINO_ASSERT(compatibilityStringSize <= std::numeric_limits<size_t>::max(),
                         "Compatibility string size is too large to allocate a local buffer");
         compatibilityString.emplace(static_cast<size_t>(compatibilityStringSize), '\0');
@@ -339,7 +344,7 @@ std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
             --outSize;
         }
         compatibilityString->resize(outSize);
-        _logger.debug("Compatibility string from VCL: %s", compatibilityString->c_str());
+        _logger.debug("Compatibility string from VCL: %s", compatibilityString->c_str());  ////
     }
 
     result = vclExecutableDestroy(executable);
@@ -350,7 +355,7 @@ std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
                        " - ",
                        getLatestVCLLog(_logHandle));
     }
-
+    // 似乎可以直接拿到 compatibilityString
     return std::make_pair<ov::Tensor, std::optional<std::string>>(std::move(alignedBlob),
                                                                   std::move(compatibilityString));
 }
@@ -430,10 +435,18 @@ ov::Tensor VCLCompilerImpl::compileWsIterative(const std::shared_ptr<ov::Model>&
                                                const FilteredConfig& config,
                                                size_t callNumber) const {
     _logger.debug("compileWsIterative start");
+    std::cout << "==[ compileWsIterative]====> start" << std::endl;
     FilteredConfig updatedConfig = config;
     updatedConfig.update({{ov::intel_npu::ws_compile_call_number.name(), std::to_string(callNumber)}});
     // The compatibility descriptor is not supported in this case
-    return compile(model, updatedConfig, true).first;
+    // 仅返回了 tensor的内容，没有返回 compatibility string
+    //src/plugins/intel_npu/src/compiler_adapter/src/compiler_impl.cpp:197
+    ///std::pair<ov::Tensor, std::optional<std::string>>
+    // return compile(model, updatedConfig, true).first;
+    auto result = compile(model, updatedConfig, true);
+    
+    std::cout << "==[ compileWsIterative]====> end, result.second is " << (result.second ? *result.second : "nullopt") << std::endl;
+    return result.first;
 }
 
 std::vector<ov::ProfilingInfo> VCLCompilerImpl::process_profiling_output(const std::vector<uint8_t>& profData,
