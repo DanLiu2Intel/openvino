@@ -93,13 +93,19 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     networkMeta.name = model->get_friendly_name();
     if(graphDesc._handle == nullptr) {
         std::cout << "[OV][DriverCompilerAdapter::compile] Graph handle is null." << std::endl;
+        _logger.warning("[OV][DriverCompilerAdapter::compile] Graph handle is null.");
     } else {
         std::cout << "[OV][DriverCompilerAdapter::compile] Graph handle is NOT null." << std::endl;
+        _logger.warning("[OV][DriverCompilerAdapter::compile] Graph handle is NOT null.");
     }
     std::cout << "===============1===========" << std::endl;
+    _logger.warning("===============1===========");
     std::cout << "!!!==[DriverCompilerAdapter::compile]====> end, CompatibilityDescriptor is "
             << get_compatibility_descriptor(graphDesc._handle).value_or("N/A")
             << std::endl;
+_logger.warning("=====!!!==[DriverCompilerAdapter::compile]====> end, CompatibilityDescriptor is %s",
+                get_compatibility_descriptor(graphDesc._handle).value_or("N/A").c_str());
+    _logger.warning("===============2===========");
     std::cout << "===============2===========" << std::endl;
     return std::make_shared<Graph>(_zeGraphExt,
                                    _zeroInitStruct,
@@ -221,12 +227,16 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(std::shared_ptr<ov::Mod
     model = nullptr;
     if(graphDescMain._handle == nullptr) {
         std::cout << "[OV][DriverCompilerAdapter::compileWS] Graph handle is null." << std::endl;
+        _logger.warning("2[OV][DriverCompilerAdapter::compileWS] Graph handle is null.");
     } else {
         std::cout << "[OV][DriverCompilerAdapter::compileWS] Graph handle is NOT null." << std::endl;
+        _logger.warning("2[OV][DriverCompilerAdapter::compileWS] Graph handle is NOT null.");
     }
     std::cout << "!!!==[DriverCompilerAdapter::compileWS]====> end, mainCompatibilityDescriptor is "
         << get_compatibility_descriptor(graphDescMain._handle).value_or("N/A")
         << std::endl;
+    _logger.warning("!!!=2=[DriverCompilerAdapter::compileWS]====> end, mainCompatibilityDescriptor is %s",
+                    get_compatibility_descriptor(graphDescMain._handle).value_or("N/A").c_str());
     return std::make_shared<WeightlessGraph>(_zeGraphExt,
                                              _zeroInitStruct,
                                              mainGraphHandle,
