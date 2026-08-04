@@ -114,6 +114,7 @@ std::shared_ptr<IGraph> Parser::parse(const ov::Tensor& mainBlob,
                                              initBlobs,
                                              std::move(constants),
                                              config,
+                                             compatibilityDescriptor,
                                              blobIsPersistent);
 }
 

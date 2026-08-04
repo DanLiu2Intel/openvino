@@ -33,6 +33,7 @@ public:
                     std::optional<std::vector<ov::Tensor>> initBlobs,
                     std::unordered_map<size_t, std::shared_ptr<ov::op::v0::Constant>>&& constants,
                     const FilteredConfig& config,
+                    const std::optional<std::string>& compatibilityDescriptor = std::nullopt,
                     const bool blobIsPersistent = false);
 
     /**

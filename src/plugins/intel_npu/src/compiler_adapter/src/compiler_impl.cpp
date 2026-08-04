@@ -304,6 +304,7 @@ std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
     std::optional<std::string> compatibilityString;
     uint64_t compatibilityStringSize = 0;
     result = vclExecutableGetCompatibilityString(executable, nullptr, &compatibilityStringSize);
+    // none ? 没有传properties?
     std::cout << "==[ VCLCompilerImpl::compile]====> compatibilityString is " << (compatibilityString ? *compatibilityString : "nullopt") << std::endl;
     if (result == VCL_RESULT_ERROR_UNSUPPORTED_FEATURE) {
         std::cout << "==[ VCLCompilerImpl::compile][2]====> not supported " << std::endl;
@@ -322,6 +323,7 @@ std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
                        " - ",
                        getLatestVCLLog(_logHandle));
     } else {
+        //  run here to get the compatibility string
         std::cout << "==[ VCLCompilerImpl::compile][4]====> Getting compatibility string." << std::endl;
         OPENVINO_ASSERT(compatibilityStringSize <= std::numeric_limits<size_t>::max(),
                         "Compatibility string size is too large to allocate a local buffer");
@@ -345,6 +347,8 @@ std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
         }
         compatibilityString->resize(outSize);
         _logger.debug("Compatibility string from VCL: %s", compatibilityString->c_str());  ////
+        // [DEBUG] 15:06:37.253 [VCLCompilerImpl] Compatibility string from VCL: compiler=8.2;npu=5010;t=3;elf=2.0.0;mi=11.13.0
+        // compatibilityString is compiler=8.2;npu=5010;t=3;elf=2.0.0;mi=11.13.0
     }
 
     result = vclExecutableDestroy(executable);
@@ -431,9 +435,10 @@ std::vector<ov::Tensor> VCLCompilerImpl::compileWsOneShot(const std::shared_ptr<
     return initMainTensors;
 }
 
-ov::Tensor VCLCompilerImpl::compileWsIterative(const std::shared_ptr<ov::Model>& model,
-                                               const FilteredConfig& config,
-                                               size_t callNumber) const {
+std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compileWsIterative(
+    const std::shared_ptr<ov::Model>& model,
+    const FilteredConfig& config,
+    size_t callNumber) const {
     _logger.debug("compileWsIterative start");
     std::cout << "==[ compileWsIterative]====> start" << std::endl;
     FilteredConfig updatedConfig = config;
@@ -444,9 +449,10 @@ ov::Tensor VCLCompilerImpl::compileWsIterative(const std::shared_ptr<ov::Model>&
     ///std::pair<ov::Tensor, std::optional<std::string>>
     // return compile(model, updatedConfig, true).first;
     auto result = compile(model, updatedConfig, true);
-    
+
     std::cout << "==[ compileWsIterative]====> end, result.second is " << (result.second ? *result.second : "nullopt") << std::endl;
-    return result.first;
+    ///==[ compileWsIterative]====> end, result.second is compiler=8.2;npu=5010;t=3;elf=2.0.0;mi=11.13.0
+    return result;
 }
 
 std::vector<ov::ProfilingInfo> VCLCompilerImpl::process_profiling_output(const std::vector<uint8_t>& profData,
