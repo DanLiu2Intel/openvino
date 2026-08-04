@@ -91,7 +91,7 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     auto networkMeta = _zeGraphExt->getNetworkMeta(graphDesc);
     networkMeta.name = model->get_friendly_name();
 
-    std::cout << "==[DriverCompilerAdapter::compile]====> end, CompatibilityDescriptor is "
+    std::cout << "!!!==[DriverCompilerAdapter::compile]====> end, CompatibilityDescriptor is "
             << get_compatibility_descriptor(graphDesc._handle).value_or("N/A")
             << std::endl;
     return std::make_shared<Graph>(_zeGraphExt,
@@ -213,7 +213,7 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(std::shared_ptr<ov::Mod
     // shared_ptr semantics.
     model = nullptr;
 
-    std::cout << "==[DriverCompilerAdapter::compileWS]====> end, mainCompatibilityDescriptor is "
+    std::cout << "!!!==[DriverCompilerAdapter::compileWS]====> end, mainCompatibilityDescriptor is "
         << get_compatibility_descriptor(graphDescMain._handle).value_or("N/A")
         << std::endl;
     return std::make_shared<WeightlessGraph>(_zeGraphExt,
