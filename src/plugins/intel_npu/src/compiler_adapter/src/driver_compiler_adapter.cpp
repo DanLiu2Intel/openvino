@@ -39,6 +39,7 @@ DriverCompilerAdapter::DriverCompilerAdapter(const std::shared_ptr<ZeroInitStruc
 
 std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<const ov::Model>& model,
                                                        const FilteredConfig& config) const {
+    std::cout << "=========DriverCompilerAdapter::compile===========" << std::endl;
     OV_ITT_TASK_CHAIN(COMPILE_BLOB, itt::domains::NPUPlugin, "DriverCompilerAdapter", "compile");
 
     const ze_graph_compiler_version_info_t& compilerVersion = _compilerProperties.compilerVersion;
@@ -90,10 +91,16 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compile(const std::shared_ptr<con
     OV_ITT_TASK_NEXT(COMPILE_BLOB, "getNetworkMeta");
     auto networkMeta = _zeGraphExt->getNetworkMeta(graphDesc);
     networkMeta.name = model->get_friendly_name();
-
+    if(graphDesc._handle == nullptr) {
+        std::cout << "[OV][DriverCompilerAdapter::compile] Graph handle is null." << std::endl;
+    } else {
+        std::cout << "[OV][DriverCompilerAdapter::compile] Graph handle is NOT null." << std::endl;
+    }
+    std::cout << "===============1===========" << std::endl;
     std::cout << "!!!==[DriverCompilerAdapter::compile]====> end, CompatibilityDescriptor is "
             << get_compatibility_descriptor(graphDesc._handle).value_or("N/A")
             << std::endl;
+    std::cout << "===============2===========" << std::endl;
     return std::make_shared<Graph>(_zeGraphExt,
                                    _zeroInitStruct,
                                    graphDesc,
@@ -212,7 +219,11 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(std::shared_ptr<ov::Mod
     // Note: Delete model prematurely, constants are still valid due to
     // shared_ptr semantics.
     model = nullptr;
-
+    if(graphDescMain._handle == nullptr) {
+        std::cout << "[OV][DriverCompilerAdapter::compileWS] Graph handle is null." << std::endl;
+    } else {
+        std::cout << "[OV][DriverCompilerAdapter::compileWS] Graph handle is NOT null." << std::endl;
+    }
     std::cout << "!!!==[DriverCompilerAdapter::compileWS]====> end, mainCompatibilityDescriptor is "
         << get_compatibility_descriptor(graphDescMain._handle).value_or("N/A")
         << std::endl;
