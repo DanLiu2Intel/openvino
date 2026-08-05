@@ -570,8 +570,10 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
             std::stringstream strStream;
             strStream << ov::hint::PerformanceMode::THROUGHPUT;
             modifiedConfig.update({{ov::hint::performance_mode.name(), strStream.str()}});
+            std::cout << "=[PLUGIN]== check config=1== modifiedConfig is " << modifiedConfig.toString() << std::endl;
             graph = compileWithConfig(std::move(modelToCompile), modifiedConfig);
         } else {
+            std::cout << "=[PLUGIN]== check config=2== localConfig is " << localConfig.toString() << std::endl;
             graph = compileWithConfig(std::move(modelToCompile), localConfig);
         }
     } catch (const std::exception& ex) {
