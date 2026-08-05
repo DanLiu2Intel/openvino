@@ -129,7 +129,7 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(std::shared_ptr<ov::Mod
                                                          const FilteredConfig& config) const {
     OV_ITT_TASK_CHAIN(COMPILE_BLOB, itt::domains::NPUPlugin, "DriverCompilerAdapter", "compileWS");
 
-    const ze_graph_compiler_version_info_t& compilerVersion = _compilerProperties.compilerVersion;
+    const ze_graph_compiler_version_info_t& compierVelrsion = _compilerProperties.compilerVersion;
     if ((compilerVersion.major < 6) || (compilerVersion.major == 6 && compilerVersion.minor < 3)) {
         OPENVINO_THROW("Minimum compiler version required for weights separation: 6.3. Found: ",
                        compilerVersion.major,
@@ -175,6 +175,7 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(std::shared_ptr<ov::Mod
     NetworkMetadata mainNetworkMetadata;
     std::vector<GraphDescriptor> initGraphDescriptors;
     GraphDescriptor mainGraphHandle;
+    std::optional<std::string> mainCompatibilityDescriptor;
     size_t callNumber = 0;
 
     // Convention: run until the main schedule has been returned.
@@ -188,7 +189,6 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(std::shared_ptr<ov::Mod
                                                        std::cref(updatedConfig),
                                                        std::cref(compilerVersion),
                                                        std::placeholders::_1);
-    GraphDescriptor graphDescMain;
     while (true) {
         _logger.debug("compileWS iteration %d", callNumber);
         updatedConfig.update({{ov::intel_npu::ws_compile_call_number.name(), std::to_string(callNumber++)}});
@@ -212,10 +212,10 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(std::shared_ptr<ov::Mod
             initNetworkMetadata.push_back(std::move(networkMetadata));
             initGraphDescriptors.push_back(graphDesc);
         } else {
-            graphDescMain = graphDesc;
             networkMetadata.name = model->get_friendly_name() + "_main";
             mainNetworkMetadata = std::move(networkMetadata);
             mainGraphHandle = graphDesc;
+            mainCompatibilityDescriptor = get_compatibility_descriptor(mainGraphHandle._handle);
             serializedIR = SerializedIR();
             // By convention, the main schedule is the last result produced by the compiler
             break;
@@ -234,22 +234,6 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(std::shared_ptr<ov::Mod
     // Note: Delete model prematurely, constants are still valid due to
     // shared_ptr semantics.
     model = nullptr;
-    if(graphDescMain._handle == nullptr) {
-        std::cout << "[OV][DriverCompilerAdapter::compileWS] Graph handle is null." << std::endl;
-        _logger.warning("2[OV][DriverCompilerAdapter::compileWS] Graph handle is null.");
-    } else {
-        std::cout << "[OV][DriverCompilerAdapter::compileWS] Graph handle is NOT null." << std::endl;
-        _logger.warning("2[OV][DriverCompilerAdapter::compileWS] Graph handle is NOT null.");
-    }
-    if (get_compatibility_descriptor(graphDescMain._handle).has_value()) {
-        std::cout << "[OV][DriverCompilerAdapter::compileWS] Main CompatibilityDescriptor is "
-                  << get_compatibility_descriptor(graphDescMain._handle).value() << std::endl;
-        _logger.warning("[OV][DriverCompilerAdapter::compileWS] Main CompatibilityDescriptor is %s",
-                        get_compatibility_descriptor(graphDescMain._handle).value().c_str());
-    } else {
-        std::cout << "[OV][DriverCompilerAdapter::compileWS] Main CompatibilityDescriptor is N/A" << std::endl;
-        _logger.warning("[OV][DriverCompilerAdapter::compileWS] Main CompatibilityDescriptor is N/A");
-    }
     return std::make_shared<WeightlessGraph>(_zeGraphExt,
                                              _zeroInitStruct,
                                              mainGraphHandle,
@@ -259,7 +243,8 @@ std::shared_ptr<IGraph> DriverCompilerAdapter::compileWS(std::shared_ptr<ov::Mod
                                              std::move(initNetworkMetadata),
                                              /* initBlobs = */ std::nullopt,
                                              std::move(constants),
-                                             updatedConfig);
+                                             updatedConfig,
+                                             mainCompatibilityDescriptor);
 }
 
 ov::SupportedOpsMap DriverCompilerAdapter::query(const std::shared_ptr<const ov::Model>& model,
