@@ -250,6 +250,45 @@ TEST_P(ClassCompatibilityStringTestSuite, RuntimeRequirementsIsSupportedForWSIte
     ASSERT_FALSE(requirements.empty());
 }
 
+TEST_P(ClassCompatibilityStringTestSuite, RuntimeRequirementsIsSupportedForWSIterativeDriver) {
+    const auto initStructs = ::intel_npu::ZeroInitStructsHolder::getInstance();
+    const bool driverHandlesCompatibilityCheck =
+        initStructs != nullptr && initStructs->getZeDrvApiVersion() >= ZE_MAKE_VERSION(1, 16);
+    const bool driverSupportsWSIterative = initStructs != nullptr && initStructs->getCompilerVersion() >= ZE_MAKE_VERSION(6, 3);
+    if (!driverHandlesCompatibilityCheck || !driverSupportsWSIterative) {
+        GTEST_SKIP() << "DRIVER WS iterative runtime requirements are unsupported by current environment";
+    }
+
+    std::stringstream model_xml, model_bin;
+    {
+        auto model = ov::test::utils::make_conv_pool_relu();
+        ov::pass::Serialize serializer(model_xml, model_bin);
+        serializer.run_on_model(model);
+    }
+    auto model_bin_str = model_bin.str();
+    ov::Tensor model_weights(ov::element::u8, ov::Shape{model_bin_str.size()});
+    std::memcpy(model_weights.data<char>(), model_bin_str.data(), model_bin_str.size());
+    auto model = core.read_model(model_xml.str(), model_weights);
+
+    ov::CompiledModel compiledModel;
+    OV_ASSERT_NO_THROW(compiledModel = core.compile_model(
+                           model,
+                           deviceName,
+                           {ov::intel_npu::compiler_type(ov::intel_npu::CompilerType::DRIVER),
+                            ov::enable_weightless(true),
+                            ov::intel_npu::separate_weights_version(ov::intel_npu::WSVersion::ITERATIVE),
+                            ov::intel_npu::bypass_umd_caching(true)}));
+
+    std::vector<ov::PropertyName> properties;
+    OV_ASSERT_NO_THROW(properties = compiledModel.get_property(ov::supported_properties));
+    auto it = find(properties.cbegin(), properties.cend(), ov::runtime_requirements);
+    ASSERT_TRUE(it != properties.cend());
+
+    std::string requirements;
+    OV_ASSERT_NO_THROW(requirements = compiledModel.get_property(ov::runtime_requirements));
+    ASSERT_FALSE(requirements.empty());
+}
+
 TEST_P(ClassCompatibilityStringTestSuite, RuntimeRequirementsExportImport) {
     // Forcing CIP as the current compiler type
     auto model = ov::test::utils::make_conv_pool_relu();
@@ -332,6 +371,60 @@ TEST_P(ClassCompatibilityStringTestSuite, RuntimeRequirementsExportImportForWSIt
 
     // The equality must be guaranteed for a given openvino version
     // If the blob was exported with a different OV version, requirements might differ
+    ASSERT_EQ(reference_requirements, imported_requirements);
+}
+
+TEST_P(ClassCompatibilityStringTestSuite, RuntimeRequirementsExportImportForWSIterativeDriver) {
+    const auto initStructs = ::intel_npu::ZeroInitStructsHolder::getInstance();
+    const bool driverHandlesCompatibilityCheck =
+        initStructs != nullptr && initStructs->getZeDrvApiVersion() >= ZE_MAKE_VERSION(1, 16);
+    const bool driverSupportsWSIterative = initStructs != nullptr && initStructs->getCompilerVersion() >= ZE_MAKE_VERSION(6, 3);
+    if (!driverHandlesCompatibilityCheck || !driverSupportsWSIterative) {
+        GTEST_SKIP() << "DRIVER WS iterative runtime requirements are unsupported by current environment";
+    }
+
+    std::stringstream model_xml, model_bin;
+    {
+        auto model = ov::test::utils::make_conv_pool_relu();
+        ov::pass::Serialize serializer(model_xml, model_bin);
+        serializer.run_on_model(model);
+    }
+    auto model_bin_str = model_bin.str();
+    ov::Tensor model_weights(ov::element::u8, ov::Shape{model_bin_str.size()});
+    std::memcpy(model_weights.data<char>(), model_bin_str.data(), model_bin_str.size());
+    auto model = core.read_model(model_xml.str(), model_weights);
+
+    ov::CompiledModel compiledModel;
+    OV_ASSERT_NO_THROW(compiledModel = core.compile_model(
+                           model,
+                           deviceName,
+                           {ov::intel_npu::compiler_type(ov::intel_npu::CompilerType::DRIVER),
+                            ov::enable_weightless(true),
+                            ov::intel_npu::separate_weights_version(ov::intel_npu::WSVersion::ITERATIVE),
+                            ov::intel_npu::bypass_umd_caching(true)}));
+
+    std::vector<ov::PropertyName> properties;
+    OV_ASSERT_NO_THROW(properties = compiledModel.get_property(ov::supported_properties));
+    auto it = find(properties.cbegin(), properties.cend(), ov::runtime_requirements);
+    ASSERT_TRUE(it != properties.cend());
+
+    std::string reference_requirements;
+    OV_ASSERT_NO_THROW(reference_requirements = compiledModel.get_property(ov::runtime_requirements));
+    ASSERT_FALSE(reference_requirements.empty());
+
+    std::stringstream compiled_blob;
+    OV_ASSERT_NO_THROW(compiledModel.export_model(compiled_blob));
+
+    OV_ASSERT_NO_THROW(compiledModel = {});
+    OV_ASSERT_NO_THROW(compiledModel = core.import_model(compiled_blob, deviceName));
+
+    OV_ASSERT_NO_THROW(properties = compiledModel.get_property(ov::supported_properties));
+    it = find(properties.cbegin(), properties.cend(), ov::runtime_requirements);
+    ASSERT_TRUE(it != properties.cend());
+
+    std::string imported_requirements;
+    OV_ASSERT_NO_THROW(imported_requirements = compiledModel.get_property(ov::runtime_requirements));
+    ASSERT_FALSE(imported_requirements.empty());
     ASSERT_EQ(reference_requirements, imported_requirements);
 }
 
