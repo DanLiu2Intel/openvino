@@ -73,19 +73,32 @@ endif()
 #
 
 if(ENABLE_OV_ZERO_LOADER)
+    message("==1==> OV_PkgConfig_VISIBILITY is ${OV_PkgConfig_VISIBILITY}")
+    # ENABLE_SYSTEM_LEVEL_ZERO=ON 只表示“尝试使用系统版本”
     if(ENABLE_SYSTEM_LEVEL_ZERO)
         pkg_search_module(level_zero QUIET
                           IMPORTED_TARGET
                           ${OV_PkgConfig_VISIBILITY}
                           level-zero)
+        message("==2==> OV_PkgConfig_VISIBILITY is ${OV_PkgConfig_VISIBILITY}")
         if(level_zero_FOUND)
+            message("==3==> OV_PkgConfig_VISIBILITY is ${OV_PkgConfig_VISIBILITY}")
+            # 创建一个别名 target: LevelZero::LevelZero 指向 PkgConfig::level_zero
             add_library(LevelZero::LevelZero ALIAS PkgConfig::level_zero)
             message(STATUS "${PKG_CONFIG_EXECUTABLE}: level_zero (${level_zero_VERSION}) is found at ${level_zero_PREFIX}")
         endif()
     endif()
+    message("==4==> PKG_CONFIG_EXECUTABLE is ${PKG_CONFIG_EXECUTABLE}: level_zero is (${level_zero_VERSION}) is found at ${level_zero_PREFIX}")
+    message("==4==> OV_PkgConfig_VISIBILITY is ${OV_PkgConfig_VISIBILITY}")
 
+    # 没有找到的话，使用 OpenVINO 自带的 LevelZero
     if(NOT level_zero_FOUND)
+        # add_subdirectory(thirdparty/level_zero)：告诉 CMake 去 thirdparty/level_zero 目录下寻找另一个 CMakeLists.txt 文件，
+        # 并将其中的配置和目标（Targets，如库或可执行文件）纳入当前的主编译工程中。
+        # EXCLUDE_FROM_ALL：这是一个关键修饰符，意思是将这个子目录中的所有编译目标排除在“默认编译目标（ALL）”之外。
         add_subdirectory(thirdparty/level_zero EXCLUDE_FROM_ALL)
+
+        # target别名
         add_library(LevelZero::LevelZero ALIAS ze_loader)
         ov_developer_package_export_targets(
             TARGET ze_loader
@@ -94,12 +107,20 @@ if(ENABLE_OV_ZERO_LOADER)
                 $<TARGET_PROPERTY:ze_loader,INTERFACE_INCLUDE_DIRECTORIES>/loader)
         ov_install_static_lib(ze_loader ${OV_CPACK_COMP_CORE})
     endif()
+    message("==5==> OV_PkgConfig_VISIBILITY is ${OV_PkgConfig_VISIBILITY}")
     add_library(level_zero_headers INTERFACE)
-    add_library(LevelZero::Headers ALIAS level_zero_headers)
+    add_library(LevelZero::Headers ALIAS level_zero_headers) ## LevelZero::Headers的内容
+    
+    # 检查当前 CMake 构建环境中是否存在名为 prepare_ze_headers 的 target
+    # add_custom_target(prepare_ze_headers ALL DEPENDS "${ZE_HEADERS_STAMP_FILE}")
     if (TARGET prepare_ze_headers)
         add_dependencies(level_zero_headers prepare_ze_headers)
     endif()
+    # 如果 prepare_ze_headers 存在，就保证在使用 LevelZero::Headers 前，先执行头文件准备步骤。
+    message("==========1==========")
     get_target_property(ZE_INCLUDE_DIRS LevelZero::LevelZero INTERFACE_INCLUDE_DIRECTORIES)
+    message("==========2==========")
+    # LevelZero::Headers 是什么, 反正放到了这里
     target_include_directories(level_zero_headers INTERFACE ${ZE_INCLUDE_DIRS})
 endif()
 

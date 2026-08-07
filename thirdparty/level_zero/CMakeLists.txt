@@ -40,6 +40,8 @@ add_custom_command(OUTPUT "${ZE_HEADERS_STAMP_FILE}"
     COMMENT "Copying Level Zero headers..."
 )
 add_custom_target(prepare_ze_headers ALL DEPENDS "${ZE_HEADERS_STAMP_FILE}")
+
+message("==thirdparty==> prepare_ze_headers in ${ZE_HEADERS_STAMP_FILE}")
 add_dependencies(ze_loader prepare_ze_headers)
 
 # OpenVINO prefers include pattern with level-zero pattern 

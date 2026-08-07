@@ -29,6 +29,7 @@ target_include_directories(${TARGET_NAME}
     $<TARGET_PROPERTY:LevelZero::NPUExt,INTERFACE_INCLUDE_DIRECTORIES>
     $<BUILD_INTERFACE:${NPU_UTILS_SOURCE_DIR}/include>)
 
+## ok???
 target_link_libraries(${TARGET_NAME} PUBLIC openvino::runtime::dev openvino::zero_loader)
 
 #
