@@ -10,6 +10,25 @@
 #include "openvino/util/shared_object.hpp"
 
 namespace intel_npu {
+namespace {
+
+std::mutex& get_vcl_api_mutex() {
+    static std::mutex mtx;
+    return mtx;
+}
+
+std::string& get_initialized_dir() {
+    static std::string initialized_dir;
+    return initialized_dir;
+}
+
+std::shared_ptr<VCLApi>& get_vcl_api_instance() {
+    static std::shared_ptr<VCLApi> instance = nullptr;
+    return instance;
+}
+
+}  // namespace
+
 VCLApi::VCLApi(const std::string& library_dir) : _logger("VCLApi", Logger::global().level()) {
     const auto baseName = "openvino_intel_npu_compiler_loader";
 
@@ -49,11 +68,9 @@ VCLApi::VCLApi(const std::string& library_dir) : _logger("VCLApi", Logger::globa
 }
 
 const std::shared_ptr<VCLApi> VCLApi::getInstance(const std::string& library_dir) {
-    static std::mutex mtx;
-    std::lock_guard<std::mutex> lock(mtx);
-
-    static std::string initialized_dir;
-    static std::shared_ptr<VCLApi> instance = nullptr;
+    std::lock_guard<std::mutex> lock(get_vcl_api_mutex());
+    auto& instance = get_vcl_api_instance();
+    auto& initialized_dir = get_initialized_dir();
 
     if (!instance) {
         if (library_dir.empty()) {
@@ -72,6 +89,18 @@ const std::shared_ptr<VCLApi> VCLApi::getInstance(const std::string& library_dir
     }
 
     return instance;
+}
+
+void VCLApi::releaseInstance() {
+    std::lock_guard<std::mutex> lock(get_vcl_api_mutex());
+    auto& instance = get_vcl_api_instance();
+    auto& initialized_dir = get_initialized_dir();
+
+    // Release only when no other shared owners remain.
+    if (instance && instance.use_count() == 1) {
+        instance.reset();
+        initialized_dir.clear();
+    }
 }
 
 }  // namespace intel_npu
