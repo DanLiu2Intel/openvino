@@ -29,11 +29,20 @@ namespace ov {
 namespace test {
 namespace behavior {
 
-inline std::shared_ptr<ov::Model> createMaxPoolModel(bool dynamicBatch = false, bool nhwcLayout = true) {
+inline std::shared_ptr<ov::Model> createMaxPoolModel(bool dynamicBatch = false,
+                                                     bool nhwcLayout = true,
+                                                     bool dynamicSpatial = false) {
     std::shared_ptr<ov::op::v0::Parameter> input;
     if (dynamicBatch) {
-        input = std::make_shared<ov::op::v0::Parameter>(ov::element::f16,
-                                                        ov::PartialShape{ov::Dimension(1, 10), 16, 720, 1280});
+        if (dynamicSpatial) {
+            // Batch, height and width are all dynamic (bounded), exercising the fully-dynamic pipeline.
+            input = std::make_shared<ov::op::v0::Parameter>(
+                ov::element::f16,
+                ov::PartialShape{ov::Dimension(1, 10), 16, ov::Dimension(10, 720), ov::Dimension(10, 1280)});
+        } else {
+            input = std::make_shared<ov::op::v0::Parameter>(ov::element::f16,
+                                                            ov::PartialShape{ov::Dimension(1, 10), 16, 720, 1280});
+        }
     } else {
         input = std::make_shared<ov::op::v0::Parameter>(
             ov::element::f16,
@@ -353,6 +362,9 @@ std::shared_ptr<ov::Model> InferWithHostCompileTests::createModelByName(const st
     }
     if (modelName == "MaxPool_NCHW_DynBatch") {
         return createMaxPoolModel(true, false);
+    }
+    if (modelName == "MaxPool_NCHW_DynBatchHW") {
+        return createMaxPoolModel(true, false, true);
     }
 
     OPENVINO_THROW("Unknown model name for InferWithHostCompileTests: ", modelName);
@@ -809,6 +821,57 @@ TEST_P(InferWithDefaultHostCompileTests, CompileDynamicModelWithNoHostCompileMod
     OV_ASSERT_NO_THROW(reqDynamic.infer());
 }
 
+using InferWithFullyDynamicHostCompileTests = InferWithHostCompileTests;
+
+// Verifies a model with fully dynamic batch/height/width dimensions compiles and infers correctly both when
+// HostCompile_Interpreter is explicitly requested and when it is not. Automatic HostCompile detection requires a
+// static batch dimension, so omitting the mode here exercises the plugin's static compile fallback instead.
+TEST_P(InferWithFullyDynamicHostCompileTests, CompileFullyDynamicModelWithHostCompileAndStaticModes) {
+    // Skip test according to plugin specific disabledTestPatterns() (if any)
+    SKIP_IF_CURRENT_TEST_IS_DISABLED()
+    if (!isTargetDevice) {
+        GTEST_SKIP() << "Skip test for current device";
+    }
+
+    auto model = createModelByName(selectedModelName);
+
+    ov::CompiledModel compiledModel;
+    OV_ASSERT_NO_THROW(compiledModel = core->compile_model(model, target_device, configuration));
+
+    std::stringstream modelStream;
+    OV_ASSERT_NO_THROW(compiledModel.export_model(modelStream));
+
+    if (modelStream.str().empty()) {
+        FAIL() << "Exported model stream is empty";
+    }
+
+    if(isElfBlob(modelStream.str())) {
+        std::cout << "Exported model is an ELF blob" << std::endl;
+    } else {
+        std::cout << "Exported model is NOT an ELF blob" << std::endl;
+    }
+
+    if(isByteCodeBlob(modelStream.str())) {
+        std::cout << "Exported model is a bytecode blob" << std::endl;
+    } else {
+        std::cout << "Exported model is NOT a bytecode blob" << std::endl;
+    }
+
+    ov::InferRequest reqDynamic;
+    try {
+        ov::CompiledModel importedModel = core->import_model(modelStream, target_device);
+        reqDynamic = importedModel.create_infer_request();
+    } catch (const ov::Exception& e) {
+        if (std::string(e.what()).find("Cannot load library") == std::string::npos) {
+            FAIL() << "Expected exception message to contain 'Cannot load library', but got: " << e.what();
+        } else {
+            GTEST_SKIP() << "Cannot load library, skip test.";
+        }
+    }
+
+    OV_ASSERT_NO_THROW(reqDynamic.infer());
+}
+
 }  // namespace behavior
 }  // namespace test
 }  // namespace ov
@@ -868,3 +931,25 @@ INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
                                             ::testing::ValuesIn(defaultHostCompileconfigs),
                                             ::testing::ValuesIn(defaultHCModelNames)),
                          ov::test::utils::appendPlatformTypeTestName<InferWithDefaultHostCompileTests>);
+
+const std::vector<ov::AnyMap> fullyDynamicHostCompileConfigs = {
+    {
+        {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_COMPILATION_MODE", "HostCompile_Interpreter"},
+        {"NPU_CREATE_EXECUTOR", "0"},
+    },
+    {
+        // No NPU_COMPILATION_MODE set: dynamic batch prevents auto-selection of HostCompile_Interpreter,
+        // so the plugin's static compile (reshape-per-shape) path is exercised instead.
+        {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_CREATE_EXECUTOR", "0"},
+    },
+};
+
+const std::vector<std::string> fullyDynamicHCModelNames = {"MaxPool_NCHW_DynBatchHW"};
+INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
+                         InferWithFullyDynamicHostCompileTests,
+                         ::testing::Combine(::testing::ValuesIn(devices),
+                                            ::testing::ValuesIn(fullyDynamicHostCompileConfigs),
+                                            ::testing::ValuesIn(fullyDynamicHCModelNames)),
+                         ov::test::utils::appendPlatformTypeTestName<InferWithFullyDynamicHostCompileTests>);
