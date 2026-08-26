@@ -430,7 +430,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         if (useDynamicGraphForDynamicModel) {
             // Preserve the dynamic model for HostCompile by skipping plugin-side batching.
             _logger.info("HostCompile compilation bypasses plugin-side batch handling.");
-            updateBatchMode(ov::intel_npu::BatchMode::COMPILER);
+            // updateBatchMode(ov::intel_npu::BatchMode::COMPILER);
         } else {
             // Handle models with variables (states)
             if (!model->get_variables().empty()) {
