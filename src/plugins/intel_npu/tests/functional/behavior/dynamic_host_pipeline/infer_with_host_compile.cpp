@@ -351,6 +351,7 @@ std::shared_ptr<ov::Model> InferWithHostCompileTests::createModelByName(const st
     if (modelName == "CustomNet") {
         return createCustomNetModel();
     }
+    //N,H， W are dynmaic
     if (modelName == "CustomNet_DynBatch") {
         return createCustomNetModel(true);
     }
@@ -821,6 +822,58 @@ TEST_P(InferWithDefaultHostCompileTests, CompileDynamicModelWithNoHostCompileMod
     OV_ASSERT_NO_THROW(reqDynamic.infer());
 }
 
+using InferWithDefaultHostCompileCustomNetTests = InferWithHostCompileTests;
+
+// TEST_P(InferWithDefaultHostCompileTests, CompileDynamicCustomNetModelWithNoHostCompileMode) {
+TEST_P(InferWithDefaultHostCompileCustomNetTests, CompileDynamicCustomNetModelWithNoHostCompileMode) {
+    // Skip test according to plugin specific disabledTestPatterns() (if any)
+    SKIP_IF_CURRENT_TEST_IS_DISABLED()
+    if (!isTargetDevice) {
+        GTEST_SKIP() << "Skip test for current device";
+    }
+
+    auto model = createModelByName(selectedModelName);
+
+    ov::CompiledModel compiledModel;
+    // Compilation shall pass since load of openvino_intel_npu_mlir_runtime is deffered with NPU_CREATE_EXECUTOR=0
+    // this load shpuld not be vm interpreter?
+    OV_ASSERT_NO_THROW(compiledModel = core->compile_model(model, target_device, configuration));
+
+    std::stringstream modelStream;
+    OV_ASSERT_NO_THROW(compiledModel.export_model(modelStream));
+
+    if (modelStream.str().empty()) {
+        FAIL() << "Exported model stream is empty";
+    }
+
+    if(isElfBlob(modelStream.str())) {
+        std::cout << "[CustomerNet] Exported model is an ELF blob" << std::endl;
+    } else {
+        std::cout << "[CustomerNet] Exported model is NOT an ELF blob" << std::endl;
+    }
+
+    if(isByteCodeBlob(modelStream.str())) {
+        std::cout << "[CustomerNet] Exported model is a bytecode blob" << std::endl;
+    } else {
+        std::cout << "[CustomerNet] Exported model is NOT a bytecode blob" << std::endl;
+    }
+
+
+    ov::InferRequest reqDynamic;
+    try {
+        ov::CompiledModel importedModel = core->import_model(modelStream, target_device);
+        reqDynamic = importedModel.create_infer_request();
+    } catch (const ov::Exception& e) {
+        if (std::string(e.what()).find("Cannot load library") == std::string::npos) {
+            FAIL() << "Expected exception message to contain 'Cannot load library', but got: " << e.what();
+        } else {
+            GTEST_SKIP() << "Cannot load library, skip test.";
+        }
+    }
+
+    OV_ASSERT_NO_THROW(reqDynamic.infer());
+}
+
 using InferWithFullyDynamicHostCompileTests = InferWithHostCompileTests;
 
 // Verifies a model with fully dynamic batch/height/width dimensions compiles and infers correctly both when
@@ -846,15 +899,15 @@ TEST_P(InferWithFullyDynamicHostCompileTests, CompileFullyDynamicModelWithHostCo
     }
 
     if(isElfBlob(modelStream.str())) {
-        std::cout << "Exported model is an ELF blob" << std::endl;
+        std::cout << "[MaxPool] Exported model is an ELF blob" << std::endl;
     } else {
-        std::cout << "Exported model is NOT an ELF blob" << std::endl;
+        std::cout << "[MaxPool] Exported model is NOT an ELF blob" << std::endl;
     }
 
     if(isByteCodeBlob(modelStream.str())) {
-        std::cout << "Exported model is a bytecode blob" << std::endl;
+        std::cout << "[MaxPool] Exported model is a bytecode blob" << std::endl;
     } else {
-        std::cout << "Exported model is NOT a bytecode blob" << std::endl;
+        std::cout << "[MaxPool] Exported model is NOT a bytecode blob" << std::endl;
     }
 
     ov::InferRequest reqDynamic;
@@ -932,24 +985,87 @@ INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
                                             ::testing::ValuesIn(defaultHCModelNames)),
                          ov::test::utils::appendPlatformTypeTestName<InferWithDefaultHostCompileTests>);
 
-const std::vector<ov::AnyMap> fullyDynamicHostCompileConfigs = {
+
+/// CustomNet_DynBatch N，H，W are dynamic
+///need test with NPU_COMPILATION_MODE=HostCompile_Interpreter and without NPU_COMPILATION_MODE
+const std::vector<std::string> defaultNHCCustomNetModelNames = {"CustomNet_DynBatch"};
+const std::vector<ov::AnyMap> defaultNHCCustomNetModelConfigs = {
+    //plugin batch
     {
         {"NPU_COMPILER_TYPE", "PLUGIN"},
         {"NPU_COMPILATION_MODE", "HostCompile_Interpreter"},
         {"NPU_CREATE_EXECUTOR", "0"},
+        {"NPU_BATCH_MODE", "PLUGIN"},
     },
     {
         // No NPU_COMPILATION_MODE set: dynamic batch prevents auto-selection of HostCompile_Interpreter,
         // so the plugin's static compile (reshape-per-shape) path is exercised instead.
         {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_COMPILATION_MODE", "DefaultHW"},
         {"NPU_CREATE_EXECUTOR", "0"},
+        {"NPU_BATCH_MODE", "PLUGIN"},
+    },
+    // compiler batch
+    {
+        {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_COMPILATION_MODE", "HostCompile_Interpreter"},
+        {"NPU_CREATE_EXECUTOR", "0"},
+        {"NPU_BATCH_MODE", "COMPILER"},
+    },
+    {
+        // No NPU_COMPILATION_MODE set: dynamic batch prevents auto-selection of HostCompile_Interpreter,
+        // so the plugin's static compile (reshape-per-shape) path is exercised instead.
+        {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_COMPILATION_MODE", "DefaultHW"},
+        {"NPU_CREATE_EXECUTOR", "0"},
+        {"NPU_BATCH_MODE", "COMPILER"},
+    },
+};
+INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
+                         InferWithDefaultHostCompileCustomNetTests,
+                         ::testing::Combine(::testing::ValuesIn(devices),
+                                            ::testing::ValuesIn(defaultNHCCustomNetModelConfigs),
+                                            ::testing::ValuesIn(defaultNHCCustomNetModelNames)),
+                         ov::test::utils::appendPlatformTypeTestName<InferWithDefaultHostCompileCustomNetTests>);
+
+
+const std::vector<std::string> DynamicNHCMaxPoolNames = {"MaxPool_NCHW_DynBatchHW"};
+const std::vector<ov::AnyMap> DynamicNHCMaxPoolConfigs = {
+    //plugin batch
+    {
+        {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_COMPILATION_MODE", "HostCompile_Interpreter"},
+        {"NPU_CREATE_EXECUTOR", "0"},
+        {"NPU_BATCH_MODE", "PLUGIN"},
+    },
+    {
+        // No NPU_COMPILATION_MODE set: dynamic batch prevents auto-selection of HostCompile_Interpreter,
+        // so the plugin's static compile (reshape-per-shape) path is exercised instead.
+        {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_COMPILATION_MODE", "DefaultHW"},
+        {"NPU_CREATE_EXECUTOR", "0"},
+        {"NPU_BATCH_MODE", "PLUGIN"},
+    },
+    //compiler batch
+    {
+        {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_COMPILATION_MODE", "HostCompile_Interpreter"},
+        {"NPU_CREATE_EXECUTOR", "0"},
+        {"NPU_BATCH_MODE", "COMPILER"},
+    },
+    {
+        // No NPU_COMPILATION_MODE set: dynamic batch prevents auto-selection of HostCompile_Interpreter,
+        // so the plugin's static compile (reshape-per-shape) path is exercised instead.
+        {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_COMPILATION_MODE", "DefaultHW"},
+        {"NPU_CREATE_EXECUTOR", "0"},
+        {"NPU_BATCH_MODE", "COMPILER"},
     },
 };
 
-const std::vector<std::string> fullyDynamicHCModelNames = {"MaxPool_NCHW_DynBatchHW"};
 INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
                          InferWithFullyDynamicHostCompileTests,
                          ::testing::Combine(::testing::ValuesIn(devices),
-                                            ::testing::ValuesIn(fullyDynamicHostCompileConfigs),
-                                            ::testing::ValuesIn(fullyDynamicHCModelNames)),
+                                            ::testing::ValuesIn(DynamicNHCMaxPoolConfigs),
+                                            ::testing::ValuesIn(DynamicNHCMaxPoolNames)),
                          ov::test::utils::appendPlatformTypeTestName<InferWithFullyDynamicHostCompileTests>);
