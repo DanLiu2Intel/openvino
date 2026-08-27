@@ -91,6 +91,7 @@ inline std::shared_ptr<ov::Model> createCustomNetModel(bool dynamicBatch = false
     const ov::PartialShape inputShape{batchDimension, 16, ov::Dimension(1, 1080), ov::Dimension(10, 1920)};
     auto input = std::make_shared<ov::op::v0::Parameter>(ov::element::f16, inputShape);
     input->set_friendly_name("Parameter_59");
+    input->get_output_tensor(0).set_names({"Parameter_59"});
 
     auto make_conv_add = [](const ov::Output<ov::Node>& data,
                             const std::string& convName,
@@ -159,6 +160,7 @@ inline std::shared_ptr<ov::Model> createCustomNetModel(bool dynamicBatch = false
 
     auto result = std::make_shared<ov::op::v0::Result>(x);
     result->set_friendly_name("Result_104");
+    result->get_output_tensor(0).set_names({"Result_104"});
 
     auto model = std::make_shared<ov::Model>(ov::ResultVector{result}, ov::ParameterVector{input}, "CustomNet");
 
