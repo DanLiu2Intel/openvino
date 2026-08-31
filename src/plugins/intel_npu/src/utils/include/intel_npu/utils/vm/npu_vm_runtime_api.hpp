@@ -47,9 +47,12 @@ public:
 
     ~NPUVMRuntimeApi() = default;
 
-    // Must be called before the first getInstance() invocation.
-    // Re-initialization with the same library is a no-op after the singleton has been created.
-    // Throws only if re-initialized with a different library after creation.
+    // Selects the runtime library used by getInstance().
+    // Re-initialization with the same library is a no-op. Requesting a different library switches the
+    // active runtime: the cached instance is dropped and rebuilt lazily on the next getInstance() call.
+    // A shared_ptr previously returned by getInstance() keeps its own library loaded until released, so
+    // in-flight calls stay valid across a switch. The caller must not switch while objects created by the
+    // previous runtime are still in use.
     static void initialize(std::string_view libName);
 
     // Inspects the blob header to select the appropriate runtime library and calls initialize().
@@ -57,7 +60,10 @@ public:
     // Falls back to legacy runtime library names if the new names are not available.
     static void initializeFromBlob(const void* data, size_t size);
 
-    static const std::shared_ptr<NPUVMRuntimeApi>& getInstance();
+    // Drops the cached instance. The next getInstance() rebuilds it using the currently selected library.
+    static void reset();
+
+    static std::shared_ptr<NPUVMRuntimeApi> getInstance();
 
 #define nvm_symbol_statement(symbol) decltype(&::symbol) symbol;
     nvm_symbols_list();

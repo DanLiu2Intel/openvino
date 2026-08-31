@@ -5,6 +5,7 @@
 #include "intel_npu/utils/vm/npu_vm_runtime_api.hpp"
 
 #include <algorithm>
+#include <mutex>
 
 #include "openvino/util/file_util.hpp"
 #include "openvino/util/shared_object.hpp"
@@ -17,8 +18,9 @@ constexpr std::string_view OLD_MLIR_RUNTIME_NAME = "npu_mlir_runtime";
 constexpr std::string_view NEW_VM_RUNTIME_NAME = "openvino_intel_npu_vm_runtime";
 constexpr std::string_view OLD_VM_RUNTIME_NAME = "npu_interpreter_runtime";
 
+std::mutex g_mutex;
 std::string g_libName{NEW_MLIR_RUNTIME_NAME};
-bool g_instanceCreated{false};
+std::shared_ptr<NPUVMRuntimeApi> g_instance;
 }  // namespace
 
 NPUVMRuntimeApi::NPUVMRuntimeApi(std::string_view libName) {
@@ -74,24 +76,28 @@ void NPUVMRuntimeApi::initializeFromBlob(const void* data, size_t size) {
 
 void NPUVMRuntimeApi::initialize(std::string_view libName) {
     const std::string resolvedName{libName.empty() ? NEW_MLIR_RUNTIME_NAME : libName};
-    if (g_instanceCreated) {
-        if (g_libName != resolvedName) {
-            OPENVINO_THROW("NPUVMRuntimeApi is already initialized with '",
-                           g_libName,
-                           "', cannot reinitialize with '",
-                           resolvedName,
-                           "'");
-        }
-        // Same library — idempotent, nothing to do.
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_libName == resolvedName) {
+        // Same library — nothing to switch.
         return;
     }
+    // Switch runtime: drop the cached instance so the next getInstance() reloads the requested library.
+    // The old instance stays alive through any shared_ptr already handed out by getInstance().
     g_libName = resolvedName;
+    g_instance.reset();
 }
 
-const std::shared_ptr<NPUVMRuntimeApi>& NPUVMRuntimeApi::getInstance() {
-    static std::shared_ptr<NPUVMRuntimeApi> instance = std::make_shared<NPUVMRuntimeApi>(g_libName);
-    g_instanceCreated = true;
-    return instance;
+void NPUVMRuntimeApi::reset() {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_instance.reset();
+}
+
+std::shared_ptr<NPUVMRuntimeApi> NPUVMRuntimeApi::getInstance() {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_instance) {
+        g_instance = std::make_shared<NPUVMRuntimeApi>(g_libName);
+    }
+    return g_instance;
 }
 
 }  // namespace intel_npu
