@@ -825,9 +825,40 @@ TEST_P(InferWithDefaultHostCompileTests, CompileDynamicModelWithNoHostCompileMod
 using InferWithDynamicNHWTests = InferWithHostCompileTests;
 
 // Framework coverage for models whose N, H and W dimensions are all dynamic, compiled both with an explicit
+// HostCompile_Interpreter mode and with the default (auto-selected) compilation path.
+TEST_P(InferWithDynamicNHWTests, CompileAndInfer) {
+    SKIP_IF_CURRENT_TEST_IS_DISABLED()
+    if (!isTargetDevice) {
+        GTEST_SKIP() << "Skip test for current device";
+    }
+
+    auto model = createModelByName(selectedModelName);
+
+    ov::CompiledModel compiledModel;
+    OV_ASSERT_NO_THROW(compiledModel = core->compile_model(model, target_device, configuration));
+
+    std::stringstream modelStream;
+    OV_ASSERT_NO_THROW(compiledModel.export_model(modelStream));
+
+    ov::InferRequest req;
+    try {
+        ov::CompiledModel importedModel = core->import_model(modelStream, target_device);
+        req = importedModel.create_infer_request();
+    } catch (const ov::Exception& e) {
+        if (std::string(e.what()).find("Cannot load library") == std::string::npos) {
+            FAIL() << "Expected exception message to contain 'Cannot load library', but got: " << e.what();
+        } else {
+            GTEST_SKIP() << "Cannot load library, skip test.";
+        }
+    }
+
+    OV_ASSERT_NO_THROW(req.infer());
+}
+
+// Framework coverage for models whose N, H and W dimensions are all dynamic, compiled both with an explicit
 // HostCompile_Interpreter mode and with the default (auto-selected) compilation path. Results are validated against a
 // TEMPLATE reference and the output shape is asserted for every concrete shape.
-TEST_P(InferWithDynamicNHWTests, CompileAndInfer) {
+TEST_P(InferWithDynamicNHWTests, CompileInferAndCheckWithReference) {
     SKIP_IF_CURRENT_TEST_IS_DISABLED()
     if (!isTargetDevice) {
         GTEST_SKIP() << "Skip test for current device";
