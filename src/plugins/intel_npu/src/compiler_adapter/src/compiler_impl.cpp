@@ -244,6 +244,7 @@ std::shared_ptr<void> VCLCompilerImpl::getLinkedLibrary() const {
 std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
     const std::shared_ptr<const ov::Model>& model,
     const FilteredConfig& config) const {
+    std::cout << "[PLUGIN][VCLCompilerImpl] VCLCompilerImpl::compile called, config is " << config.toString() << std::endl;
     return compile(model, config, false);
 }
 
