@@ -936,6 +936,7 @@ const std::vector<ov::AnyMap> dynamicNHWConfigs = {
     },
     {
         {"NPU_COMPILER_TYPE", "PLUGIN"},
+        {"NPU_COMPILATION_MODE", "DefaultHW"},
         {"NPU_CREATE_EXECUTOR", "0"},
     },
 };
