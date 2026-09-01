@@ -252,6 +252,7 @@ std::pair<ov::Tensor, std::optional<std::string>> VCLCompilerImpl::compile(
     const FilteredConfig& config,
     const bool storeWeightlessCacheAttributeFlag) const {
     _logger.debug("compile start");
+    std::cout << "[VCLCompilerImpl] compile config are: " << config.toString() << std::endl;
 
     /// Check the linked vcl version whether supported in plugin
     UsedVersion usedVersion = getUsedVclVersion(VCL_COMPILER_VERSION_MAJOR, VCL_COMPILER_VERSION_MINOR, _vclVersion);

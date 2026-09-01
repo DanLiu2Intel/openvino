@@ -6,6 +6,7 @@
 
 #include <fstream>
 #include <numeric>
+#include <cstdlib>
 
 #include "blob_format_importers.hpp"
 #include "compiled_model.hpp"
@@ -420,7 +421,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     bool shouldHandleBatching = false;
     bool successfullyDebatched = false;
-
+    const char* env_p = std::getenv("ENABLE_NPU_PLUGIN_BATCHING");
     if (localConfig.isAvailable(ov::intel_npu::batch_mode.name())) {
         // Set default batch mode if not configured
         if (!localConfig.has(ov::intel_npu::batch_mode.name())) {
@@ -430,7 +431,14 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
         if (useDynamicGraphForDynamicModel) {
             // Preserve the dynamic model for HostCompile by skipping plugin-side batching.
             _logger.info("HostCompile compilation bypasses plugin-side batch handling.");
-            updateBatchMode(ov::intel_npu::BatchMode::COMPILER);
+            // updateBatchMode(ov::intel_npu::BatchMode::COMPILER);
+            std::cout << "!!!HostCompile compilation bypasses plugin-side batch handling are REMOVED" << std::endl;
+            if (env_p != nullptr) {
+                std::cout << "ENABLE_NPU_PLUGIN_BATCHING is set, NOT change to compiler-side batching" << std::endl;
+            } else {
+                std::cout << "ENABLE_NPU_PLUGIN_BATCHING is NOT set, change to compiler-side batching" << std::endl;
+                updateBatchMode(ov::intel_npu::BatchMode::COMPILER);
+            }
         } else {
             // Handle models with variables (states)
             if (!model->get_variables().empty()) {
