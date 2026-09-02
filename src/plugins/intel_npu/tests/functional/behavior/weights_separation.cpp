@@ -321,6 +321,28 @@ TEST_P(WeightsSeparationTests, CorrectInferenceResultIfModelHintUsed) {
 }
 
 /**
+ * @brief Same as CorrectInferenceResultIfModelHintUsed, but MODEL_PTR is stored as a non-const
+ * std::shared_ptr<ov::Model> (bypassing ov::hint::model(), which would silently const-cast it). Exercises the
+ * plugin's std::const_pointer_cast fallback taken when the "as<std::shared_ptr<const ov::Model>>()" cast fails.
+ */
+TEST_P(WeightsSeparationTests, CorrectInferenceResultIfNonConstModelHintUsed) {
+    model = createTestModel();
+    configuration.insert(ov::enable_weightless(true));
+
+    OV_ASSERT_NO_THROW(compiled_model = core->compile_model(model, target_device, configuration));
+    ASSERT_TRUE(compiled_model);
+
+    std::stringstream export_stream;
+    compiled_model.export_model(export_stream);
+
+    configuration[ov::hint::model.name()] = model;
+    OV_ASSERT_NO_THROW(compiled_model = core->import_model(export_stream, target_device, configuration));
+    ASSERT_TRUE(compiled_model);
+
+    create_infer_request_and_check_result();
+}
+
+/**
  * @brief compile -> import the result, ov::weights_path provided -> create inference request -> run one inference and
  * check the result
  */
