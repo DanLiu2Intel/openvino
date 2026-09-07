@@ -14,21 +14,19 @@
 
 namespace {
 
-using namespace intel_npu;
-
 constexpr std::string_view HOST_COMPILE_MODE = "HostCompile_Interpreter";
 
-FilteredConfig make_config(ov::intel_npu::CompilerType compilerType = ov::intel_npu::CompilerType::PLUGIN,
-                           bool dynamicShapeToStatic = false,
-                           const std::string& compilationMode = {}) {
-    auto options = std::make_shared<OptionsDesc>();
-    options->add<COMPILER_TYPE>();
-    options->add<COMPILATION_MODE>();
-    options->add<DYNAMIC_SHAPE_TO_STATIC>();
+intel_npu::FilteredConfig make_config(ov::intel_npu::CompilerType compilerType = ov::intel_npu::CompilerType::PLUGIN,
+                                      bool dynamicShapeToStatic = false,
+                                      const std::string& compilationMode = {}) {
+    auto options = std::make_shared<intel_npu::OptionsDesc>();
+    options->add<intel_npu::COMPILER_TYPE>();
+    options->add<intel_npu::COMPILATION_MODE>();
+    options->add<intel_npu::DYNAMIC_SHAPE_TO_STATIC>();
 
-    FilteredConfig config(options);
+    intel_npu::FilteredConfig config(options);
     config.enableAll();
-    config.update({{ov::intel_npu::compiler_type.name(), COMPILER_TYPE::toString(compilerType)},
+    config.update({{ov::intel_npu::compiler_type.name(), intel_npu::COMPILER_TYPE::toString(compilerType)},
                    {ov::intel_npu::dynamic_shape_to_static.name(), dynamicShapeToStatic ? "YES" : "NO"}});
     if (!compilationMode.empty()) {
         config.update({{ov::intel_npu::compilation_mode.name(), compilationMode}});
@@ -53,15 +51,15 @@ std::shared_ptr<ov::Model> make_model(const ov::PartialShape& inputShape,
     return std::make_shared<ov::Model>(ov::OutputVector{output}, inputs);
 }
 
-bool host_compile_enabled(const FilteredConfig& config) {
-    return config.get<COMPILATION_MODE>() == HOST_COMPILE_MODE;
+bool host_compile_enabled(const intel_npu::FilteredConfig& config) {
+    return config.get<intel_npu::COMPILATION_MODE>() == HOST_COMPILE_MODE;
 }
 
 TEST(EnableHostCompileTest, EnablesForBoundedDynamicFourDimensionalInputAndOutputWithStaticBatch) {
     auto config = make_config();
     const auto model = make_model({1, ov::Dimension(1, 8), ov::Dimension(2, 16), 32});
 
-    enable_host_compile_if_needed(model, config);
+    intel_npu::enable_host_compile_if_needed(model, config);
 
     EXPECT_TRUE(host_compile_enabled(config));
 }
@@ -79,9 +77,9 @@ TEST_P(EnableHostCompileConfigShortCircuitTest, DoesNotOverrideConfiguration) {
     auto config = make_config(params.compilerType, params.dynamicShapeToStatic, params.compilationMode);
     const auto model = make_model({1, ov::Dimension(1, 8), ov::Dimension(2, 16), 32});
 
-    enable_host_compile_if_needed(model, config);
+    intel_npu::enable_host_compile_if_needed(model, config);
 
-    EXPECT_EQ(config.get<COMPILATION_MODE>(), params.compilationMode);
+    EXPECT_EQ(config.get<intel_npu::COMPILATION_MODE>(), params.compilationMode);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -97,7 +95,7 @@ TEST_P(EnableHostCompileInvalidShapeTest, DoesNotEnableForUnsupportedPortShape) 
     auto config = make_config();
     const auto model = make_model(GetParam());
 
-    enable_host_compile_if_needed(model, config);
+    intel_npu::enable_host_compile_if_needed(model, config);
 
     EXPECT_FALSE(host_compile_enabled(config));
 }
@@ -114,7 +112,7 @@ TEST(EnableHostCompileTest, DoesNotEnableWithoutDynamicOutput) {
     auto config = make_config();
     const auto model = make_model({1, ov::Dimension(1, 8), 16, 32}, false);
 
-    enable_host_compile_if_needed(model, config);
+    intel_npu::enable_host_compile_if_needed(model, config);
 
     EXPECT_FALSE(host_compile_enabled(config));
 }
@@ -124,7 +122,7 @@ TEST(EnableHostCompileTest, DoesNotEnableWhenAnotherPortHasUnboundedDimension) {
     const auto model =
         make_model({1, ov::Dimension(1, 8), 16, 32}, true, ov::PartialShape{1, ov::Dimension::dynamic(), 16, 32});
 
-    enable_host_compile_if_needed(model, config);
+    intel_npu::enable_host_compile_if_needed(model, config);
 
     EXPECT_FALSE(host_compile_enabled(config));
 }
