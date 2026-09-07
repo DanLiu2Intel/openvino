@@ -22,12 +22,13 @@
 
 namespace intel_npu {
 
-inline void enable_host_compile_if_needed(const std::shared_ptr<const ov::Model>& model, FilteredConfig& config) {
+inline void enable_host_compile_if_needed(const std::shared_ptr<const ov::Model>& model, FilteredConfig& config, Logger& logger) {
     if (config.get<COMPILER_TYPE>() != ov::intel_npu::CompilerType::PLUGIN || config.has<COMPILATION_MODE>() ||
         config.get<DYNAMIC_SHAPE_TO_STATIC>()) {
         return;
     }
 
+    // HostCompile allocates dynamic buffers from I/O upper bounds, so every dynamic dimension must be bounded.
     const auto hasFiniteUpperBounds = [](const auto& port) {
         const auto& shape = port.get_partial_shape();
         const auto rank = shape.rank();
@@ -36,9 +37,11 @@ inline void enable_host_compile_if_needed(const std::shared_ptr<const ov::Model>
                });
     };
 
+    // Detect a bounded dynamic 4D I/O port that makes the model a HostCompile candidate.
     const auto isDynamicHostCompilePort = [&hasFiniteUpperBounds](const auto& port) {
         const auto& shape = port.get_partial_shape();
         const auto rank = shape.rank();
+        // Keep batch static to avoid failures in ConvertBatchedLayerTo1N and AdjustScaleShiftForDWConv, because reshape operations in these passes do not support dynamic batch shapes.
         return shape.is_dynamic() && rank.is_static() && rank.get_length() == 4 && shape[0].is_static() &&
                hasFiniteUpperBounds(port);
     };
@@ -47,11 +50,15 @@ inline void enable_host_compile_if_needed(const std::shared_ptr<const ov::Model>
     const auto& modelOutputs = model->outputs();
     const bool inputsDynamic = std::any_of(modelInputs.begin(), modelInputs.end(), isDynamicHostCompilePort);
     const bool outputsDynamic = std::any_of(modelOutputs.begin(), modelOutputs.end(), isDynamicHostCompilePort);
+
+    // Candidate detection above uses any_of; validate every I/O separately because one unrelated unbounded port
+    // still prevents HostCompile from allocating all dynamic buffers.
     const bool allPortsHaveFiniteUpperBounds =
         std::all_of(modelInputs.begin(), modelInputs.end(), hasFiniteUpperBounds) &&
         std::all_of(modelOutputs.begin(), modelOutputs.end(), hasFiniteUpperBounds);
 
     if (inputsDynamic && outputsDynamic && allPortsHaveFiniteUpperBounds) {
+        logger.info("NPU_COMPILATION_MODE not set; selecting 'HostCompile_Interpreter' for fully-dynamic model (inputs and outputs both dynamic, static batch, other dimensions dynamic)");
         config.update({{ov::intel_npu::compilation_mode.name(), "HostCompile_Interpreter"}});
     }
 }
