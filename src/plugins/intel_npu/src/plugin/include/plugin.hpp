@@ -16,6 +16,7 @@
 #include "intel_npu/common/npu.hpp"
 #include "intel_npu/config/options.hpp"
 #include "intel_npu/utils/logger/logger.hpp"
+#include "openvino/core/layout.hpp"
 #include "openvino/runtime/iplugin.hpp"
 #include "openvino/runtime/so_ptr.hpp"
 #include "plugin_property_manager.hpp"
@@ -43,10 +44,27 @@ inline void enable_host_compile_if_needed(const std::shared_ptr<const ov::Model>
     const auto isDynamicHostCompilePort = [&hasFiniteUpperBounds](const auto& port) {
         const auto& shape = port.get_partial_shape();
         const auto rank = shape.rank();
-        // Keep batch static to avoid failures in ConvertBatchedLayerTo1N and AdjustScaleShiftForDWConv, because reshape
-        // operations in these passes do not support dynamic batch shapes.
-        return shape.is_dynamic() && rank.is_static() && rank.get_length() == 4 && shape[0].is_static() &&
-               hasFiniteUpperBounds(port);
+
+        if (!(shape.is_dynamic() && rank.is_static() && rank.get_length() == 4 && hasFiniteUpperBounds(port))) {
+            return false;
+        }
+
+        // Assumed N,C,H,W order by default; if the port carries an explicit ov::Layout (e.g. set by compile_tool's
+        // -il/-iol/-iml/-ioml options or model preprocessing), use it to locate H/W instead, so a non-NCHW layout
+        // doesn't silently misclassify another dimension (e.g. channel) as height/width.
+        const auto layout = ov::layout::get_layout(port);
+        const int64_t heightIdx = ov::layout::has_height(layout) ? ov::layout::height_idx(layout) : 2;
+        const int64_t widthIdx = ov::layout::has_width(layout) ? ov::layout::width_idx(layout) : 3;
+
+        // Only height (H) and width (W) determine candidacy - channel (C) is not considered, and batch (N) alone
+        // does not matter either. Accepted patterns: H, W, HW, NH, NW and NHW; a dynamic batch (N) with both H and W
+        // static ("N alone") is the only combination that is rejected.
+        // Note: When the batch size is greater than 1, using "compiler batch + host compiler interpreter" may cause
+        // ConvertBatchedLayerTo1N and AdjustScaleShiftForDWConv to fail on certain models (e.g., maxpool models)
+        // because their internal reshape operations do not support dynamic batch shapes. Alternatively, when the
+        // batch size is greater than 1, combining "plugin batch + host compiler interpreter" may work but result in an
+        // inference output shape that does not match the input shape on certain models (e.g., maxpool models).
+        return shape[heightIdx].is_dynamic() || shape[widthIdx].is_dynamic();
     };
 
     const auto& modelInputs = model->inputs();
