@@ -370,7 +370,7 @@ std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<
 
     // Resolve HostCompile before batching so the selected mode controls subsequent model and batch handling.
     const bool compilationModeSetByUser = localConfig.has<COMPILATION_MODE>();
-    enable_host_compile_if_needed(model, localConfig);
+    enable_host_compile_if_needed(model, localConfig, _logger);
 
     // Read the default or explicit compilation mode so automatic and user-selected HostCompile take the same path.
     // HostCompile dynamic models retain their dynamic dimensions for the VM runtime instead of plugin debatching.
