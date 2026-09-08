@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "host_compile_mode.hpp"
+#include "plugin.hpp"
 
 #include <gtest/gtest.h>
 
@@ -10,10 +10,13 @@
 
 #include "intel_npu/common/filtered_config.hpp"
 #include "intel_npu/config/options.hpp"
+#include "intel_npu/utils/logger/logger.hpp"
+#include "openvino/core/layout.hpp"
 #include "openvino/op/parameter.hpp"
 #include "openvino/op/relu.hpp"
 #include "openvino/op/result.hpp"
 #include "openvino/op/shape_of.hpp"
+#include "openvino/preprocess/pre_post_process.hpp"
 #include "openvino/runtime/intel_npu/properties.hpp"
 
 using namespace intel_npu;
@@ -26,6 +29,23 @@ std::shared_ptr<ov::Model> make_relu_model(const ov::PartialShape& shape) {
     auto relu = std::make_shared<ov::op::v0::Relu>(param);
     auto result = std::make_shared<ov::op::v0::Result>(relu);
     return std::make_shared<ov::Model>(ov::ResultVector{result}, ov::ParameterVector{param}, "relu_model");
+}
+
+void set_model_layouts(const std::shared_ptr<ov::Model>& model,
+                       const ov::Layout& inputLayout,
+                       const ov::Layout& outputLayout) {
+    ov::layout::set_layout(model->input(0), inputLayout);
+    ov::layout::set_layout(model->output(0), outputLayout);
+}
+
+std::shared_ptr<ov::Model> make_preprocessed_nhwc_model(const ov::PartialShape& modelShape) {
+    auto model = make_relu_model(modelShape);
+    ov::preprocess::PrePostProcessor preprocessor(model);
+    preprocessor.input(0).tensor().set_layout("NHWC");
+    preprocessor.input(0).model().set_layout("NCHW");
+    preprocessor.output(0).tensor().set_layout("NHWC");
+    preprocessor.output(0).model().set_layout("NCHW");
+    return preprocessor.build();
 }
 
 // Dynamic 4D input but a static (1D, bounded) output produced by ShapeOf.
@@ -64,7 +84,9 @@ protected:
     }
 
     bool run(const std::shared_ptr<const ov::Model>& model) {
-        return enable_host_compile_if_needed(model, *config);
+        enable_host_compile_if_needed(model, *config, Logger("EnableHostCompileTest", ov::log::Level::NO));
+        return config->has<COMPILATION_MODE>() &&
+               config->get<COMPILATION_MODE>() == "HostCompile_Interpreter";
     }
 
     std::unique_ptr<FilteredConfig> config;
@@ -154,6 +176,33 @@ TEST_F(EnableHostCompileTest, DynamicChannelWithDynamicSpatialEnablesHostCompile
     EXPECT_EQ(config->get<COMPILATION_MODE>(), "HostCompile_Interpreter");
 }
 
+TEST_F(EnableHostCompileTest, NhwcHeightDynamicEnablesHostCompile) {
+    auto model = make_relu_model({1, bounded(), UPPER, 3});
+    set_model_layouts(model, ov::Layout("NHWC"), ov::Layout("NHWC"));
+
+    EXPECT_TRUE(run(model));
+    EXPECT_EQ(ov::layout::get_layout(model->input(0)), ov::Layout("NHWC"));
+    EXPECT_EQ(ov::layout::get_layout(model->output(0)), ov::Layout("NHWC"));
+}
+
+TEST_F(EnableHostCompileTest, NhwcChannelDynamicDoesNotEnableHostCompile) {
+    auto model = make_relu_model({1, UPPER, UPPER, bounded()});
+    set_model_layouts(model, ov::Layout("NHWC"), ov::Layout("NHWC"));
+
+    EXPECT_FALSE(run(model));
+    EXPECT_FALSE(config->has<COMPILATION_MODE>());
+}
+
+TEST_F(EnableHostCompileTest, PreprocessedNhwcSpatialDynamicEnablesHostCompile) {
+    auto model = make_preprocessed_nhwc_model({1, 3, bounded(), UPPER});
+
+    ASSERT_EQ(model->input(0).get_partial_shape(), (ov::PartialShape{1, bounded(), UPPER, 3}));
+    ASSERT_EQ(model->output(0).get_partial_shape(), (ov::PartialShape{1, bounded(), UPPER, 3}));
+    ASSERT_EQ(ov::layout::get_layout(model->input(0)), ov::Layout("NHWC"));
+    ASSERT_EQ(ov::layout::get_layout(model->output(0)), ov::Layout("NHWC"));
+    EXPECT_TRUE(run(model));
+}
+
 // A fully static model is not a HostCompile candidate.
 TEST_F(EnableHostCompileTest, StaticModelDoesNotEnable) {
     auto model = make_relu_model({1, 3, UPPER, UPPER});
@@ -226,69 +275,4 @@ TEST_F(EnableHostCompileTest, DynamicShapeToStaticDisablesSelection) {
 TEST_F(EnableHostCompileTest, NullModelDoesNotEnable) {
     EXPECT_FALSE(run(nullptr));
     EXPECT_FALSE(config->has<COMPILATION_MODE>());
-}
-
-class UsesHostCompileDynamicGraphTest : public ::testing::Test {
-protected:
-    UsesHostCompileDynamicGraphTest() {
-        auto desc = std::make_shared<OptionsDesc>();
-        desc->add<COMPILER_TYPE>();
-        desc->add<COMPILATION_MODE>();
-        config = std::make_unique<FilteredConfig>(desc);
-        config->enableAll();
-        config->update({{ov::intel_npu::compiler_type.name(), "PLUGIN"}});
-    }
-
-    void setCompilationMode(const std::string& mode) {
-        config->update({{ov::intel_npu::compilation_mode.name(), mode}});
-    }
-
-    bool run(const std::shared_ptr<const ov::Model>& model) {
-        return uses_host_compile_dynamic_graph(model, *config);
-    }
-
-    std::unique_ptr<FilteredConfig> config;
-};
-
-// A dynamic model compiled by the Plugin compiler with an automatically selected HostCompile mode uses the dynamic
-// graph path.
-TEST_F(UsesHostCompileDynamicGraphTest, DynamicPluginHostCompileInterpreterUsesDynamicGraph) {
-    setCompilationMode("HostCompile_Interpreter");
-    EXPECT_TRUE(run(make_relu_model({1, 3, bounded(), bounded()})));
-}
-
-// Any compilation mode starting with "HostCompile" selects the dynamic graph path.
-TEST_F(UsesHostCompileDynamicGraphTest, DynamicPluginHostCompilePrefixUsesDynamicGraph) {
-    setCompilationMode("HostCompile");
-    EXPECT_TRUE(run(make_relu_model({1, 3, bounded(), bounded()})));
-}
-
-// A static model never uses the dynamic graph path.
-TEST_F(UsesHostCompileDynamicGraphTest, StaticModelDoesNotUseDynamicGraph) {
-    setCompilationMode("HostCompile_Interpreter");
-    EXPECT_FALSE(run(make_relu_model({1, 3, UPPER, UPPER})));
-}
-
-// Non-Plugin compilers never use the HostCompile dynamic graph path.
-TEST_F(UsesHostCompileDynamicGraphTest, NonPluginCompilerDoesNotUseDynamicGraph) {
-    config->update({{ov::intel_npu::compiler_type.name(), "DRIVER"}});
-    setCompilationMode("HostCompile_Interpreter");
-    EXPECT_FALSE(run(make_relu_model({1, 3, bounded(), bounded()})));
-}
-
-// A non-HostCompile mode does not select the dynamic graph path.
-TEST_F(UsesHostCompileDynamicGraphTest, NonHostCompileModeDoesNotUseDynamicGraph) {
-    setCompilationMode("ReferenceSW");
-    EXPECT_FALSE(run(make_relu_model({1, 3, bounded(), bounded()})));
-}
-
-// An empty (unset) compilation mode does not start with "HostCompile".
-TEST_F(UsesHostCompileDynamicGraphTest, EmptyModeDoesNotUseDynamicGraph) {
-    EXPECT_FALSE(run(make_relu_model({1, 3, bounded(), bounded()})));
-}
-
-// A null model must be handled gracefully.
-TEST_F(UsesHostCompileDynamicGraphTest, NullModelDoesNotUseDynamicGraph) {
-    setCompilationMode("HostCompile_Interpreter");
-    EXPECT_FALSE(run(nullptr));
 }

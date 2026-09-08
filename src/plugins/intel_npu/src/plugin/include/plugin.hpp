@@ -26,7 +26,8 @@ namespace intel_npu {
 inline void enable_host_compile_if_needed(const std::shared_ptr<const ov::Model>& model,
                                           FilteredConfig& config,
                                           const Logger& logger) {
-    if (config.get<COMPILER_TYPE>() != ov::intel_npu::CompilerType::PLUGIN || config.has<COMPILATION_MODE>() ||
+    if (model == nullptr || config.get<COMPILER_TYPE>() != ov::intel_npu::CompilerType::PLUGIN ||
+        config.has<COMPILATION_MODE>() ||
         config.get<DYNAMIC_SHAPE_TO_STATIC>()) {
         return;
     }
@@ -49,16 +50,14 @@ inline void enable_host_compile_if_needed(const std::shared_ptr<const ov::Model>
             return false;
         }
 
-        // Assumed N,C,H,W order by default; if the port carries an explicit ov::Layout (e.g. set by compile_tool's
-        // -il/-iol/-iml/-ioml options or model preprocessing), use it to locate H/W instead, so a non-NCHW layout
-        // doesn't silently misclassify another dimension (e.g. channel) as height/width.
+        // Assume N,C,H,W order for each spatial dimension absent from the layout. Explicit layout dimensions (e.g.
+        // set by compile_tool's -il/-iol/-iml/-ioml options or model preprocessing) take precedence.
         const auto layout = ov::layout::get_layout(port);
         const int64_t heightIdx = ov::layout::has_height(layout) ? ov::layout::height_idx(layout) : 2;
         const int64_t widthIdx = ov::layout::has_width(layout) ? ov::layout::width_idx(layout) : 3;
 
-        // Only height (H) and width (W) determine candidacy - channel (C) is not considered, and batch (N) alone
-        // does not matter either. Accepted patterns: H, W, HW, NH, NW and NHW; a dynamic batch (N) with both H and W
-        // static ("N alone") is the only combination that is rejected.
+        // Only height (H) and width (W) determine candidacy; channel (C) and batch (N) do not. Considering N/H/W,
+        // accepted dynamic patterns are H, W, HW, NH, NW and NHW, while N alone is rejected.
         // Note: When the batch size is greater than 1, using "compiler batch + host compiler interpreter" may cause
         // ConvertBatchedLayerTo1N and AdjustScaleShiftForDWConv to fail on certain models (e.g., maxpool models)
         // because their internal reshape operations do not support dynamic batch shapes. Alternatively, when the
@@ -79,8 +78,8 @@ inline void enable_host_compile_if_needed(const std::shared_ptr<const ov::Model>
         std::all_of(modelOutputs.begin(), modelOutputs.end(), hasFiniteUpperBounds);
 
     if (inputsDynamic && outputsDynamic && allPortsHaveFiniteUpperBounds) {
-        logger.info("NPU_COMPILATION_MODE not set; selecting 'HostCompile_Interpreter' for fully-dynamic model (inputs "
-                    "and outputs both dynamic, static batch, other dimensions dynamic)");
+        logger.info("NPU_COMPILATION_MODE not set; selecting 'HostCompile_Interpreter' for a bounded dynamic 4D "
+                    "model with dynamic spatial input and output dimensions");
         config.update({{ov::intel_npu::compilation_mode.name(), "HostCompile_Interpreter"}});
     }
 }
