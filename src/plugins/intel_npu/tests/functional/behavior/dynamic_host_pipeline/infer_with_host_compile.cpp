@@ -7,6 +7,7 @@
 #include <cstring>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -29,140 +30,158 @@ namespace ov {
 namespace test {
 namespace behavior {
 
-inline std::shared_ptr<ov::Model> createMaxPoolModel(bool dynamicBatch = false, bool nhwcLayout = true) {
-    std::shared_ptr<ov::op::v0::Parameter> input;
-    if (dynamicBatch) {
-        input = std::make_shared<ov::op::v0::Parameter>(ov::element::f16,
-                                                        ov::PartialShape{ov::Dimension(1, 10), 16, 720, 1280});
-    } else {
-        input = std::make_shared<ov::op::v0::Parameter>(
-            ov::element::f16,
-            ov::PartialShape{1, 16, ov::Dimension(10, 720), ov::Dimension(10, 1280)});
-    }
+// Builds a model with the ESPCN_x2 architecture (single-channel input, DepthToSpace x2 upscaling).
+// The batch/height/width bounds and NHWC-vs-NCHW layout are parameterized so every test model in this file
+// (see espcnModelConfigs) shares the same, already-validated graph shape.
+inline std::shared_ptr<ov::Model> createESPCNX2Model(ov::Dimension batchDimension = ov::Dimension(1, 2),
+                                                     ov::Dimension heightDimension = ov::Dimension(32, 64),
+                                                     ov::Dimension widthDimension = ov::Dimension(32, 64),
+                                                     bool nhwcLayout = true) {
+    const ov::PartialShape inputShape = nhwcLayout
+                                            ? ov::PartialShape{batchDimension, heightDimension, widthDimension, 1}
+                                            : ov::PartialShape{batchDimension, 1, heightDimension, widthDimension};
+    auto input = std::make_shared<ov::op::v0::Parameter>(ov::element::f32, inputShape);
+    input->set_friendly_name("IteratorGetNext:0");
+    input->get_output_tensor(0).set_names({"IteratorGetNext:0"});
 
-    std::string inputName = "input1";
-    input->set_friendly_name(inputName);
-    input->get_output_tensor(0).set_names({inputName});
-    if (!nhwcLayout)
-        input->set_layout("NCHW");
-    auto maxpool = std::make_shared<ov::op::v1::MaxPool>(input,
-                                                         Strides{1, 1},
-                                                         Shape{0, 0},
-                                                         Shape{0, 0},
-                                                         Shape{1, 1},
-                                                         op::RoundingType::FLOOR,
-                                                         op::PadType::EXPLICIT);
-    maxpool->set_friendly_name("MaxPool_2");
-
-    auto result = std::make_shared<ov::op::v0::Result>(maxpool);
-    std::string outputName = "output";
-    if (!nhwcLayout)
-        result->set_layout("NCHW");
-    result->set_friendly_name(outputName);
-    result->get_output_tensor(0).set_names({outputName});
-
-    auto model = std::make_shared<Model>(ResultVector{result}, ParameterVector{input}, "MaxPool");
-
-    // making input and output to be NHWC
+    ov::Output<ov::Node> nchwInput = input;
     if (nhwcLayout) {
-        auto preProc = ov::preprocess::PrePostProcessor(model);
-        preProc.input(0).tensor().set_layout("NHWC");
-        preProc.input(0).model().set_layout("NCHW");
-        preProc.output(0).tensor().set_layout("NHWC");
-        preProc.output(0).model().set_layout("NCHW");
-
-        model = preProc.build();
+        // set_tensors()/batched inference requires the batch (N) dimension to be identifiable via layout.
+        input->set_layout("NHWC");
+        auto transposeOrder = ov::op::v0::Constant::create(ov::element::i64, ov::Shape{4}, {0, 3, 1, 2});
+        // NHWC -> NCHW transpose, convert the input layout from NHWC to NCHW
+        nchwInput = std::make_shared<ov::op::v1::Transpose>(input, transposeOrder);
+    } else {
+        input->set_layout("NCHW");
     }
 
-    return model;
-}
-
-inline std::shared_ptr<ov::Model> createCustomNetModel(bool dynamicBatch = false) {
-    const ov::Dimension batchDimension = dynamicBatch ? ov::Dimension(1, 10) : ov::Dimension(1);
-    const ov::PartialShape inputShape{batchDimension, 16, ov::Dimension(1, 1080), ov::Dimension(10, 1920)};
-    auto input = std::make_shared<ov::op::v0::Parameter>(ov::element::f16, inputShape);
-    input->set_friendly_name("Parameter_59");
-
-    auto make_conv_add = [](const ov::Output<ov::Node>& data,
-                            const std::string& convName,
-                            const std::string& addName,
-                            float weightValue,
-                            float biasValue) -> ov::Output<ov::Node> {
-        const std::vector<float> weightValues(16 * 16, weightValue);
-        const std::vector<float> biasValues(16, biasValue);
-
-        auto weights = ov::op::v0::Constant::create(ov::element::f16, ov::Shape{16, 16, 1, 1}, weightValues);
-        auto conv = std::make_shared<ov::op::v1::Convolution>(data,
-                                                              weights,
-                                                              ov::Strides{1, 1},
-                                                              ov::CoordinateDiff{0, 0},
-                                                              ov::CoordinateDiff{0, 0},
-                                                              ov::Strides{1, 1},
-                                                              ov::op::PadType::EXPLICIT);
-        conv->set_friendly_name(convName);
-
-        auto bias = ov::op::v0::Constant::create(ov::element::f16, ov::Shape{1, 16, 1, 1}, biasValues);
-        auto add = std::make_shared<ov::op::v1::Add>(conv, bias);
-        add->set_friendly_name(addName);
-        return add;
+    const auto makeConvAdd = [](const ov::Output<ov::Node>& data,
+                                size_t inputChannels,
+                                size_t outputChannels,
+                                size_t kernelSize,
+                                float weightValue,
+                                float biasValue) -> ov::Output<ov::Node> {
+        auto weights = ov::op::v0::Constant::create(ov::element::f32,
+                                                    ov::Shape{outputChannels, inputChannels, kernelSize, kernelSize},
+                                                    {weightValue});
+        auto convolution = std::make_shared<ov::op::v1::Convolution>(data,
+                                                                     weights,
+                                                                     ov::Strides{1, 1},
+                                                                     ov::CoordinateDiff{0, 0},
+                                                                     ov::CoordinateDiff{0, 0},
+                                                                     ov::Strides{1, 1},
+                                                                     ov::op::PadType::SAME_UPPER);
+        auto bias = ov::op::v0::Constant::create(ov::element::f32, ov::Shape{1, outputChannels, 1, 1}, {biasValue});
+        return std::make_shared<ov::op::v1::Add>(convolution, bias);
     };
 
-    auto x = make_conv_add(input, "Convolution_61", "Add_63", 0.01f, 0.001f);
-    x = make_conv_add(x, "Convolution_65", "Add_67", 0.011f, 0.001f);
+    auto firstConv = makeConvAdd(nchwInput, 1, 64, 5, 0.01f, 0.001f);
+    auto firstRelu = std::make_shared<ov::op::v0::Relu>(firstConv);
+    auto secondConv = makeConvAdd(firstRelu, 64, 32, 3, 0.011f, 0.001f);
+    auto secondRelu = std::make_shared<ov::op::v0::Relu>(secondConv);
+    auto thirdConv = makeConvAdd(secondRelu, 32, 4, 3, 0.012f, 0.001f);
+    auto depthToSpace =
+        std::make_shared<ov::op::v0::DepthToSpace>(thirdConv,
+                                                   ov::op::v0::DepthToSpace::DepthToSpaceMode::BLOCKS_FIRST,
+                                                   2);
+    auto output = std::make_shared<ov::op::v0::Tanh>(depthToSpace);
+    output->set_friendly_name("NCHW_output");
+    output->get_output_tensor(0).set_names({"NCHW_output:0"});
 
-    auto relu68 = std::make_shared<ov::op::v0::Relu>(x);
-    relu68->set_friendly_name("Relu_68");
-    x = relu68;
+    // The output is always NCHW-shaped (DepthToSpace produces NCHW). Tagging the result with an N-carrying
+    // layout lets the compiler's batch auto-detection collect a batch coefficient for the output, which is
+    // required (together with the input) to employ the debatch/host_pipeline method for the dynamic batch.
+    // Without it the dynamic N reaches the NCE pipeline and crashes DepthToSpace/SplitNCEOpsOntoWorkloads.
+    auto result = std::make_shared<ov::op::v0::Result>(output);
+    result->set_layout("NCHW");
 
-    x = make_conv_add(x, "Convolution_70", "Add_72", 0.012f, 0.001f);
-    auto relu73 = std::make_shared<ov::op::v0::Relu>(x);
-    relu73->set_friendly_name("Relu_73");
-    x = relu73;
+    return std::make_shared<ov::Model>(ov::ResultVector{result}, ov::ParameterVector{input}, "ESPCN_x2_gh");
+}
 
-    x = make_conv_add(x, "Convolution_75", "Add_77", 0.013f, 0.001f);
-    auto relu78 = std::make_shared<ov::op::v0::Relu>(x);
-    relu78->set_friendly_name("Relu_78");
-    x = relu78;
+// Every test model is the same ESPCN_x2 graph built with different dynamic N/H/W bounds and layout. Keeping the
+// declared bounds and the model characteristics in one registry lets the test shapes be derived from the bounds
+// (see makeInputShape) instead of hard-coding numbers that must be kept in sync by hand.
+// The test dimensions are common sizes for the output dimensions. The output of the ESPCN_x2 graph scales the
+//  input shape's H (height) and W (width) by a factor of two.
+struct DynamicModelConfig {
+    ov::Dimension batch;
+    ov::Dimension height;
+    ov::Dimension width;
+    bool nhwcLayout;  // only for test deafult compilation mode
+};
 
-    x = make_conv_add(x, "Convolution_82", "Add_84", 0.014f, 0.001f);
-    auto relu85 = std::make_shared<ov::op::v0::Relu>(x);
-    relu85->set_friendly_name("Relu_85");
-    x = relu85;
+inline const std::map<std::string, DynamicModelConfig>& espcnModelConfigs() {
+    static const std::map<std::string, DynamicModelConfig> configs = {
+        {"ESPCN_x2_DynHW_FHD2", {ov::Dimension(1), ov::Dimension(10, 2160), ov::Dimension(10, 3840), true}},
+        {"ESPCN_x2_DynHW_FHD", {ov::Dimension(1), ov::Dimension(10, 1080), ov::Dimension(10, 1920), true}},
+        {"ESPCN_x2_DynNHW_FHD",
+         {
+             ov::Dimension(1, 10),
+             ov::Dimension(1, 1080),
+             ov::Dimension(10, 1920),
+             true,
+         }},
+        {"ESPCN_x2_DynHW_HD", {ov::Dimension(1), ov::Dimension(10, 1080), ov::Dimension(10, 1280), true}},
+        {"ESPCN_x2_DynNHW_HD_NCHW", {ov::Dimension(1, 10), ov::Dimension(10, 720), ov::Dimension(10, 1280), false}},
+        {"ESPCN_x2_DynN_HD_NCHW",
+         {ov::Dimension(1, 10),
+          ov::Dimension(720),
+          ov::Dimension(1280),
+          false}},  // only for InferWithDefaultHostCompileTests
+    };
+    return configs;
+}
 
-    x = make_conv_add(x, "Convolution_87", "Add_89", 0.015f, 0.001f);
-    auto relu90 = std::make_shared<ov::op::v0::Relu>(x);
-    relu90->set_friendly_name("Relu_90");
-    x = relu90;
+inline const DynamicModelConfig& getModelConfig(const std::string& modelName) {
+    const auto& configs = espcnModelConfigs();
+    const auto it = configs.find(modelName);
+    OPENVINO_ASSERT(it != configs.end(), "Unknown model name for InferWithHostCompileTests: ", modelName);
+    return it->second;
+}
 
-    x = make_conv_add(x, "Convolution_92", "Add_94", 0.016f, 0.001f);
-    auto relu95 = std::make_shared<ov::op::v0::Relu>(x);
-    relu95->set_friendly_name("Relu_95");
-    x = relu95;
+inline bool hasDynamicBatch(const std::string& modelName) {
+    return getModelConfig(modelName).batch.is_dynamic();
+}
 
-    auto multiplyScale = ov::op::v0::Constant::create(ov::element::f16, ov::Shape{1, 16, 1, 1}, {0.5f});
-    auto multiply97 = std::make_shared<ov::op::v1::Multiply>(x, multiplyScale);
-    multiply97->set_friendly_name("Multiply_97");
+inline bool hasOnlyDynamicBatch(const std::string& modelName) {
+    return getModelConfig(modelName).batch.is_dynamic() && !getModelConfig(modelName).height.is_dynamic() &&
+           !getModelConfig(modelName).width.is_dynamic();
+}
 
-    auto add98 = std::make_shared<ov::op::v1::Add>(multiply97, multiply97);
-    add98->set_friendly_name("Add_98");
+// Resolve the model input's declared bounds into a concrete shape: batch is set explicitly (it is always the
+// leading dimension for both NHWC and NCHW), static dims are kept as-is, and each dynamic spatial dim uses its
+// upper bound for the large shape or half of it (never below the lower bound) for the small shape.
+inline ov::Shape makeInputShape(const std::shared_ptr<ov::Model>& model, size_t batch, bool useLargeShape) {
+    const ov::PartialShape& partialShape = model->input().get_partial_shape();
 
-    x = make_conv_add(add98, "Convolution_100", "Add_102", 0.017f, 0.001f);
+    ov::Shape shape;
+    shape.reserve(partialShape.size());
+    for (size_t i = 0; i < partialShape.size(); ++i) {
+        const ov::Dimension& dim = partialShape[i];
+        if (i == 0) {
+            // batch dimension is always the first dimension and is set explicitly
+            shape.push_back(batch);
+        } else if (dim.is_static()) {
+            // in ESPCN_x2, the channel dimension is static and should be kept as-is
+            shape.push_back(static_cast<size_t>(dim.get_length()));
+        } else {
+            // The test dimensions are common sizes for the output dimensions. The output of the ESPCN_x2 graph scales
+            // the
+            //  input shape's H (height) and W (width) by a factor of two, so the
+            const auto interval = dim.get_interval();
+            const int64_t value =
+                useLargeShape ? interval.get_max_val() : std::max(interval.get_min_val(), interval.get_max_val() / 2);
+            shape.push_back(static_cast<size_t>(value));
+        }
+    }
 
-    auto result = std::make_shared<ov::op::v0::Result>(x);
-    result->set_friendly_name("Result_104");
+    return shape;
+}
 
-    auto model = std::make_shared<ov::Model>(ov::ResultVector{result}, ov::ParameterVector{input}, "CustomNet");
-
-    // making input and output to be NHWC
-    auto preProc = ov::preprocess::PrePostProcessor(model);
-    preProc.input(0).tensor().set_layout("NHWC");
-    preProc.input(0).model().set_layout("NCHW");
-    preProc.output(0).tensor().set_layout("NHWC");
-    preProc.output(0).model().set_layout("NCHW");
-
-    model = preProc.build();
-
-    return model;
+// All test models share the ESPCN_x2 architecture: single output channel with the spatial dims doubled by
+// DepthToSpace. The output is NCHW, so this expects an NHWC input shape {N, H, W, 1}.
+inline ov::Shape dynamicNHWOutputShape(const ov::Shape& inputShape) {
+    return {inputShape[0], 1, inputShape[1] * 2, inputShape[2] * 2};
 }
 
 using InferWithHostCompileParams = std::tuple<std::string,  // Device name
@@ -228,13 +247,13 @@ public:
         return result.str();
     }
 
-    void SetUp() {
+    void SetUp() override {
         // Skip test according to plugin specific disabledTestPatterns() (if any)
         SKIP_IF_CURRENT_TEST_IS_DISABLED();
 
         std::tie(target_device, configuration, selectedModelName) = this->GetParam();
 
-        configuration[ov::intel_npu::compile_log_level.name()] = ov::log::Level::ERR;
+        configuration[ov::intel_npu::compile_log_level.name()] = ov::log::Level::WARNING;
         std::vector<std::string> deviceNames =
             core->get_property("NPU", ov::available_devices.name()).as<std::vector<std::string>>();
         for (auto name : deviceNames) {
@@ -248,8 +267,9 @@ public:
         APIBaseTest::SetUp();
     }
 
-    void TearDown() {
+    void TearDown() override {
         core->set_property("NPU", ov::log::level(originalLogLevel));
+        APIBaseTest::TearDown();
     }
 
     static void compareInferenceResult(const std::shared_ptr<ov::Model>& model,
@@ -304,7 +324,6 @@ std::string InferWithHostCompileTests::ScopedLogCapture::str() const {
 void InferWithHostCompileTests::compareInferenceResult(const std::shared_ptr<ov::Model>& model,
                                                        ov::InferRequest& reqDynamic,
                                                        ov::InferRequest& reqReference) {
-    const auto inputTensor = reqDynamic.get_input_tensor(0);
     const auto npuOutputTensor = reqDynamic.get_tensor(model->output());
     const auto referenceOutputTensor = reqReference.get_tensor(model->output());
 
@@ -339,23 +358,8 @@ bool InferWithHostCompileTests::logContains(const ScopedLogCapture& logCapture, 
 }
 
 std::shared_ptr<ov::Model> InferWithHostCompileTests::createModelByName(const std::string& modelName) {
-    if (modelName == "CustomNet") {
-        return createCustomNetModel();
-    }
-    if (modelName == "CustomNet_DynBatch") {
-        return createCustomNetModel(true);
-    }
-    if (modelName == "MaxPool") {
-        return createMaxPoolModel();
-    }
-    if (modelName == "MaxPool_NCHW") {
-        return createMaxPoolModel(false, false);
-    }
-    if (modelName == "MaxPool_NCHW_DynBatch") {
-        return createMaxPoolModel(true, false);
-    }
-
-    OPENVINO_THROW("Unknown model name for InferWithHostCompileTests: ", modelName);
+    const DynamicModelConfig& config = getModelConfig(modelName);
+    return createESPCNX2Model(config.batch, config.height, config.width, config.nhwcLayout);
 }
 
 InferWithHostCompileTests::RuntimeCompareSetupResult InferWithHostCompileTests::prepareRuntimeCompareContext(
@@ -375,7 +379,7 @@ InferWithHostCompileTests::RuntimeCompareSetupResult InferWithHostCompileTests::
         result.context.referenceCompiledModel = core->compile_model(model, ov::test::utils::DEVICE_TEMPLATE);
     } catch (const ov::Exception& e) {
         result.status = RuntimeCompareStatus::skip;
-        result.message = std::string("CPU plugin is not available for reference comparison: ") + e.what();
+        result.message = std::string("TEMPLATE plugin is not available for reference comparison: ") + e.what();
         return result;
     }
 
@@ -397,12 +401,16 @@ InferWithHostCompileTests::RuntimeCompareSetupResult InferWithHostCompileTests::
     return result;
 }
 
-TEST_P(InferWithHostCompileTests, CompileAndImportAndInfer) {
-    // Skip test according to plugin specific disabledTestPatterns() (if any)
-    SKIP_IF_CURRENT_TEST_IS_DISABLED()
-    if (!isTargetDevice) {
-        GTEST_SKIP() << "Skip test for current device";
+// GTEST_SKIP() must return from the test body, so the shared device guard lives in a macro rather than a helper.
+#define SKIP_IF_NOT_TARGET_DEVICE()                     \
+    SKIP_IF_CURRENT_TEST_IS_DISABLED()                  \
+    if (!isTargetDevice) {                              \
+        GTEST_SKIP() << "Skip test for current device"; \
     }
+
+TEST_P(InferWithHostCompileTests, CompileAndImportAndInfer) {
+    SKIP_IF_NOT_TARGET_DEVICE()
+
     auto model = createModelByName(selectedModelName);
 
     ov::CompiledModel compiledModel;
@@ -422,11 +430,7 @@ TEST_P(InferWithHostCompileTests, CompileAndImportAndInfer) {
 // Compile, infer with a large shape, then shrink the input shape and verify both output correctness and command-list
 // reuse behavior.
 TEST_P(InferWithHostCompileTests, CompileAndInferWithDecreasedSize) {
-    // Skip test according to plugin specific disabledTestPatterns() (if any)
-    SKIP_IF_CURRENT_TEST_IS_DISABLED()
-    if (!isTargetDevice) {
-        GTEST_SKIP() << "Skip test for current device";
-    }
+    SKIP_IF_NOT_TARGET_DEVICE()
 
     auto model = createModelByName(selectedModelName);
     ScopedLogCapture logCapture;
@@ -441,8 +445,8 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithDecreasedSize) {
     }
     auto& testContext = setupResult.context;
 
-    // Start with the largest shape in the dynamic range.
-    ov::Shape shape = {1, 720, 1280, 16};
+    // Start with the largest shape allowed by the model's declared bounds.
+    ov::Shape shape = makeInputShape(model, 1, /*useLargeShape=*/true);
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -469,7 +473,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithDecreasedSize) {
                             "CompileAndInferWithDecreasedSize_third");
 
     logCapture.clear();
-    ov::Shape shape2 = {1, 720, 720, 16};
+    ov::Shape shape2 = makeInputShape(model, 1, /*useLargeShape=*/false);
     ov::Tensor inTensor3 = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape2, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -486,11 +490,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithDecreasedSize) {
 // Compile, infer with a small shape, then grow the input shape and verify both output correctness and command-list
 // reuse behavior.
 TEST_P(InferWithHostCompileTests, CompileAndInferWithIncreasedSize) {
-    // Skip test according to plugin specific disabledTestPatterns() (if any)
-    SKIP_IF_CURRENT_TEST_IS_DISABLED()
-    if (!isTargetDevice) {
-        GTEST_SKIP() << "Skip test for current device";
-    }
+    SKIP_IF_NOT_TARGET_DEVICE()
 
     auto model = createModelByName(selectedModelName);
     ScopedLogCapture logCapture;
@@ -506,8 +506,8 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithIncreasedSize) {
 
     auto& testContext = setupResult.context;
 
-    // Start with a smaller valid dynamic shape.
-    ov::Shape shape = {1, 720, 720, 16};
+    // Start with the smallest shape allowed by the model's declared bounds.
+    ov::Shape shape = makeInputShape(model, 1, /*useLargeShape=*/false);
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -534,7 +534,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithIncreasedSize) {
                             "CompileAndInferWithIncreasedSize_third");
 
     logCapture.clear();
-    ov::Shape shape2 = {1, 720, 1280, 16};
+    ov::Shape shape2 = makeInputShape(model, 1, /*useLargeShape=*/true);
     ov::Tensor inTensor3 = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape2, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -550,11 +550,7 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithIncreasedSize) {
 
 // Exercise imported Level Zero tensors and verify both output correctness and command-list pointer updates.
 TEST_P(InferWithHostCompileTests, CompileAndInferWithZeroTensor) {
-    // Skip test according to plugin specific disabledTestPatterns() (if any)
-    SKIP_IF_CURRENT_TEST_IS_DISABLED()
-    if (!isTargetDevice) {
-        GTEST_SKIP() << "Skip test for current device";
-    }
+    SKIP_IF_NOT_TARGET_DEVICE()
 
     auto model = createModelByName(selectedModelName);
     ScopedLogCapture logCapture;
@@ -569,8 +565,8 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithZeroTensor) {
     }
     auto& testContext = setupResult.context;
 
-    // Start from a regular host tensor.
-    ov::Shape shape = {1, 720, 1280, 16};
+    // Start from a regular host tensor sized to the model's upper bounds.
+    ov::Shape shape = makeInputShape(model, 1, /*useLargeShape=*/true);
     ov::Tensor inTensor = ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
     setInputInferAndCompare(model,
                             testContext.reqDynamic,
@@ -591,20 +587,31 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithZeroTensor) {
         << "Expected log to contain 'Reset command list to run with runtime', but got: " << logCapture.str();
 
     logCapture.clear();
-    auto outputTensorFromReq = testContext.reqDynamic.get_tensor(model->output());
-    setInputInferAndCompare(model,
-                            reqDynamic1,
-                            reqReference1,
-                            outputTensorFromReq,
-                            "CompileAndInferWithZeroTensor_third");
-    // Feeding an imported output tensor, ptr change detected and rebuild runtime
+    // A plain host tensor is copied into the request's reused internal L0 buffer, so its data pointer never changes
+    // and the runtime keeps reusing the command list. Feed a context-allocated (Level Zero) tensor instead: it is
+    // imported directly with a distinct data pointer, so the runtime detects the change and rebuilds the command list.
+    auto zeroContext = core->get_default_context(target_device);
+    auto inputTensorForThirdInfer = zeroContext.create_host_tensor(model->input().get_element_type(), shape);
+    auto hostTensorSourceForThirdInfer =
+        ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 50);
+    ASSERT_EQ(hostTensorSourceForThirdInfer.get_byte_size(), inputTensorForThirdInfer.get_byte_size())
+        << "Source and destination tensors must have identical byte sizes for copy";
+    std::memcpy(inputTensorForThirdInfer.data(),
+                hostTensorSourceForThirdInfer.data(),
+                hostTensorSourceForThirdInfer.get_byte_size());
+    setInputInferAndCompare(
+        model,
+        reqDynamic1,
+        reqReference1,
+        inputTensorForThirdInfer,  // shape is ov::Shape shape = makeInputShape(model, 1, /*useLargeShape=*/true);
+        "CompileAndInferWithZeroTensor_third");
+    // Feeding a context-allocated tensor with a new data pointer, ptr change detected and rebuild runtime
     // TODO: Update commandlist once dynamic stride supported
     ASSERT_TRUE(logContains(logCapture, "Reset command list to run with runtime"))
         << "Expected log to contain 'Reset command list to run with runtime' for third inference, but got: "
         << logCapture.str();
 
     logCapture.clear();
-    auto zeroContext = core->get_default_context(target_device);
     auto inputHostTensorForForthInfer = zeroContext.create_host_tensor(model->input().get_element_type(), shape);
     auto hostTensorSourceForForthInfer =
         ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), shape, 100, 0);
@@ -626,9 +633,10 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithZeroTensor) {
 
     logCapture.clear();
     auto outputShape = reqDynamic1.get_tensor(model->output()).get_shape();
-    auto zeroOutputTensorForFifthInfer = zeroContext.create_host_tensor(model->input().get_element_type(), outputShape);
+    auto zeroOutputTensorForFifthInfer =
+        zeroContext.create_host_tensor(model->output().get_element_type(), outputShape);
     auto hostTensorSourceForOutputForFifthInfer =
-        ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), outputShape, 100, 0);
+        ov::test::utils::create_and_fill_tensor(model->output().get_element_type(), outputShape, 100, 0);
     ASSERT_EQ(hostTensorSourceForOutputForFifthInfer.get_byte_size(), zeroOutputTensorForFifthInfer.get_byte_size())
         << "Source and destination tensors must have identical byte sizes for copy";
     std::memcpy(zeroOutputTensorForFifthInfer.data(),
@@ -651,9 +659,9 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithZeroTensor) {
 
     auto outputShapeForSixthInfer = reqDynamic1.get_tensor(model->output()).get_shape();
     auto zeroOutputTensorForSixthInfer =
-        zeroContext.create_host_tensor(model->input().get_element_type(), outputShapeForSixthInfer);
+        zeroContext.create_host_tensor(model->output().get_element_type(), outputShapeForSixthInfer);
     auto hostTensorSourceForOutputForSixthInfer =
-        ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), outputShapeForSixthInfer, 100, 0);
+        ov::test::utils::create_and_fill_tensor(model->output().get_element_type(), outputShapeForSixthInfer, 100, 0);
     ASSERT_EQ(hostTensorSourceForOutputForSixthInfer.get_byte_size(), zeroOutputTensorForSixthInfer.get_byte_size())
         << "Source and destination tensors must have identical byte sizes for copy";
     std::memcpy(zeroOutputTensorForSixthInfer.data(),
@@ -672,14 +680,10 @@ TEST_P(InferWithHostCompileTests, CompileAndInferWithZeroTensor) {
         << logCapture.str();
 }
 
-TEST_P(InferWithHostCompileTests, DynamicBatchUsesOneVMExecution) {
-    SKIP_IF_CURRENT_TEST_IS_DISABLED()
-    if (!isTargetDevice) {
-        GTEST_SKIP() << "Skip test for current device";
-    }
-    // MaxPool dynamic models contain operators that are not yet supported by the dynamic pipeline.
-    // CustomNet_DynBatch is used to verify aggregation of N=1 tensors into one N=2 VM execution.
-    if (selectedModelName != "CustomNet_DynBatch") {
+TEST_P(InferWithHostCompileTests, DynamicNHWUsesOneVMExecution) {
+    SKIP_IF_NOT_TARGET_DEVICE()
+    // Only dynamic-batch ESPCN_x2 variants can aggregate two N=1 tensors into one N=2 VM execution.
+    if (!hasDynamicBatch(selectedModelName)) {
         GTEST_SKIP() << "Only applies to the dynamic-batch model";
     }
 
@@ -700,7 +704,7 @@ TEST_P(InferWithHostCompileTests, DynamicBatchUsesOneVMExecution) {
     ov::InferRequest reqReference1 = testContext.referenceCompiledModel.create_infer_request();
 
     // A single N=2 tensor must execute as one dynamic VM inference.
-    const ov::Shape batchShape = {2, 720, 1280, 16};
+    const ov::Shape batchShape = makeInputShape(model, 2, /*useLargeShape=*/false);
     auto fullBatchTensor =
         ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), batchShape, 100, 0);
     setInputInferAndCompare(model,
@@ -708,7 +712,7 @@ TEST_P(InferWithHostCompileTests, DynamicBatchUsesOneVMExecution) {
                             reqReference1,
                             fullBatchTensor,
                             "DynamicBatchUsesOneVMExecution_full_batch");
-    ASSERT_EQ(reqDynamic1.get_tensor(model->output()).get_shape(), batchShape);
+    ASSERT_EQ(reqDynamic1.get_tensor(model->output()).get_shape(), dynamicNHWOutputShape(batchShape));
 
     const auto countVMExecutions = [](const std::string& log) {
         constexpr std::string_view marker = "Start to execute graph with runtime engine";
@@ -724,7 +728,7 @@ TEST_P(InferWithHostCompileTests, DynamicBatchUsesOneVMExecution) {
 
     logCapture.clear();
     // Two N=1 tensors must be aggregated into one N=2 inference rather than executed separately.
-    const ov::Shape singleBatchShape = {1, 720, 1280, 16};
+    const ov::Shape singleBatchShape = makeInputShape(model, 1, /*useLargeShape=*/false);
     std::vector<ov::Tensor> tensorBatch;
     tensorBatch.push_back(
         ov::test::utils::create_and_fill_tensor(model->input().get_element_type(), singleBatchShape, 100, 0));
@@ -734,7 +738,7 @@ TEST_P(InferWithHostCompileTests, DynamicBatchUsesOneVMExecution) {
     OV_ASSERT_NO_THROW(reqReference1.set_tensors(testContext.referenceCompiledModel.input(), tensorBatch));
     OV_ASSERT_NO_THROW(reqDynamic1.infer());
     OV_ASSERT_NO_THROW(reqReference1.infer());
-    ASSERT_EQ(reqDynamic1.get_tensor(model->output()).get_shape(), batchShape);
+    ASSERT_EQ(reqDynamic1.get_tensor(model->output()).get_shape(), dynamicNHWOutputShape(batchShape));
     ov::test::utils::compare(reqReference1.get_tensor(model->output()),
                              reqDynamic1.get_tensor(model->output()),
                              model->output().get_element_type());
@@ -756,12 +760,13 @@ inline bool isElfBlob(const std::string& blob) {
     return header.find("ELF\x00") != std::string_view::npos;
 };
 
+// const std::vector<std::string> defaultHCModelNames = {"ESPCN_x2_DynN_HD_NCHW", "ESPCN_x2_DynNHW_HD_NCHW"};
+/// Test case for default compilation model for different model
+/// only batch dimension is dynamic, use dafault compilation mode: DefaultHW
+/// when weight dimension or height dimension is also dynamic, will set the default compilation mode to
+/// HostCompile_Interpreter.
 TEST_P(InferWithDefaultHostCompileTests, CompileDynamicModelWithNoHostCompileMode) {
-    // Skip test according to plugin specific disabledTestPatterns() (if any)
-    SKIP_IF_CURRENT_TEST_IS_DISABLED()
-    if (!isTargetDevice) {
-        GTEST_SKIP() << "Skip test for current device";
-    }
+    SKIP_IF_NOT_TARGET_DEVICE()
 
     auto model = createModelByName(selectedModelName);
 
@@ -776,9 +781,9 @@ TEST_P(InferWithDefaultHostCompileTests, CompileDynamicModelWithNoHostCompileMod
         FAIL() << "Exported model stream is empty";
     }
 
-    if (selectedModelName == "MaxPool_NCHW_DynBatch") {
+    if (hasOnlyDynamicBatch(selectedModelName)) {
         ASSERT_TRUE(isElfBlob(modelStream.str())) << "Expected exported model to be an ELF blob";
-    } else if (selectedModelName == "MaxPool_NCHW") {
+    } else {
         ASSERT_TRUE(isByteCodeBlob(modelStream.str())) << "Expected exported model to be a bytecode";
     }
 
@@ -796,6 +801,8 @@ TEST_P(InferWithDefaultHostCompileTests, CompileDynamicModelWithNoHostCompileMod
 
     OV_ASSERT_NO_THROW(reqDynamic.infer());
 }
+
+#undef SKIP_IF_NOT_TARGET_DEVICE
 
 }  // namespace behavior
 }  // namespace test
@@ -826,9 +833,14 @@ const std::vector<ov::AnyMap> configs = {
     },
 };
 
-// Ensure the added test model's input and output shapes are identical and accept concrete NHWC shapes for reuse shape
-// in tests.
-const std::vector<std::string> modelNames = {"CustomNet", "CustomNet_DynBatch", "MaxPool"};
+// Every name maps to the same ESPCN_x2 graph (see espcnModelConfigs) built with different dynamic N/H/W bounds
+// and layout; the concrete test shapes are derived from those bounds via makeInputShape.
+const std::vector<std::string> modelNames = {
+    "ESPCN_x2_DynHW_FHD",   // [1,1..1080,10..1920,1]
+    "ESPCN_x2_DynNHW_FHD",  // [1..10,1..1080,10..1920,1]
+    "ESPCN_x2_DynHW_HD",    // [1,10..720,10..1280,1]
+    "ESPCN_x2_DynHW_FHD2",  //[1, 10..2160, 10..3840,1]
+};
 
 INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
                          InferWithHostCompileTests,
@@ -849,7 +861,7 @@ const std::vector<ov::AnyMap> defaultHostCompileconfigs = {
     },
 };
 
-const std::vector<std::string> defaultHCModelNames = {"MaxPool_NCHW", "MaxPool_NCHW_DynBatch"};
+const std::vector<std::string> defaultHCModelNames = {"ESPCN_x2_DynN_HD_NCHW", "ESPCN_x2_DynNHW_HD_NCHW"};
 INSTANTIATE_TEST_SUITE_P(smoke_BehaviorTests,
                          InferWithDefaultHostCompileTests,
                          ::testing::Combine(::testing::ValuesIn(devices),
