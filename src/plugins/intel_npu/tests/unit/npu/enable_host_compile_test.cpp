@@ -79,8 +79,10 @@ protected:
     }
 
     bool run(const std::shared_ptr<const ov::Model>& model) {
-        intel_npu::enable_host_compile_if_needed(model, *config, Logger("EnableHostCompileTest", ov::log::Level::NO));
-        return config->has<COMPILATION_MODE>() && config->get<COMPILATION_MODE>() == "HostCompile_Interpreter";
+        return intel_npu::should_use_host_compile_interpreter(model,
+                                                              config->get<COMPILER_TYPE>(),
+                                                              config->has<COMPILATION_MODE>(),
+                                                              config->get<DYNAMIC_SHAPE_TO_STATIC>());
     }
 
     std::unique_ptr<Config> config;
