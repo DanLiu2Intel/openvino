@@ -7,8 +7,6 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include <set>
-#include <string>
 
 #include "intel_npu/config/config.hpp"
 #include "intel_npu/config/options.hpp"

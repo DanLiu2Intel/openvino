@@ -8,7 +8,6 @@
 
 #include "intel_npu/config/config.hpp"
 #include "intel_npu/config/options.hpp"
-#include "intel_npu/utils/logger/logger.hpp"
 #include "openvino/op/constant.hpp"
 #include "openvino/op/parameter.hpp"
 #include "openvino/op/relu.hpp"
