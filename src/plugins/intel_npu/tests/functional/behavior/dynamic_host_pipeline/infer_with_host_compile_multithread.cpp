@@ -58,7 +58,14 @@ public:
 
         std::tie(target_device, configuration, selectedModelName) = this->GetParam();
         configuration[ov::intel_npu::compile_log_level.name()] = ov::log::Level::ERR;
-        ov::test::utils::register_template_plugin(core);
+        const char* path_env = std::getenv("USE_FIX_PATH");
+        if (path_env != nullptr) {
+            std::cout << "[FUNCTION TEST]USE_FIX_PATH is set to: " << path_env << std::endl;
+            ov::test::utils::register_template_plugin(core);
+            std::cout << "[FUNCTION TEST]register the template plugin" << std::endl;
+        } else{
+            std::cout << "[FUNCTION TEST]USE_FIX_PATH is not set" << std::endl;
+        }
 
         std::vector<std::string> deviceNames =
             core.get_property("NPU", ov::available_devices.name()).as<std::vector<std::string>>();
