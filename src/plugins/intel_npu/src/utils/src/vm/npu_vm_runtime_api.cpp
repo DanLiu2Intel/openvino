@@ -55,11 +55,13 @@ void NPUVMRuntimeApi::initializeFromBlob(const void* data, size_t size) {
     const std::string_view header(static_cast<const char*>(data), headerSize);
     const std::string_view libName =
         (header.find("NPUByte\x00") != std::string_view::npos) ? VM_RUNTIME_NAME : MLIR_RUNTIME_NAME;
+        std::cout << "[1][NPU VM RUNTIME API] Initializing with library: " << libName << std::endl;
     initialize(libName);
 }
 
 void NPUVMRuntimeApi::initialize(std::string_view libName) {
     const std::string resolvedName{libName.empty() ? MLIR_RUNTIME_NAME : libName};
+    std::cout << "[2][NPU VM RUNTIME API] Initializing with library: " << resolvedName << std::endl;
     const char* path_env = std::getenv("USE_FIX_PATH");
     if (path_env != nullptr) {
         std::cout << "USE_FIX_PATH is set to: " << path_env << std::endl;
@@ -68,7 +70,7 @@ void NPUVMRuntimeApi::initialize(std::string_view libName) {
     } else {
         std::cout << "USE_FIX_PATH is not set." << std::endl;
     }
-
+    std::cout << "[3][NPU VM RUNTIME API] g_libName is: " << g_libName << std::endl;
     if (g_instanceCreated) {
         if (g_libName != resolvedName) {
             OPENVINO_THROW("NPUVMRuntimeApi is already initialized with '",
@@ -91,7 +93,7 @@ const std::shared_ptr<NPUVMRuntimeApi>& NPUVMRuntimeApi::getInstance() {
         if (path_env != nullptr) {
             std::cout << "USE_FIX_PATH is set to: " << path_env << std::endl;
             std::lock_guard<std::mutex> lock(g_instanceMutex);
-            std::cout << "Init lock(g_instanceMutex)." << std::endl;
+            std::cout << "Init lock(g_instanceMutex).   g_libName is " << g_libName << std::endl;
             // Explicitly construct with the selected library under the lock.
             runtimeApi = std::make_shared<NPUVMRuntimeApi>(g_libName);
         } else {
