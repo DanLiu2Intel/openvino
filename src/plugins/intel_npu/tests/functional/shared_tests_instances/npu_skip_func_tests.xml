@@ -462,8 +462,7 @@ Example:
             <operating_system>linux</operating_system>
         </enable_rules>
         <filters>
-            <filter>.*InferWithHostCompileTests.SetProperty_CombinedPriorityAndWorkload.*</filter>
-            <filter>.*InferWithHostCompileTests.SetProperty_ModelPriority_SingleCompiledModel.*</filter>
+            <filter>.*InferWithHostCompileTests.SetProperty.*</filter>
         </filters>
     </skip_config>
 
