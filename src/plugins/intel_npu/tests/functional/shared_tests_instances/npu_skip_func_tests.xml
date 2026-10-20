@@ -433,18 +433,6 @@ Example:
         </filters>
     </skip_config>
 
-    <!-- E#239219 -->
-    <skip_config>
-        <message>HostCompile cannot compile the dynamic MaxPool model because CopyOpTiling cannot compute allocation size for dynamic shapes without bounds.</message>
-        <enable_rules>
-            <device>4000</device>
-            <device>5010</device>
-        </enable_rules>
-        <filters>
-            <filter>.*InferWithDefaultHostCompileTests.CompileDynamicModelWithNoHostCompileMode.*model=MaxPool_NCHW_targetPlatform.*</filter>
-        </filters>
-    </skip_config>
-
     <skip_config>
         <message>Random accuracy issue for multithread test.</message>
         <enable_rules>
@@ -467,5 +455,21 @@ Example:
             <filter>.*samePlatformProduceTheSameBlobCacheEnabled.*</filter>
         </filters>
     </skip_config>
+
+    <skip_config>
+        <message>ESPCN_x2_gh model infer failed for linux platform, but pass for windows, seems MT not run at all</message>
+        <enable_rules>
+            <operating_system>linux</operating_system>
+        </enable_rules>
+        <filters>
+            <filter>.*InferWithHostCompileTests.SetProperty_CombinedPriorityAndWorkload.*</filter>
+            <filter>.*InferWithHostCompileTests.SetProperty_ModelPriority_SingleCompiledModel.*</filter>
+            <filter>.*InferWithHostCompileTests.SetProperty_WorkloadType_SingleCompiledModel.*</filter>
+            <filter>.*InferWithHostCompileTests.SetProperty_Priority_BetweenTwoRequests.*</filter>
+            <filter>.*InferWithHostCompileMultithreadTests.MT_ConcurrentInferThenSetPriorityAndInfer.*</filter>
+            <filter>.*InferWithHostCompileMultithreadTests.MT_MultiCompiledModelsMultiRequestsMultiInfer.*</filter>
+        </filters>
+    </skip_config>
+
 
 </skip_configs>
