@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <common_test_utils/ov_tensor_utils.hpp>
 #include <condition_variable>
 #include <cstring>
@@ -226,9 +227,37 @@ public:
                                  0.02);
     }
 
-    static void waitAndCompare(ov::InferRequest& reqDynamic, const ov::Tensor& referenceOutputTensor) {
+    // NPU output is bitwise deterministic (verified on NPU4000/NPU5010), so any difference is corruption.
+    static void compareBitwise(const ov::Tensor& goldenOutputTensor, const ov::Tensor& npuOutputTensor) {
+        if (goldenOutputTensor.get_element_type() != npuOutputTensor.get_element_type() ||
+            goldenOutputTensor.get_shape() != npuOutputTensor.get_shape()) {
+            throw std::runtime_error("NPU output type/shape differs from the NPU golden: " +
+                                     npuOutputTensor.get_shape().to_string() + " vs " +
+                                     goldenOutputTensor.get_shape().to_string());
+        }
+        if (std::memcmp(goldenOutputTensor.data(), npuOutputTensor.data(), goldenOutputTensor.get_byte_size()) == 0) {
+            return;
+        }
+        std::ostringstream os;
+        os << "NPU output is not bitwise equal to the serial NPU golden";
+        if (goldenOutputTensor.get_element_type() == ov::element::f32) {
+            const auto* golden = goldenOutputTensor.data<const float>();
+            const auto* actual = npuOutputTensor.data<const float>();
+            size_t mismatches = 0;
+            float maxAbs = 0.f;
+            for (size_t i = 0; i < goldenOutputTensor.get_size(); ++i) {
+                const float diff = std::abs(golden[i] - actual[i]);
+                mismatches += (golden[i] != actual[i]);
+                maxAbs = std::max(maxAbs, diff);
+            }
+            os << ": mismatches=" << mismatches << "/" << goldenOutputTensor.get_size() << " maxAbs=" << maxAbs;
+        }
+        throw std::runtime_error(os.str());
+    }
+
+    static void waitAndCompare(ov::InferRequest& reqDynamic, const ov::Tensor& goldenOutputTensor) {
         reqDynamic.wait();
-        compareWithReference(referenceOutputTensor, reqDynamic.get_output_tensor(0));
+        compareBitwise(goldenOutputTensor, reqDynamic.get_output_tensor(0));
     }
 
     static ov::Tensor makeZeroInputTensor(ov::RemoteContext& zeroContext,
@@ -369,10 +398,11 @@ TEST_P(InferWithHostCompileMultithreadTests, MT_CrossRequestOutputMismatchIsReje
         const auto npuOutputA = npuRequestA.get_output_tensor(0);
         const auto outputType = npuOutputA.get_element_type();
 
-        // Matching request pair stays within the NPU-calibrated tolerance.
-        OV_ASSERT_NO_THROW(compareWithReference(referenceOutputA, npuOutputA));
+        // Matching request pair is bitwise equal to its golden.
+        OV_ASSERT_NO_THROW(compareBitwise(referenceOutputA, npuOutputA));
 
-        // The other request's reference must be rejected, proving swapped outputs are detectable.
+        // The other request's golden must be rejected, both bitwise and at the TEMPLATE anchor tolerance.
+        ASSERT_THROW(compareBitwise(referenceOutputB, npuOutputA), std::runtime_error);
         ASSERT_THROW(ov::test::utils::compare(referenceOutputB, npuOutputA, outputType, 0.02, 0.02),
                      std::runtime_error);
     }
@@ -869,85 +899,6 @@ TEST_P(InferWithHostCompileMultithreadTests, MT_CompileAndInferOverlap) {
 
         ASSERT_EQ(successInferCount.load(std::memory_order_relaxed), kModelCount)
             << "Each compiled model should be consumed by one overlapping infer worker";
-    }
-}
-
-TEST_P(InferWithHostCompileMultithreadTests, DISABLED_Probe_NpuOutputDeterminism) {
-    if (!isTargetDevice) {
-        GTEST_SKIP();
-    }
-    auto model = createModelByName(selectedModelName);
-
-    const auto run = [&](ov::InferRequest& req, const ov::Tensor& in) {
-        req.set_input_tensor(0, in);
-        req.infer();
-        const auto out = req.get_output_tensor(0);
-        ov::Tensor copy(out.get_element_type(), out.get_shape());
-        out.copy_to(copy);
-        return copy;
-    };
-    const auto diff = [](const ov::Tensor& a, const ov::Tensor& b, const std::string& tag) {
-        ASSERT_EQ(a.get_shape(), b.get_shape()) << tag;
-        const auto* pa = a.data<const float>();
-        const auto* pb = b.data<const float>();
-        size_t mismatches = 0;
-        float maxAbs = 0.f;
-        for (size_t i = 0; i < a.get_size(); ++i) {
-            const float d = std::abs(pa[i] - pb[i]);
-            mismatches += (d != 0.f);
-            maxAbs = std::max(maxAbs, d);
-        }
-        std::cout << tag << ": bitwise=" << (std::memcmp(pa, pb, a.get_byte_size()) == 0)
-                  << " mismatches=" << mismatches << "/" << a.get_size() << " maxAbs=" << maxAbs << std::endl;
-    };
-
-    // Blob determinism: two independent compiles must export identical blobs.
-    auto cmA = core.compile_model(model, target_device, makeConfig(false));
-    auto cmB = core.compile_model(model, target_device, makeConfig(true));
-    std::stringstream blobA, blobB;
-    cmA.export_model(blobA);
-    cmB.export_model(blobB);
-    std::cout << "blob identical: " << (blobA.str() == blobB.str()) << std::endl;
-
-    for (bool large : {true, false}) {
-        const auto shape = makeInputShape(model, 1, large);
-        const auto in = makeInputTensor(model, shape, 1);
-        const std::string s = large ? "[large] " : "[small] ";
-
-        auto golden = cmA.create_infer_request();
-        const auto ref = run(golden, in);
-
-        for (int i = 0; i < 5; ++i) {
-            diff(ref, run(golden, in), s + "same request repeat " + std::to_string(i));
-        }
-        auto other = cmA.create_infer_request();
-        diff(ref, run(other, in), s + "other request, same model");
-        auto shared = cmB.create_infer_request();
-        diff(ref, run(shared, in), s + "other compiled model, sharedQueue=true");
-
-        cmB.set_property({{ov::hint::model_priority.name(), ov::hint::Priority::HIGH}});
-        diff(ref, run(shared, in), s + "after priority switch");
-
-        auto ctx = core.get_default_context(target_device);
-        auto zeroIn = makeZeroInputTensor(ctx, model, shape, 1);
-        diff(ref, run(other, zeroIn), s + "zero input tensor");
-
-        // Same data under concurrency.
-        std::vector<ov::InferRequest> reqs;
-        for (int i = 0; i < 8; ++i) {
-            reqs.push_back(cmB.create_infer_request());
-            reqs.back().set_input_tensor(0, in);
-        }
-        for (auto& r : reqs) {
-            r.start_async();
-        }
-        for (size_t i = 0; i < reqs.size(); ++i) {
-            reqs[i].wait();
-            diff(ref, reqs[i].get_output_tensor(0), s + "concurrent " + std::to_string(i));
-        }
-
-        // Separation: adjacent seeds must differ far more than any run-to-run noise.
-        diff(ref, run(golden, makeInputTensor(model, shape, 2)), s + "seed 1 vs seed 2 (must be large)");
     }
 }
 
