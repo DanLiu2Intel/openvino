@@ -850,6 +850,85 @@ TEST_P(InferWithHostCompileMultithreadTests, MT_CompileAndInferOverlap) {
     }
 }
 
+TEST_P(InferWithHostCompileMultithreadTests, DISABLED_Probe_NpuOutputDeterminism) {
+    if (!isTargetDevice) {
+        GTEST_SKIP();
+    }
+    auto model = createModelByName(selectedModelName);
+
+    const auto run = [&](ov::InferRequest& req, const ov::Tensor& in) {
+        req.set_input_tensor(0, in);
+        req.infer();
+        const auto out = req.get_output_tensor(0);
+        ov::Tensor copy(out.get_element_type(), out.get_shape());
+        out.copy_to(copy);
+        return copy;
+    };
+    const auto diff = [](const ov::Tensor& a, const ov::Tensor& b, const std::string& tag) {
+        ASSERT_EQ(a.get_shape(), b.get_shape()) << tag;
+        const auto* pa = a.data<const float>();
+        const auto* pb = b.data<const float>();
+        size_t mismatches = 0;
+        float maxAbs = 0.f;
+        for (size_t i = 0; i < a.get_size(); ++i) {
+            const float d = std::abs(pa[i] - pb[i]);
+            mismatches += (d != 0.f);
+            maxAbs = std::max(maxAbs, d);
+        }
+        std::cout << tag << ": bitwise=" << (std::memcmp(pa, pb, a.get_byte_size()) == 0)
+                  << " mismatches=" << mismatches << "/" << a.get_size() << " maxAbs=" << maxAbs << std::endl;
+    };
+
+    // Blob determinism: two independent compiles must export identical blobs.
+    auto cmA = core.compile_model(model, target_device, makeConfig(false));
+    auto cmB = core.compile_model(model, target_device, makeConfig(true));
+    std::stringstream blobA, blobB;
+    cmA.export_model(blobA);
+    cmB.export_model(blobB);
+    std::cout << "blob identical: " << (blobA.str() == blobB.str()) << std::endl;
+
+    for (bool large : {true, false}) {
+        const auto shape = makeInputShape(model, 1, large);
+        const auto in = makeInputTensor(model, shape, 1);
+        const std::string s = large ? "[large] " : "[small] ";
+
+        auto golden = cmA.create_infer_request();
+        const auto ref = run(golden, in);
+
+        for (int i = 0; i < 5; ++i) {
+            diff(ref, run(golden, in), s + "same request repeat " + std::to_string(i));
+        }
+        auto other = cmA.create_infer_request();
+        diff(ref, run(other, in), s + "other request, same model");
+        auto shared = cmB.create_infer_request();
+        diff(ref, run(shared, in), s + "other compiled model, sharedQueue=true");
+
+        cmB.set_property({{ov::hint::model_priority.name(), ov::hint::Priority::HIGH}});
+        diff(ref, run(shared, in), s + "after priority switch");
+
+        auto ctx = core.get_default_context(target_device);
+        auto zeroIn = makeZeroInputTensor(ctx, model, shape, 1);
+        diff(ref, run(other, zeroIn), s + "zero input tensor");
+
+        // Same data under concurrency.
+        std::vector<ov::InferRequest> reqs;
+        for (int i = 0; i < 8; ++i) {
+            reqs.push_back(cmB.create_infer_request());
+            reqs.back().set_input_tensor(0, in);
+        }
+        for (auto& r : reqs) {
+            r.start_async();
+        }
+        for (size_t i = 0; i < reqs.size(); ++i) {
+            reqs[i].wait();
+            diff(ref, reqs[i].get_output_tensor(0), s + "concurrent " + std::to_string(i));
+        }
+
+        // Separation: adjacent seeds must differ far more than any run-to-run noise.
+        diff(ref, run(golden, makeInputTensor(model, shape, 2)), s + "seed 1 vs seed 2 (must be large)");
+    }
+}
+
 const std::vector<std::string> mtDevices = {"NPU.4000", "NPU.5010", "NPU.6010"};
 
 const std::vector<ov::AnyMap> mtConfigs = {
