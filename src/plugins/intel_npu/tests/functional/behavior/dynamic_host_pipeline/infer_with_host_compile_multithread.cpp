@@ -10,6 +10,7 @@
 #include <functional>
 #include <future>
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -250,9 +251,22 @@ protected:
         return cfg;
     }
 
-    // Call before the NPU requests start so TEMPLATE does not compete with the host-side VM runtime for CPU.
+    // Serial NPU golden output; call before the NPU requests under test start so it never overlaps them.
     ov::Tensor expectedOutput(const ov::Tensor& input) {
-        return referenceCache.getOutput(selectedModelName, input);
+        auto golden = npuGoldenCache.getOutput(input);
+        anchorAgainstTemplate(input, golden);
+        return golden;
+    }
+
+    // The NPU golden is only trusted after it matches TEMPLATE once per input shape.
+    void anchorAgainstTemplate(const ov::Tensor& input, const ov::Tensor& golden) {
+        {
+            std::lock_guard<std::mutex> lock(anchorMutex);
+            if (!anchoredShapes.insert(input.get_shape().to_string()).second) {
+                return;
+            }
+        }
+        compareWithReference(templateCache.getOutput(input), golden);
     }
 
     ov::Core core;
@@ -260,7 +274,15 @@ protected:
     std::string selectedModelName;
     std::string target_device;
     bool isTargetDevice = false;
-    EspcnReferenceCache referenceCache;
+    EspcnReferenceCache templateCache{[this] {
+        return EspcnReferenceCache::getCompiledModel(selectedModelName);
+    }};
+    // Dedicated model with the base configuration only, so it shares no state with the models under test.
+    EspcnReferenceCache npuGoldenCache{[this] {
+        return core.compile_model(createModelByName(selectedModelName), target_device, configuration);
+    }};
+    std::mutex anchorMutex;
+    std::set<std::string> anchoredShapes;
 };
 
 TEST_P(InferWithHostCompileMultithreadTests, MT_PerThreadCompileCreateInfer) {
